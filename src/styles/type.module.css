@@ -1,0 +1,36 @@
+/* Shared typographic voices. Components compose these instead of redefining them. */
+
+/* Voice 1: monumental condensed display. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* Voice 2: human Geist body copy. */
+.lead {
+  max-width: var(--measure-body);
+  color: var(--color-text-primary);
+  font-size: var(--text-lead);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+/* Voice 3: mono microcopy for coordinates, numbers, roles, and instructions. */
+.micro {
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  font-weight: 400;
+  line-height: var(--leading-micro);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.microStrong {
+  composes: micro;
+  color: var(--color-text-primary);
+}

@@ -1,0 +1,177 @@
+.hero {
+  position: relative;
+  z-index: var(--layer-content);
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-block-start: calc(var(--header-height) + var(--space-8));
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.inner {
+  position: relative;
+  z-index: var(--layer-content);
+  flex: 1;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding-inline: var(--layout-gutter);
+  padding-block-end: clamp(7rem, 14vh, 11rem);
+}
+
+/* ---------------------------------------------------------------- statement */
+
+.statement {
+  position: relative;
+  z-index: 2;
+  /*
+   * Hug the copy. This block sits above the project planes, so any empty box
+   * to the right of the headline would swallow clicks on the artwork beneath.
+   */
+  width: fit-content;
+  max-width: min(70%, 48rem);
+  padding-block-start: clamp(1rem, 5vh, 4rem);
+}
+
+.lead {
+  composes: lead from "../../styles/type.module.css";
+  margin-block-start: clamp(1.5rem, 3vh, 2.5rem);
+  max-width: 28ch;
+}
+
+.scroll {
+  composes: micro from "../../styles/type.module.css";
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-block-start: clamp(2.5rem, 10vh, 7rem);
+}
+
+.scrollRule {
+  display: block;
+  width: 1px;
+  height: clamp(2rem, 5vh, 3.5rem);
+  background: linear-gradient(to bottom, transparent, var(--color-line-strong));
+}
+
+.baseline {
+  position: relative;
+  z-index: var(--layer-content);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding-inline: var(--layout-gutter);
+  padding-block: var(--space-6);
+}
+
+.baselineLink {
+  composes: micro from "../../styles/type.module.css";
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 2.75rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.baselineLink:hover {
+  color: var(--color-text-primary);
+}
+
+.baselineRule {
+  display: block;
+  width: clamp(3rem, 10vw, 9rem);
+  height: 1px;
+  background: var(--color-line-strong);
+}
+
+.baselineIndex {
+  composes: micro from "../../styles/type.module.css";
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------- tablet */
+
+@media (max-width: 63.99rem) {
+  .inner {
+    padding-block-end: clamp(3rem, 6vh, 5rem);
+  }
+
+  .statement {
+    max-width: none;
+  }
+
+  .lead {
+    max-width: 38ch;
+  }
+
+  .scroll {
+    margin-block-start: clamp(2rem, 5vh, 3.5rem);
+  }
+}
+
+/* ------------------------------------------------------------- handheld */
+
+@media (max-width: 47.99rem) {
+  .hero {
+    padding-block-start: calc(var(--header-height) + var(--space-12));
+  }
+}
+
+/* ========================================================= entrance motion */
+
+/*
+ * The hero owns the whole opening sequence. Every duration, delay, easing and
+ * travel distance comes from src/motion/motion.css, which also neutralises them
+ * under prefers-reduced-motion. Nothing here animates `transform`, so the
+ * the scene's independent pointer response.
+ */
+
+/* Steps 2 and 3: each display line rises from below its mask, the second
+   following one stagger later. */
+.headline [data-line-inner] {
+  animation-name: var(--motion-keyframes-display);
+  animation-duration: var(--motion-display-duration);
+  animation-timing-function: var(--motion-ease-reveal);
+  animation-fill-mode: both;
+}
+
+.headline [data-line-index="0"] [data-line-inner] {
+  animation-delay: var(--motion-display-delay);
+}
+
+.headline [data-line-index="1"] [data-line-inner] {
+  animation-delay: calc(var(--motion-display-delay) + var(--motion-display-stagger));
+}
+
+/* Step 4: supporting copy, the scroll cue, then the section baseline. */
+.lead {
+  animation-name: var(--motion-keyframes-copy);
+  animation-duration: var(--motion-lead-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: both;
+  animation-delay: var(--motion-lead-delay);
+}
+
+.scroll {
+  animation-name: var(--motion-keyframes-copy);
+  animation-duration: var(--motion-cue-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: both;
+  animation-delay: var(--motion-cue-delay);
+}
+
+.baseline {
+  animation-name: var(--motion-keyframes-copy);
+  animation-duration: var(--motion-baseline-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: both;
+  animation-delay: var(--motion-baseline-delay);
+}

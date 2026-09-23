@@ -1,0 +1,234 @@
+.footer {
+  position: relative;
+  z-index: var(--layer-content);
+  padding-block-start: calc(var(--section-spacing) * 1.1);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.inner {
+  position: relative;
+  z-index: var(--layer-content);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 28rem);
+  align-items: center;
+  gap: clamp(2.5rem, 6vw, 6rem);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding-inline: var(--layout-gutter);
+  padding-block-end: clamp(5rem, 14vh, 10rem);
+}
+
+/* The contact headline remains solid type; particles live only in the scene. */
+
+/* ------------------------------------------------------------- invitation */
+
+.lead {
+  composes: lead from "../../styles/type.module.css";
+  margin-block-start: clamp(1.5rem, 3vh, 2.5rem);
+  max-width: 26ch;
+}
+
+.primary {
+  composes: micro from "../../styles/type.module.css";
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  margin-block-start: clamp(1.5rem, 3vh, 2.5rem);
+  padding-block-end: var(--space-2);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  border-block-end: 1px solid var(--color-line-strong);
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    border-color var(--duration-interface) var(--ease-interface);
+}
+
+.primary:hover {
+  color: var(--color-highlight);
+  border-block-end-color: var(--color-highlight);
+}
+
+/* -------------------------------------------------------- contact plane */
+
+.conversation {
+  perspective: 1400px;
+}
+
+.plane {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 3vw, 2.25rem);
+  padding: clamp(1.75rem, 3vw, 2.75rem) clamp(1.5rem, 3vw, 2.5rem);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--brand-midnight) 55%, transparent) 0%,
+    transparent 70%
+  );
+  border: 1px solid var(--color-plane-rim);
+  transform: rotateY(-11deg) rotateZ(-1.6deg);
+  transform-origin: right center;
+  transition:
+    transform var(--duration-interface) var(--ease-interface),
+    border-color var(--duration-interface) var(--ease-interface);
+}
+
+.plane:hover,
+.plane:focus-visible {
+  border-color: var(--color-accent);
+  transform: rotateY(-6deg) rotateZ(-0.8deg);
+}
+
+.planeLabel {
+  composes: micro from "../../styles/type.module.css";
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  color: var(--color-text-primary);
+}
+
+.waveform {
+  width: 100%;
+  height: clamp(2rem, 4vw, 3rem);
+  overflow: visible;
+}
+
+.waveform polyline {
+  fill: none;
+  stroke: var(--color-text-secondary);
+  stroke-width: 1;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  transition: stroke var(--duration-interface) var(--ease-interface);
+}
+
+.plane:hover .waveform polyline,
+.plane:focus-visible .waveform polyline {
+  stroke: var(--color-accent);
+}
+
+/* ---------------------------------------------------------------- baseline */
+
+.baseline {
+  position: relative;
+  z-index: var(--layer-content);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding-inline: var(--layout-gutter);
+  padding-block: var(--space-6);
+  border-block-start: 1px solid var(--color-line);
+}
+
+.copyright {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.social {
+  justify-self: center;
+}
+
+.socialList {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.socialItem + .socialItem::before {
+  content: "/";
+  margin-inline-end: var(--space-4);
+  color: var(--color-text-muted);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+}
+
+.socialItem {
+  display: flex;
+  align-items: center;
+}
+
+.socialLink {
+  composes: micro from "../../styles/type.module.css";
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.socialLink:hover {
+  color: var(--color-text-primary);
+}
+
+.backToTop {
+  composes: micro from "../../styles/type.module.css";
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-self: end;
+  min-height: 2.75rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.backToTop:hover {
+  color: var(--color-text-primary);
+}
+
+/* ------------------------------------------------------------- responsive */
+
+@media (max-width: 63.99rem) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .conversation {
+    max-width: 28rem;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .plane {
+    transform: none;
+  }
+
+  .plane:hover,
+  .plane:focus-visible {
+    transform: none;
+  }
+
+  .conversation {
+    max-width: none;
+  }
+
+  .baseline {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+    padding-block: var(--space-8);
+  }
+
+  .social {
+    justify-self: start;
+  }
+
+  .backToTop {
+    justify-self: start;
+  }
+}

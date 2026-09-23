@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title description">
+  <title id="title">Wildwood placeholder</title>
+  <desc id="description">Temporary project media pending final Wildwood artwork.</desc>
+  <rect width="1600" height="1000" fill="#191126"/>
+  <path d="M0 760h1600" stroke="#715A92" stroke-width="2"/>
+  <text x="80" y="120" fill="#B793D2" font-family="sans-serif" font-size="28">PROJECT MEDIA PLACEHOLDER</text>
+  <text x="80" y="860" fill="#F4EEFA" font-family="sans-serif" font-size="120" font-weight="700">WILDWOOD</text>
+</svg>

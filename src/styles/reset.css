@@ -1,0 +1,70 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+/*
+ * `overflow-x: clip` rather than `hidden`. `hidden` turns the element into a
+ * scroll container, which silently breaks `position: sticky` for every
+ * descendant. `clip` trims the same overflow without that side effect.
+ */
+html {
+  min-width: 20rem;
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+/*
+ * Reduced motion removes transitions and stops anything from looping.
+ * Animation durations are deliberately not forced to zero here: entrance
+ * animations are retimed centrally in `src/motion/motion.css`, which shortens
+ * them and removes their travel so they resolve to short opacity reveals.
+ * Any new animation must express its travel through those variables.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

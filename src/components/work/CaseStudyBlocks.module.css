@@ -1,0 +1,305 @@
+/*
+ * Layout variants.
+ *
+ * Every variant is a documented name from BLOCK_LAYOUT, applied as a data
+ * attribute. Content never supplies a class or a style, so the whole visual
+ * vocabulary of a case study lives in this file.
+ */
+
+.block {
+  margin-block-end: clamp(3rem, 7vh, 5.5rem);
+}
+
+/* width: column — inside the reading measure (the default). */
+.block[data-width="column"] {
+  max-width: var(--measure-body);
+}
+
+/* width: wide — breaks out past the text column. */
+.block[data-width="wide"] {
+  width: min(80rem, calc(100vw - var(--layout-gutter) * 2));
+  margin-inline: calc(50% - min(40rem, (100vw - var(--layout-gutter) * 2) / 2));
+}
+
+/* width: full — edge to edge, ignoring the article gutter. */
+.block[data-width="full"] {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
+
+.block[data-width="full"] .mediaFrame {
+  border-radius: 0;
+  padding: 0;
+}
+
+.block[data-width="full"] .caption,
+.block[data-width="wide"] .caption {
+  padding-inline: var(--layout-gutter);
+}
+
+/* tone: lead — a larger opening or pull passage. */
+.block[data-tone="lead"] .body {
+  max-width: 34ch;
+  color: var(--color-text-primary);
+  font-size: var(--text-lead);
+  line-height: 1.45;
+}
+
+.blockHeading {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0 0 var(--space-5);
+  color: var(--color-text-primary);
+}
+
+.introduction {
+  composes: lead from "../../styles/type.module.css";
+  max-width: 46ch;
+  margin: 0 0 clamp(2rem, 5vh, 3.5rem);
+}
+
+.body {
+  max-width: var(--measure-body);
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+.figure {
+  margin: 0;
+}
+
+.mediaFrame {
+  padding: clamp(0.3rem, 0.5vw, 0.5rem);
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--brand-lavender) 22%, var(--color-plane-frame)) 0%,
+    var(--color-plane-frame) 38%,
+    #05030a 100%
+  );
+  border-radius: var(--radius-screen);
+  box-shadow: var(--plane-shadow);
+}
+
+.media {
+  width: 100%;
+  height: auto;
+  border-radius: 1px;
+}
+
+.caption {
+  composes: micro from "../../styles/type.module.css";
+  margin: var(--space-4) 0 0;
+  letter-spacing: var(--tracking-micro-tight);
+}
+
+/* --------------------------------------------------------------- gallery */
+
+.gallery {
+  display: grid;
+  gap: clamp(1rem, 2vw, 2rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gallery[data-columns="two"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gallery[data-columns="three"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gallery[data-columns="four"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.galleryItem {
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------- split */
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: clamp(2rem, 4vw, 4rem);
+  margin-block-end: clamp(3rem, 7vh, 5.5rem);
+}
+
+.split[data-media-position="left"] .splitText {
+  order: 2;
+}
+
+.splitText {
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------- metrics */
+
+.metrics {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 3rem);
+  margin: 0;
+  padding-block: var(--space-8);
+  border-block: 1px solid var(--color-line);
+}
+
+.metrics[data-columns="two"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.metrics[data-columns="three"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metrics[data-columns="four"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.metric {
+  min-width: 0;
+}
+
+.metricLabel {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0 0 var(--space-3);
+}
+
+.metricValue {
+  composes: display from "../../styles/type.module.css";
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-display-s);
+}
+
+.metricContext {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-small);
+}
+
+/* ----------------------------------------------------------------- quote */
+
+.quote {
+  max-width: 34ch;
+  margin: 0;
+}
+
+.quoteText {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--text-statement);
+  line-height: var(--leading-statement);
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.quoteAttribution {
+  composes: micro from "../../styles/type.module.css";
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block-start: var(--space-6);
+}
+
+.quoteRole {
+  color: var(--color-text-muted);
+}
+
+/* --------------------------------------------------------------- process */
+
+/*
+ * Process steps fit as many per row as the measure allows. The minimum is set
+ * so three or four steps both land on one row at the article width, rather than
+ * a four-step process wrapping to three plus an orphan.
+ */
+.process {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11.5rem), 1fr));
+  gap: clamp(1.5rem, 3vw, 3rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  min-width: 0;
+  padding-block-start: var(--space-5);
+  border-block-start: 1px solid var(--color-line-strong);
+}
+
+.stepIndex {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stepTitle {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-primary);
+}
+
+/* ---------------------------------------------------------- next project */
+
+.next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-6);
+  padding-block: clamp(2rem, 5vh, 3.5rem);
+  border-block-start: 1px solid var(--color-line);
+}
+
+.nextLabel {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0;
+}
+
+.nextLink {
+  composes: display from "../../styles/type.module.css";
+  color: var(--color-text-primary);
+  font-size: var(--text-display-s);
+  text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.nextLink:hover {
+  color: var(--color-accent);
+}
+
+/* Narrow viewports collapse every grid variant to a single column. */
+@media (max-width: 63.99rem) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .split[data-media-position="left"] .splitText {
+    order: 0;
+  }
+
+  .gallery[data-columns="three"],
+  .gallery[data-columns="four"],
+  .metrics[data-columns="four"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .block[data-width="wide"] {
+    width: auto;
+    margin-inline: 0;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .gallery[data-columns="two"],
+  .gallery[data-columns="three"],
+  .gallery[data-columns="four"],
+  .metrics[data-columns="two"],
+  .metrics[data-columns="three"],
+  .metrics[data-columns="four"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

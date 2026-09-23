@@ -1,0 +1,130 @@
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: var(--layer-webgl);
+  overflow: hidden;
+  pointer-events: none;
+  /* Fallback horizon if a variant does not set one. */
+  --horizon: 68%;
+}
+
+/* Atmosphere above the horizon: never flat black. */
+.sky {
+  position: absolute;
+  inset-block: 0 calc(100% - var(--horizon));
+  inset-inline: 0;
+  background:
+    radial-gradient(
+      90% 70% at 50% 108%,
+      color-mix(in srgb, var(--brand-reflection) 26%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      60% 55% at 78% 22%,
+      color-mix(in srgb, var(--brand-midnight) 85%, transparent) 0%,
+      transparent 70%
+    ),
+    linear-gradient(to bottom, var(--brand-aubergine) 0%, #0b0712 100%);
+}
+
+.beacons {
+  position: absolute;
+  inset: 0;
+}
+
+/* A pinprick on the far waterline, never a beam in the atmosphere. */
+.beacon {
+  position: absolute;
+  inset-block-start: var(--horizon);
+  inset-inline-start: var(--x);
+  width: 3px;
+  height: 3px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: #eee4ff;
+  box-shadow: 0 0 5px 1px #bca3d9;
+}
+
+.beacon::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  width: 28px;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--brand-lavender) 16%, transparent),
+    transparent 74%
+  );
+}
+
+.horizonLine {
+  position: absolute;
+  inset-block-start: var(--horizon);
+  inset-inline: 0;
+  height: 1px;
+  background: transparent;
+}
+
+/* Reflective computational floor, not an ocean. */
+.floor {
+  position: absolute;
+  inset-block: var(--horizon) 0;
+  inset-inline: 0;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 5px,
+      #bbb0ce0b 6px 7px,
+      transparent 8px 12px
+    ),
+    linear-gradient(to bottom, #17131d 0%, #211b29 48%, #19151e 100%);
+}
+
+/* Fine surface grain. */
+.grain {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--brand-porcelain) 3%, transparent) 0 1px,
+    transparent 1px 4px
+  );
+  opacity: 0.4;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 78%);
+}
+
+/* Broken horizontal glints widen slightly away from each shared source. */
+.reflection {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: var(--x);
+  width: clamp(14px, 1.8vw, 28px);
+  height: 75%;
+  translate: -50% 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    #d4bfed9c 0 1px,
+    transparent 2px 5px,
+    #a78cce38 6px 7px,
+    transparent 8px 13px
+  );
+  mask-image: linear-gradient(to bottom, #000 0%, #0008 43%, transparent 100%);
+  filter: blur(0.8px);
+}
+
+/*
+ * This layer is the fallback environment. When the WebGL scene is running it
+ * owns the whole environment, and this layer steps aside completely: it sits
+ * inside each section's stacking context, so leaving any part of it visible
+ * would occlude the canvas behind the section.
+ *
+ * The page keeps its atmospheric base from the body background, so losing the
+ * WebGL context reveals this layer again rather than a flat black page.
+ */
+html[data-scene-active] .layer {
+  display: none;
+}

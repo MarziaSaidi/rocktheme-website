@@ -1,0 +1,93 @@
+/*
+ * Gold pointer ring.
+ *
+ * The cursor element is created imperatively by `CustomCursor.tsx`, so these
+ * rules are global and keyed on data attributes rather than CSS module classes.
+ *
+ * The native cursor is only hidden once the ring has received a real pointer
+ * sample and painted. Without JavaScript, on a coarse pointer, or if the
+ * component unmounts, `data-custom-cursor` is absent and the native cursor is
+ * exactly as the browser intended.
+ */
+
+html[data-custom-cursor],
+html[data-custom-cursor] body {
+  cursor: none;
+}
+
+/* Interactive elements still need no cursor, but keep their own affordances. */
+html[data-custom-cursor] a,
+html[data-custom-cursor] button,
+html[data-custom-cursor] [role="button"],
+html[data-custom-cursor] summary {
+  cursor: none;
+}
+
+[data-cursor-root] {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-cursor);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms var(--motion-ease-interface);
+}
+
+[data-cursor-root][data-cursor-visible] {
+  opacity: 1;
+}
+
+/* The pointer left the document: fade out rather than freezing mid-screen. */
+[data-cursor-root][data-cursor-outside] {
+  opacity: 0;
+}
+
+[data-cursor-ring] {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  border: 1px solid color-mix(in srgb, var(--color-focus) 60%, transparent);
+  border-radius: 50%;
+  transition: border-color 220ms var(--motion-ease-interface);
+  will-change: transform, width, height;
+}
+
+[data-cursor-root][data-cursor-interactive] [data-cursor-ring] {
+  border-color: var(--color-focus);
+}
+
+[data-cursor-dot] {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  height: 4px;
+  background: var(--color-focus);
+  border-radius: 50%;
+  will-change: transform;
+}
+
+/*
+ * Reduced motion keeps the ring, because it is the pointer rather than
+ * decoration, but removes the easing so it tracks one to one.
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-cursor-root] {
+    transition-duration: 1ms;
+  }
+
+  [data-cursor-ring] {
+    transition-duration: 1ms;
+  }
+}
+
+/* A coarse pointer never gets a ring and never loses its native cursor. */
+@media (hover: none), (pointer: coarse) {
+  html[data-custom-cursor],
+  html[data-custom-cursor] body {
+    cursor: auto;
+  }
+
+  [data-cursor-root] {
+    display: none;
+  }
+}

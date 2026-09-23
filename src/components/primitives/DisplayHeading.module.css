@@ -1,0 +1,38 @@
+.heading {
+  composes: display from "../../styles/type.module.css";
+  position: relative;
+  color: var(--color-text-primary);
+}
+
+.xl {
+  font-size: var(--text-display-xl);
+}
+
+.l {
+  font-size: var(--text-display-l);
+}
+
+/*
+ * The mask clips a rising line. The padding keeps descenders such as the comma
+ * in "CRAFT," inside the clip, and the matching negative margin keeps the
+ * stacked line rhythm identical to an unmasked heading.
+ */
+.line {
+  display: block;
+  /*
+   * Hug the text. A block-level line box spans the whole column, and a
+   * monumental headline sits over the project planes, so a full-width box
+   * would silently swallow clicks on the artwork beneath it.
+   */
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  padding-block-end: 0.16em;
+  margin-block-end: -0.16em;
+}
+
+.lineInner {
+  display: block;
+  /* Compression during a rise reads as the line stretching up into proportion. */
+  transform-origin: bottom center;
+}

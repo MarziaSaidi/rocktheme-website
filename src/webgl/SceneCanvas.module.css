@@ -1,0 +1,27 @@
+/*
+ * The scene is a fixed backdrop behind all content. It is decorative: the
+ * canvas carries no text and no controls, and it sits on the reserved WebGL
+ * layer so content and navigation always paint above it.
+ */
+.canvas {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-webgl);
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Nothing is visible until the scene reports that it started. */
+  opacity: 0;
+  transition: opacity 900ms var(--motion-ease-interface);
+}
+
+.canvas[data-scene-canvas] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas {
+    transition-duration: 1ms;
+  }
+}

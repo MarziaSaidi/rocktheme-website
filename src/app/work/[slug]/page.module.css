@@ -1,0 +1,24 @@
+.page {
+  position: relative;
+  z-index: var(--layer-content);
+  min-height: 100dvh;
+  padding-block: calc(var(--header-height) + 1rem) var(--space-12);
+  background: #000;
+}
+
+.back {
+  width: min(calc(100vw - var(--layout-gutter) * 2), 104rem);
+  margin: var(--space-6) auto 0;
+}
+
+.backLink {
+  composes: micro from "../../../styles/type.module.css";
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--color-text-primary);
+}

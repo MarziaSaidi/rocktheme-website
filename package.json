@@ -1,24 +1,37 @@
 {
-  "name": "newsite",
+  "name": "marzia-saidi-portfolio",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "validate:content": "node --import tsx scripts/validate-content.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "validate": "npm run format:check && npm run lint && npm run validate:content && npm run validate:scene && npm run typecheck && npm run build",
+    "validate:scene": "node --import tsx scripts/check-scene.ts",
+    "prepare:rocks": "node scripts/prepare-rocks.mjs"
   },
   "dependencies": {
     "next": "16.3.5",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "three": "^0.182.0"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.182.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "meshoptimizer": "0.22.0",
+    "prettier": "^3.9.7",
+    "sharp": "0.35.4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

@@ -1,0 +1,309 @@
+/**
+ * Motion configuration.
+ *
+ * This file is the single source for every timing, easing, stagger, depth and
+ * pointer value that CSS consumes. Components never hard-code a duration, a
+ * delay or a travel distance: they read these variables, so the whole hero
+ * timeline can be retimed here without touching a component.
+ *
+ * Reduced motion is handled centrally at the bottom of this file. Every
+ * keyframe below expresses its travel through a variable, so neutralising the
+ * travel variables turns each entrance into a short opacity reveal. Any new
+ * animation must follow the same rule, otherwise it will ignore the
+ * reduced-motion contract.
+ *
+ * `motionConfig.ts` holds the small, disjoint set of values JavaScript owns for
+ * pointer input. Nothing is duplicated between the two files.
+ */
+
+:root {
+  /*
+   * Keyframe names are published as custom properties. CSS Modules rewrites a
+   * literal animation name into a locally scoped one, which would not match the
+   * global keyframes defined below. A custom property is never rewritten, so
+   * modules reference these instead of naming a keyframe directly.
+   */
+  --motion-keyframes-nav: motionNavReveal;
+  --motion-keyframes-display: motionDisplayRise;
+  --motion-keyframes-copy: motionCopyReveal;
+  --motion-keyframes-plane: motionPlaneSettle;
+  --motion-keyframes-term-code: motionTermCode;
+  --motion-keyframes-term-light: motionTermLight;
+  --motion-keyframes-dissolve: motionDissolve;
+  --motion-keyframes-speckle: motionSpeckle;
+
+  /* ------------------------------------------------------------- easing */
+  /* Interface: navigation, labels, underlines, cursor states. */
+  --motion-ease-interface: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Text reveals: masked vertical rises. */
+  --motion-ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
+  /*
+   * Heavy project planes. Weighted and slow with no overshoot, because
+   * "nothing should bounce" outranks the storyboard's "slightly overshooting".
+   */
+  --motion-ease-plane: cubic-bezier(0.16, 0.84, 0.24, 1);
+
+  /* --------------------------------------------- 1. navigation reveal */
+  --motion-nav-delay: 80ms;
+  --motion-nav-duration: 420ms;
+  --motion-nav-stagger: 70ms;
+  --motion-nav-blur: 7px;
+  --motion-nav-rise: -0.5rem;
+
+  /* ------------------------------- 2 and 3. display lines rise in turn */
+  --motion-display-delay: 240ms;
+  --motion-display-duration: 1050ms;
+  /* The gap between "CRAFT, TASTE" and "& CODE.". */
+  --motion-display-stagger: 180ms;
+  /*
+   * Travel is expressed against the line box so it scales with the type. It
+   * exceeds 100% because the mask is taller than the line box by the descender
+   * padding, and condensed caps overhang a line-height below 1.
+   */
+  --motion-display-travel: 128%;
+  /* Letters start vertically compressed and stretch into proportion. */
+  --motion-display-compress: 0.94;
+
+  /* ------------------------------------------ 4. supporting copy reveal */
+  --motion-lead-delay: 940ms;
+  --motion-lead-duration: 720ms;
+  --motion-cue-delay: 1120ms;
+  --motion-cue-duration: 640ms;
+  --motion-baseline-delay: 1240ms;
+  --motion-baseline-duration: 640ms;
+  --motion-copy-travel: 0.75rem;
+
+  /* --------------------------------- 5. project planes settle in depth */
+  --motion-plane-delay: 480ms;
+  --motion-plane-duration: 1150ms;
+  /* Applied far plane first so the composition builds towards the viewer. */
+  --motion-plane-stagger: 150ms;
+  --motion-plane-travel: 2.5rem;
+  --motion-plane-scale-from: 0.965;
+  --motion-plane-blur: 4px;
+
+  /* ------------------------------------------ personal statement reveal */
+  /*
+   * The statement is the calm scene. Its paragraphs arrive slowly, one after
+   * the other, and the three marked terms each receive one restrained
+   * treatment on top. Nothing glitches, stutters or repeats.
+   */
+  --motion-statement-delay: 120ms;
+  --motion-statement-duration: 1100ms;
+  --motion-statement-stagger: 320ms;
+
+  /* "code" assembles in a mechanical sequence rather than fading. */
+  --motion-term-code-delay: 1200ms;
+  --motion-term-code-duration: 760ms;
+  --motion-ease-mechanical: steps(11, end);
+
+  /* "AI" receives one traveling light. It passes once and does not loop. */
+  --motion-term-light-delay: 1700ms;
+  --motion-term-light-duration: 2000ms;
+
+  /* ------------------------------------------------- footer dissolve */
+  /*
+   * "THE UNEXPECTED." breaks into specks and rebuilds. The direction calls for
+   * eight to twelve seconds so it reads as weather rather than as a glitch.
+   */
+  --motion-dissolve-duration: 11s;
+  --motion-dissolve-edge: 42%;
+
+  /* ------------------------------------------- 6. pointer depth response */
+  /*
+   * JavaScript writes --pointer-x and --pointer-y as unitless values in the
+   * -1 to 1 range. CSS turns them into degrees here, capped inside the
+   * storyboard's 1-3 degree budget, weighted so nearer planes move more.
+   */
+  --motion-pointer-rotate: 2.6deg;
+  --motion-pointer-weight-near: 1;
+  --motion-pointer-weight-mid: 0.72;
+  --motion-pointer-weight-far: 0.5;
+
+  /* Perspective strength for every plane stage. */
+  --motion-perspective: 2200px;
+}
+
+/* ---------------------------------------------------------------- keyframes */
+
+/* 1. Each navigation item arrives through a short vertical blur. */
+@keyframes motionNavReveal {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-nav-rise);
+    filter: blur(var(--motion-nav-blur));
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    filter: blur(0);
+  }
+}
+
+/* 2 and 3. A display line rises from below its own mask and stretches. */
+@keyframes motionDisplayRise {
+  from {
+    translate: 0 var(--motion-display-travel);
+    scale: 1 var(--motion-display-compress);
+  }
+  to {
+    translate: 0 0;
+    scale: 1 1;
+  }
+}
+
+/* 4. Supporting copy and microcopy. */
+@keyframes motionCopyReveal {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-copy-travel);
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* 5. A plane settles out of atmospheric darkness into its depth. */
+@keyframes motionPlaneSettle {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-plane-travel);
+    scale: var(--motion-plane-scale-from);
+    filter: blur(var(--motion-plane-blur));
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    filter: blur(0);
+  }
+}
+
+/* "code" assembles from the left in discrete steps. */
+@keyframes motionTermCode {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* One restrained light passes across "AI". The base fill never moves. */
+@keyframes motionTermLight {
+  from {
+    background-position:
+      -120% 0,
+      0 0;
+  }
+  to {
+    background-position:
+      260% 0,
+      0 0;
+  }
+}
+
+/*
+ * The solid word erodes from the right, then returns.
+ *
+ * The mask is 250% of the element, so `mask-position` 0% puts its solid band
+ * over the whole word and larger values slide that band off to the left,
+ * uncovering the word from its right edge. It is counter-intuitive, which is
+ * why the numbers are written down rather than guessed.
+ */
+@keyframes motionDissolve {
+  0%,
+  8% {
+    mask-position: 0% 0;
+  }
+  46%,
+  54% {
+    mask-position: 70% 0;
+  }
+  92%,
+  100% {
+    mask-position: 0% 0;
+  }
+}
+
+/* The speckled copy is the inverse: it appears exactly where the word left. */
+@keyframes motionSpeckle {
+  0%,
+  8% {
+    mask-position: 0% 0;
+    opacity: 0;
+  }
+  24% {
+    opacity: 1;
+  }
+  46%,
+  54% {
+    mask-position: 70% 0;
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  92%,
+  100% {
+    mask-position: 0% 0;
+    opacity: 0;
+  }
+}
+
+/* ----------------------------------------------------------- reduced motion */
+
+/*
+ * Reduced motion keeps the same choreography but removes every transform and
+ * blur, shortens each duration, and collapses the delays so all content is
+ * available almost immediately. The keyframes above are unchanged: with zero
+ * travel they resolve to short opacity reveals.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-nav-delay: 0ms;
+    --motion-nav-duration: 200ms;
+    --motion-nav-stagger: 0ms;
+    --motion-nav-blur: 0px;
+    --motion-nav-rise: 0rem;
+
+    --motion-display-delay: 0ms;
+    --motion-display-duration: 200ms;
+    --motion-display-stagger: 60ms;
+    --motion-display-travel: 0%;
+    --motion-display-compress: 1;
+
+    --motion-lead-delay: 60ms;
+    --motion-lead-duration: 200ms;
+    --motion-cue-delay: 90ms;
+    --motion-cue-duration: 200ms;
+    --motion-baseline-delay: 90ms;
+    --motion-baseline-duration: 200ms;
+    --motion-copy-travel: 0rem;
+
+    --motion-plane-delay: 60ms;
+    --motion-plane-duration: 200ms;
+    --motion-plane-stagger: 40ms;
+    --motion-plane-travel: 0rem;
+    --motion-plane-scale-from: 1;
+    --motion-plane-blur: 0px;
+
+    /* No perspective pointer tracking. The JS listener also never attaches. */
+    --motion-statement-delay: 0ms;
+    --motion-statement-duration: 200ms;
+    --motion-statement-stagger: 60ms;
+    --motion-term-code-delay: 0ms;
+    --motion-term-code-duration: 200ms;
+    --motion-ease-mechanical: linear;
+    --motion-term-light-delay: 0ms;
+    --motion-term-light-duration: 200ms;
+    /* The footer word never dissolves; it simply stays legible. */
+    --motion-dissolve-duration: 0s;
+
+    --motion-pointer-rotate: 0deg;
+    --motion-pointer-weight-near: 0;
+    --motion-pointer-weight-mid: 0;
+    --motion-pointer-weight-far: 0;
+  }
+}

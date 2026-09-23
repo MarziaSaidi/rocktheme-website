@@ -1,0 +1,383 @@
+.plane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ------------------------------------------------------------------- label */
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.plane[data-align="end"] .label {
+  justify-content: flex-end;
+}
+
+.index {
+  composes: micro from "../../styles/type.module.css";
+  flex: none;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rule {
+  flex: none;
+  width: clamp(1.25rem, 3vw, 2.5rem);
+  height: 1px;
+  translate: 0 -0.35em;
+  background: var(--color-line-strong);
+}
+
+.identity {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-technical);
+  font-size: var(--text-micro-lg);
+  font-weight: var(--weight-body-strong);
+  line-height: var(--leading-micro);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.link {
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+/*
+ * The whole plane is the target; the accessible name stays the project title.
+ *
+ * The z-index is load-bearing. The label comes before the media in the DOM, so
+ * without it this overlay paints underneath the screenshot and only the small
+ * title text is clickable, which is exactly the part a visitor does not aim at.
+ */
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.link:hover {
+  color: var(--color-accent);
+}
+
+.meta {
+  composes: micro from "../../styles/type.module.css";
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  letter-spacing: var(--tracking-micro-tight);
+}
+
+/* ------------------------------------------------------------------- plane */
+
+.stage {
+  position: relative;
+  perspective: var(--motion-perspective);
+}
+
+.frame {
+  /*
+   * The base perspective is expressed as custom properties so the hero's
+   * pointer response can add to it instead of replacing the transform.
+   * --pointer-x and --pointer-y are written by src/motion/PointerDepth.tsx and
+   * default to zero, so a plane with no pointer weight never moves.
+   */
+  --plane-rotate-y: 0deg;
+  --plane-rotate-x: 0deg;
+  --plane-scale: 1;
+  --plane-origin: center center;
+  --plane-pointer-weight: 0;
+
+  padding: clamp(0.3rem, 0.5vw, 0.5rem);
+  /*
+   * The rim brightness follows --scene-beacon-glow, which the WebGL horizon
+   * lights publish. It falls back to 1 when no scene is running, so the frame
+   * looks the same without WebGL.
+   */
+  background: linear-gradient(
+    150deg,
+    color-mix(
+        in srgb,
+        var(--brand-lavender) calc(22% * var(--scene-beacon-glow, 1)),
+        var(--color-plane-frame)
+      )
+      0%,
+    var(--color-plane-frame) 38%,
+    #05030a 100%
+  );
+  border-radius: var(--radius-screen);
+  box-shadow: var(--plane-shadow);
+  transform-style: preserve-3d;
+  transform-origin: var(--plane-origin);
+  transform: rotateY(
+      calc(
+        var(--plane-rotate-y) + var(--pointer-x, 0) * var(--motion-pointer-rotate) *
+          var(--plane-pointer-weight)
+      )
+    )
+    rotateX(
+      calc(
+        var(--plane-rotate-x) - var(--pointer-y, 0) * var(--motion-pointer-rotate) *
+          var(--plane-pointer-weight)
+      )
+    )
+    scale(var(--plane-scale));
+  /*
+   * Transform is driven per frame by the pointer loop, so it is deliberately
+   * not transitioned. Smoothing happens in the loop, which is what makes the
+   * movement feel weighted rather than snappy.
+   */
+  transition: filter var(--duration-interface) var(--ease-interface);
+}
+
+/* Compositing hint only while the pointer loop is actually attached. */
+[data-pointer-active] .frame {
+  will-change: transform;
+}
+
+.screen {
+  width: 100%;
+  height: auto;
+  border-radius: 1px;
+  /* Distant planes read softer, as the direction requires. */
+  filter: saturate(0.94);
+}
+
+/* Light pool under the plane. The Stage 5 water layer replaces this. */
+.pool {
+  position: absolute;
+  inset-block-end: -14%;
+  inset-inline: 6%;
+  height: 26%;
+  background: radial-gradient(
+    60% 100% at 50% 0%,
+    color-mix(in srgb, var(--brand-lavender) 16%, transparent) 0%,
+    transparent 72%
+  );
+  filter: blur(6px);
+}
+
+/* --------------------------------------------------------------- view cue */
+
+.view {
+  composes: micro from "../../styles/type.module.css";
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  color: var(--color-accent);
+  opacity: 0;
+  transition: opacity var(--duration-interface) var(--ease-interface);
+}
+
+.arrow {
+  font-family: var(--font-body);
+}
+
+.plane[data-align="end"] .view {
+  justify-content: flex-end;
+}
+
+.plane:hover .view,
+.plane:focus-within .view {
+  opacity: 1;
+}
+
+.plane:focus-within .frame,
+.plane:hover .frame {
+  filter: brightness(1.08);
+}
+
+/* ---------------------------------------------------------- depth variants */
+
+.plane[data-variant="corridor"] .frame {
+  --plane-rotate-y: -15deg;
+  --plane-rotate-x: 1.5deg;
+  --plane-origin: right center;
+}
+
+.plane[data-variant="corridor"][data-depth="1"] .frame {
+  --plane-scale: 0.94;
+  filter: brightness(0.88);
+}
+
+.plane[data-variant="corridor"][data-depth="2"] .frame {
+  --plane-scale: 0.88;
+  filter: brightness(0.76);
+}
+
+.plane[data-variant="corridor"][data-depth="1"] {
+  margin-block-start: clamp(1.5rem, 4vh, 3.5rem);
+}
+
+.plane[data-variant="corridor"][data-depth="2"] {
+  margin-block-start: clamp(3rem, 8vh, 7rem);
+}
+
+/*
+ * Hero planes carry a pointer weight so nearer planes react more than distant
+ * ones. The rotation budget itself lives in src/motion/motion.css.
+ */
+.plane[data-variant="hero"] .frame {
+  --plane-rotate-y: -13deg;
+  --plane-rotate-x: 2deg;
+  --plane-origin: right center;
+  --plane-pointer-weight: var(--motion-pointer-weight-mid);
+}
+
+.plane[data-variant="hero"][data-depth="0"] .frame {
+  --plane-rotate-y: 9deg;
+  --plane-rotate-x: 1deg;
+  --plane-origin: left center;
+  --plane-pointer-weight: var(--motion-pointer-weight-near);
+}
+
+.plane[data-variant="hero"][data-depth="2"] .frame {
+  --plane-pointer-weight: var(--motion-pointer-weight-far);
+  filter: brightness(0.82);
+}
+
+/* ------------------------------------------------- corridor focus states */
+
+/*
+ * CorridorPin writes data-state on each list item. Only the active plane is
+ * fully sharp and bright; its neighbours stay visible but quieter, and the
+ * rest recede further. Nothing is hidden, so every project remains reachable
+ * and readable at any scroll position.
+ */
+.plane[data-variant="corridor"] .frame,
+.plane[data-variant="corridor"] .label {
+  transition:
+    filter 700ms var(--motion-ease-plane, ease-out),
+    color 700ms var(--motion-ease-plane, ease-out),
+    opacity 700ms var(--motion-ease-plane, ease-out);
+}
+
+[data-state="active"] .plane[data-variant="corridor"] .frame {
+  filter: brightness(1.14) saturate(1.06);
+}
+
+[data-state="active"] .plane[data-variant="corridor"] .index,
+[data-state="active"] .plane[data-variant="corridor"] .rule,
+[data-state="active"] .plane[data-variant="corridor"] .meta,
+[data-state="active"] .plane[data-variant="corridor"] .view {
+  opacity: 1;
+}
+
+[data-state="active"] .plane[data-variant="corridor"] .link {
+  color: var(--color-text-primary);
+}
+
+[data-state="near"] .plane[data-variant="corridor"] .frame {
+  filter: brightness(0.72) blur(1.2px);
+}
+
+[data-state="near"] .plane[data-variant="corridor"] .rule {
+  opacity: 0.66;
+}
+
+/*
+ * The title dims by colour, not opacity. Opacity on any ancestor of the link
+ * creates a stacking context, which traps `.link::after` inside the label and
+ * leaves the screenshot unclickable. This is the whole reason the quieting is
+ * split across two properties.
+ */
+[data-state="near"] .plane[data-variant="corridor"] .link {
+  color: var(--color-text-secondary);
+}
+
+[data-state="distant"] .plane[data-variant="corridor"] .frame {
+  filter: brightness(0.46) blur(2.4px);
+}
+
+[data-state="distant"] .plane[data-variant="corridor"] .rule {
+  opacity: 0.4;
+}
+
+[data-state="distant"] .plane[data-variant="corridor"] .link {
+  color: var(--color-text-muted);
+}
+
+/* Focus must never land on something dimmed into illegibility. */
+[data-state="near"]:focus-within .plane[data-variant="corridor"] .frame,
+[data-state="distant"]:focus-within .plane[data-variant="corridor"] .frame {
+  filter: brightness(1.05);
+}
+
+[data-state="near"]:focus-within .plane[data-variant="corridor"] .index,
+[data-state="near"]:focus-within .plane[data-variant="corridor"] .rule,
+[data-state="near"]:focus-within .plane[data-variant="corridor"] .meta,
+[data-state="distant"]:focus-within .plane[data-variant="corridor"] .index,
+[data-state="distant"]:focus-within .plane[data-variant="corridor"] .rule,
+[data-state="distant"]:focus-within .plane[data-variant="corridor"] .meta {
+  opacity: 1;
+}
+
+[data-state="near"]:focus-within .plane[data-variant="corridor"] .link,
+[data-state="distant"]:focus-within .plane[data-variant="corridor"] .link {
+  color: var(--color-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plane[data-variant="corridor"] .frame,
+  .plane[data-variant="corridor"] .label {
+    transition-duration: 1ms;
+  }
+
+  /* No depth-of-field pass when motion is reduced; only a gentle dimming. */
+  [data-state="near"] .plane[data-variant="corridor"] .frame,
+  [data-state="distant"] .plane[data-variant="corridor"] .frame {
+    filter: brightness(0.8);
+  }
+}
+
+/* The stacked layouts below 1024px read left to right. */
+@media (max-width: 63.99rem) {
+  .plane[data-align="end"] .label,
+  .plane[data-align="end"] .view {
+    justify-content: flex-start;
+  }
+}
+
+/*
+ * Perspective and pointer depth are desktop affordances. Narrow layouts stay
+ * flat and legible, and a coarse pointer never drives rotation.
+ */
+@media (max-width: 47.99rem) {
+  .plane[data-variant="corridor"] .frame,
+  .plane[data-variant="corridor"][data-depth="1"] .frame,
+  .plane[data-variant="corridor"][data-depth="2"] .frame,
+  .plane[data-variant="hero"] .frame,
+  .plane[data-variant="hero"][data-depth="0"] .frame,
+  .plane[data-variant="hero"][data-depth="2"] .frame {
+    --plane-rotate-y: 0deg;
+    --plane-rotate-x: 0deg;
+    --plane-scale: 1;
+    --plane-pointer-weight: 0;
+    filter: none;
+  }
+
+  .plane[data-variant="corridor"][data-depth="1"],
+  .plane[data-variant="corridor"][data-depth="2"] {
+    margin-block-start: 0;
+  }
+
+  .view {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view {
+    opacity: 1;
+  }
+}

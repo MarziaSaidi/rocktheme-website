@@ -1,0 +1,121 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+  padding: 0;
+  color: var(--color-text-secondary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.toggle:hover,
+.toggle[aria-pressed="true"] {
+  color: var(--color-text-primary);
+}
+
+.label {
+  composes: micro from "../styles/type.module.css";
+  color: inherit;
+  white-space: nowrap;
+}
+
+/*
+ * The visual equivalent. The bars sit still while sound is off and move only
+ * while the engine is actually running, so nothing is ever audible without
+ * something on screen saying so.
+ */
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 1.5rem;
+}
+
+.waveform > span {
+  display: block;
+  width: 2px;
+  height: 100%;
+  background: currentcolor;
+  opacity: 0.55;
+  transform-origin: center;
+  scale: 1 0.8;
+  transition: scale var(--duration-interface) var(--ease-interface);
+}
+
+.toggle[aria-pressed="true"] .waveform > span {
+  opacity: 0.85;
+}
+
+.toggle[data-running] .waveform > span {
+  animation-name: soundToggleBar;
+  animation-duration: 1.4s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+
+.waveform > span:nth-child(1) {
+  height: 22%;
+  animation-delay: -1.24s;
+}
+.waveform > span:nth-child(2) {
+  height: 54%;
+  animation-delay: -1.06s;
+}
+.waveform > span:nth-child(3) {
+  height: 88%;
+  animation-delay: -0.88s;
+}
+.waveform > span:nth-child(4) {
+  height: 40%;
+  animation-delay: -0.7s;
+}
+.waveform > span:nth-child(5) {
+  height: 100%;
+  animation-delay: -0.52s;
+}
+.waveform > span:nth-child(6) {
+  height: 34%;
+  animation-delay: -0.4s;
+}
+.waveform > span:nth-child(7) {
+  height: 70%;
+  animation-delay: -0.28s;
+}
+.waveform > span:nth-child(8) {
+  height: 28%;
+  animation-delay: -0.16s;
+}
+.waveform > span:nth-child(9) {
+  height: 48%;
+  animation-delay: -0.04s;
+}
+
+@keyframes soundToggleBar {
+  0%,
+  100% {
+    scale: 1 0.3;
+  }
+  50% {
+    scale: 1 1;
+  }
+}
+
+/*
+ * Reduced motion keeps the state legible without the animation: running bars
+ * stand taller than idle ones rather than moving.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .toggle[data-running] .waveform > span {
+    animation-name: none;
+    scale: 1 0.8;
+  }
+}
+
+@media (max-width: 63.99rem) {
+  .waveform {
+    display: none;
+  }
+}

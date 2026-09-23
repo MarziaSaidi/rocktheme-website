@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Marzia Saidi Portfolio
 
-## Getting Started
+Greenfield foundation for a cinematic design engineering portfolio. Stage 1 establishes the application, content model, design tokens, subsystem boundaries, reference assets, and validation workflow. It does not implement the final homepage experience.
 
-First, run the development server:
+## Requirements
+
+- Node.js 20.9 or newer
+- npm 10 or newer
+
+## Commands
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run format
+npm run format:check
+npm run lint
+npm run validate:content
+npm run typecheck
+npm run build
+npm run validate
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The development server is available at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project map
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app`: App Router routes, metadata, and global stylesheet entry point
+- `src/components`: React presentation and layout components
+- `src/content`: typed, static site and project content
+- `src/styles`: centralized design tokens and reset rules
+- `src/motion`: future motion and scroll orchestration boundary
+- `src/webgl`: future Three.js or React Three Fiber boundary
+- `src/sound`: future sound engine boundary
+- `public/images/projects`: project media served by Next.js
+- `design/references`: approved visual references, never imported into production
+- `docs`: architecture, creative direction, content guidance, and progress
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Read [docs/architecture.md](docs/architecture.md) before adding a new system or dependency.
+Project editing procedures are documented in [docs/how-to-add-or-replace-project.md](docs/how-to-add-or-replace-project.md).

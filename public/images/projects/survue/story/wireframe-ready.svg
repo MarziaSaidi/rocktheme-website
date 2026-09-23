@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 932" role="img" aria-label="Reconstructed low-fidelity ready state wireframe">
+  <rect width="430" height="932" fill="#fff"/>
+  <rect x="166" y="270" width="98" height="98" fill="#e4e5e7" stroke="#3d4147"/>
+  <path d="m166 270 98 98m0-98-98 98" stroke="#3d4147"/>
+  <text x="215" y="408" fill="#676b72" font-family="Arial,sans-serif" font-size="17" text-anchor="middle">Survue device</text>
+  <text x="215" y="556" fill="#17191d" font-family="Arial,sans-serif" font-size="20" font-weight="bold" text-anchor="middle">Your Survue is ready</text>
+  <text x="215" y="590" fill="#676b72" font-family="Arial,sans-serif" font-size="16" text-anchor="middle">You can begin your ride.</text>
+  <rect x="30" y="834" width="370" height="50" fill="#81848a"/>
+  <text x="215" y="866" fill="#fff" font-family="Arial,sans-serif" font-size="20" text-anchor="middle">Let's go</text>
+</svg>

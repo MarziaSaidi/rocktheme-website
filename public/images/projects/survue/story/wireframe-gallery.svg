@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 932" role="img" aria-label="Reconstructed low-fidelity gallery wireframe">
+  <rect width="430" height="932" fill="#fff"/>
+  <path d="M19 84h18m-18 0 9-9m-9 9 9 9" fill="none" stroke="#20242b" stroke-width="2"/>
+  <text x="215" y="91" fill="#20242b" font-family="Arial,sans-serif" font-size="21" text-anchor="middle">Gallery</text>
+  <text x="24" y="175" fill="#20242b" font-family="Arial,sans-serif" font-size="18">Automatic Recordings</text>
+  <text x="367" y="175" fill="#737780" font-family="Arial,sans-serif" font-size="15" text-anchor="middle">See all</text>
+  <rect x="20" y="198" width="390" height="235" rx="14" fill="#f0f1f3" stroke="#b9bdc4"/>
+  <g fill="#d7d9de" stroke="#a9adb5">
+    <rect x="39" y="220" width="103" height="86" rx="5"/><rect x="163" y="220" width="103" height="86" rx="5"/><rect x="287" y="220" width="103" height="86" rx="5"/>
+    <rect x="39" y="326" width="103" height="86" rx="5"/><rect x="163" y="326" width="103" height="86" rx="5"/><rect x="287" y="326" width="103" height="86" rx="5"/>
+  </g>
+  <text x="24" y="522" fill="#20242b" font-family="Arial,sans-serif" font-size="18">My Recordings</text>
+  <text x="367" y="522" fill="#737780" font-family="Arial,sans-serif" font-size="15" text-anchor="middle">See all</text>
+  <rect x="20" y="545" width="390" height="235" rx="14" fill="#f0f1f3" stroke="#b9bdc4"/>
+  <g fill="#d7d9de" stroke="#a9adb5">
+    <rect x="39" y="567" width="103" height="86" rx="5"/><rect x="163" y="567" width="103" height="86" rx="5"/><rect x="287" y="567" width="103" height="86" rx="5"/>
+    <rect x="39" y="673" width="103" height="86" rx="5"/><rect x="163" y="673" width="103" height="86" rx="5"/><rect x="287" y="673" width="103" height="86" rx="5"/>
+  </g>
+</svg>

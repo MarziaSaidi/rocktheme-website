@@ -1,0 +1,216 @@
+.header {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: var(--layer-navigation);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  min-height: var(--header-height);
+  padding-inline: var(--layout-gutter);
+  padding-block: var(--space-4);
+}
+
+.scrim {
+  position: absolute;
+  inset-block: 0 -100%;
+  inset-inline: 0;
+  z-index: -1;
+  /*
+   * Purely decorative, and it extends a header's height past the header so
+   * the gradient can fade out. Without this it would sit over that band of
+   * page content and swallow clicks meant for the content beneath.
+   */
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--brand-aubergine) 88%, transparent) 0%,
+    transparent 100%
+  );
+}
+
+:global(body:has([data-case-study-page])) .scrim {
+  background: none;
+}
+
+.wordmark {
+  composes: microStrong from "../../styles/type.module.css";
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-height: 2.75rem;
+  text-decoration: none;
+  letter-spacing: 0.22em;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.wordmark:hover {
+  color: var(--color-text-secondary);
+}
+
+.nav {
+  justify-self: center;
+}
+
+.navList {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navItem + .navItem::before {
+  content: "/";
+  margin-inline-end: var(--space-4);
+  color: var(--color-text-muted);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+}
+
+.navLink {
+  composes: micro from "../../styles/type.module.css";
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.navLink::after {
+  content: "";
+  position: absolute;
+  inset-block-end: calc(50% - 0.85em);
+  inset-inline: 0;
+  height: 1px;
+  background: var(--color-highlight);
+  scale: 0 1;
+  transform-origin: left center;
+  transition: scale var(--duration-interface) var(--ease-interface);
+}
+
+.navLink:hover::after,
+.navLink:focus-visible::after {
+  scale: 1 1;
+}
+
+.status {
+  display: flex;
+  justify-self: end;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.availability {
+  composes: micro from "../../styles/type.module.css";
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--color-line);
+}
+
+/* Static waveform mark. Stage 6 replaces this with the sound control. */
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 0.875rem;
+}
+
+.waveform > span {
+  display: block;
+  width: 2px;
+  background: var(--color-text-secondary);
+  opacity: 0.75;
+}
+
+.waveform > span:nth-child(1) {
+  height: 22%;
+}
+.waveform > span:nth-child(2) {
+  height: 54%;
+}
+.waveform > span:nth-child(3) {
+  height: 88%;
+}
+.waveform > span:nth-child(4) {
+  height: 40%;
+}
+.waveform > span:nth-child(5) {
+  height: 100%;
+}
+.waveform > span:nth-child(6) {
+  height: 34%;
+}
+.waveform > span:nth-child(7) {
+  height: 70%;
+}
+.waveform > span:nth-child(8) {
+  height: 28%;
+}
+.waveform > span:nth-child(9) {
+  height: 48%;
+}
+
+@media (max-width: 63.99rem) {
+  .waveform {
+    display: none;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .header {
+    grid-template-areas:
+      "wordmark status"
+      "nav nav";
+    grid-template-columns: auto auto;
+    gap: var(--space-2) var(--space-4);
+    padding-block: var(--space-3);
+  }
+
+  .wordmark {
+    grid-area: wordmark;
+  }
+
+  .nav {
+    grid-area: nav;
+    justify-self: start;
+  }
+
+  .status {
+    grid-area: status;
+  }
+
+  .navLink {
+    min-height: 2.25rem;
+  }
+
+  .availability {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+
+/* --------------------------------------------------------- entrance reveal */
+
+/*
+ * Step 1 of the hero sequence: each item arrives through a short vertical blur,
+ * staggered by --nav-index. Timing lives in src/motion/motion.css.
+ */
+.wordmark,
+.navItem,
+.status {
+  animation-name: var(--motion-keyframes-nav);
+  animation-duration: var(--motion-nav-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: both;
+  animation-delay: calc(var(--motion-nav-delay) + var(--nav-index, 0) * var(--motion-nav-stagger));
+}
