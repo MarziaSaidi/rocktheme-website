@@ -132,7 +132,8 @@ export type HorizonLights = Readonly<{
   setConfig: (config: HorizonLightConfig, camera: PerspectiveCamera) => void;
   intensity: () => number;
   /** Viewport-fraction centre and spread of each source, for the mist. */
-  illumination: () => readonly [number, number][];
+  /** Viewport centre, spread and current strength of each source, for the mist. */
+  illumination: () => readonly [number, number, number][];
   destroy: () => void;
 }>;
 
@@ -149,7 +150,9 @@ export function createHorizonLights(
   const meshes: Mesh[] = [];
   const gains = Array.from({ length: MAX_LIGHTS }, () => 0);
   const sources: { world: Vector3; intensity: number; color: Color }[] = [];
-  const centres: [number, number][] = [];
+  const centres: [number, number, number][] = [];
+  /** The horizon's overall level, eased toward `config.level`. */
+  let level = config.level ?? 1;
   const probe = new Vector3();
   let mean = 1;
   let focusIndex = -1;
@@ -180,7 +183,7 @@ export function createHorizonLights(
       intensity: source?.intensity ?? 0,
       color: new Color(source?.color ?? 0),
     });
-    centres.push([source?.position ?? 0, source?.spread ?? 0.1]);
+    centres.push([source?.position ?? 0, source?.spread ?? 0.1, level]);
   });
   scene.add(group);
 
@@ -197,7 +200,7 @@ export function createHorizonLights(
       mesh.position.set(x, source.elevation, source.depth);
       mesh.scale.set(source.width, source.height, 1);
       sources[index]!.world.copy(mesh.position);
-      centres[index] = [source.position, source.spread];
+      centres[index] = [source.position, source.spread, level];
     });
   };
   resize(camera);
@@ -210,6 +213,10 @@ export function createHorizonLights(
     update: (deltaSeconds, elapsedSeconds) => {
       let total = 0;
       const step = Math.min(1, deltaSeconds / config.focusEase);
+      const target = config.level ?? 1;
+      level =
+        deltaSeconds === 0 ? target : level + (target - level) * Math.min(1, deltaSeconds * 6);
+      if (Math.abs(target - level) < 0.002) level = target;
       config.sources.forEach((source, index) => {
         gains[index]! += ((index === focusIndex ? 1 : 0) - gains[index]!) * step;
         // A slow luminosity drift, well under one cycle per ten seconds. Not a
@@ -218,11 +225,20 @@ export function createHorizonLights(
           ? 1
           : 1 + Math.sin(elapsedSeconds * (0.11 + index * 0.037) + source.phase) * source.shimmer;
         const intensity = source.intensity * shimmer * (1 + gains[index]! * config.focusGain);
+        const centre = centres[index];
+        if (centre) centre[2] = level;
+        const mesh = meshes[index];
+        if (mesh) mesh.visible = level > 0.002;
         const material = materials[index]!;
-        material.uniforms.uIntensity!.value = intensity;
+        // `level` dims only the glow on the horizon and in the mist.
+        material.uniforms.uIntensity!.value = intensity * level;
         material.uniforms.uTime!.value = reducedMotion ? 0 : elapsedSeconds;
+        /*
+         * The water keeps its full reflection whatever the level: the light
+         * paths on the surface are what make it read as water at all.
+         */
         sources[index]!.intensity = intensity;
-        total += intensity;
+        total += intensity * level;
       });
       mean = total / config.sources.length;
     },

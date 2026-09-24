@@ -1,0 +1,329 @@
+/*
+ * The runway is taller than the screen so the stage can pin. Its extra length
+ * is what absorbs the tail of the scroll that brings a visitor here; the
+ * gallery captures forward input once the stage has pinned.
+ */
+.runway {
+  position: relative;
+  height: calc(100svh + 45svh);
+}
+
+.stage {
+  position: sticky;
+  inset-block-start: 0;
+  height: 100svh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ intro */
+
+.intro {
+  position: absolute;
+  z-index: var(--layer-content);
+  inset-block-start: calc(var(--header-height) + clamp(1.5rem, 5vh, 3.5rem));
+  inset-inline-start: var(--layout-gutter);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.heading {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.counter {
+  composes: micro from "../../styles/type.module.css";
+  margin: 0;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.counter span {
+  color: var(--color-text-primary);
+  transition: opacity 280ms var(--ease-interface);
+}
+
+.counter span[data-phase="out"] {
+  opacity: 0;
+}
+
+/* ---------------------------------------------------------------- project */
+
+.project {
+  position: absolute;
+  z-index: var(--layer-content);
+  inset-block-start: 31svh;
+  inset-inline-start: var(--layout-gutter);
+  /* Stops well short of the stone, which stands centre right. */
+  width: min(27rem, 32vw);
+}
+
+.copy {
+  transition:
+    opacity 320ms var(--ease-interface),
+    transform 320ms var(--ease-interface);
+}
+
+.copy[data-phase="out"] {
+  opacity: 0;
+  transform: translateY(0.375rem);
+  transition-duration: 280ms;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 1.1rem + 3.2vw, 4.25rem);
+  font-weight: 400;
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--color-text-primary);
+}
+
+.role {
+  composes: micro from "../../styles/type.module.css";
+  margin: var(--space-4) 0 0;
+  letter-spacing: var(--tracking-micro-tight);
+}
+
+.description {
+  margin: var(--space-5) 0 0;
+  max-width: 34ch;
+  color: var(--color-text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  text-wrap: pretty;
+}
+
+.view {
+  composes: micro from "../../styles/type.module.css";
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-block-start: var(--space-8);
+  padding-block: var(--space-2);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.arrow {
+  font-family: var(--font-body);
+  transition: transform var(--duration-interface) var(--ease-interface);
+}
+
+.view:hover {
+  color: var(--color-accent);
+}
+
+.view:hover .arrow {
+  transform: translateX(0.25rem);
+}
+
+/* --------------------------------------------------------------- controls */
+
+.controls {
+  position: absolute;
+  z-index: var(--layer-content);
+  inset-inline: var(--layout-gutter);
+  inset-block-end: clamp(1.5rem, 5vh, 3rem);
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.scroll {
+  composes: micro from "../../styles/type.module.css";
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin: 0;
+  color: var(--color-text-muted);
+  opacity: 0.35;
+  transition: opacity 400ms var(--ease-interface);
+}
+
+.scroll[data-ready] {
+  opacity: 1;
+}
+
+.scrollIcon {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: none;
+  stroke: var(--color-line-strong);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+
+.scrollIcon path:last-child {
+  stroke: var(--color-text-muted);
+}
+
+.steps {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.step {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: var(--border-hairline);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--text-small);
+  cursor: pointer;
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    border-color var(--duration-interface) var(--ease-interface);
+}
+
+.step:hover {
+  border-color: var(--color-line-strong);
+  color: var(--color-text-primary);
+}
+
+.step[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.continue {
+  composes: micro from "../../styles/type.module.css";
+  margin-inline-start: auto;
+  padding-block: var(--space-2);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.continue:hover {
+  color: var(--color-text-primary);
+}
+
+/* --------------------------------------------------------------- fallback */
+
+/*
+ * Without the scene there is no stone, so the active screen stands where it
+ * would have been. With the scene running, the stone carries the screens.
+ */
+.fallback {
+  position: absolute;
+  z-index: var(--layer-content);
+  inset-block-start: 18svh;
+  inset-inline-end: clamp(4rem, 16vw, 16rem);
+  height: 58svh;
+  aspect-ratio: 640 / 922;
+  box-shadow:
+    0 0 0 1px var(--color-plane-rim),
+    var(--plane-shadow);
+}
+
+:root[data-scene-active]:not([data-monolith-failed]) .fallback {
+  display: none;
+}
+
+.fallbackScreen {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 400ms var(--ease-interface);
+}
+
+.fallbackScreen[data-active] {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------- stacked */
+
+/*
+ * Tablet and phone: heading, stone, then the project beneath it, then the
+ * instruction. The stone's place is set in the scene so it stands in the gap
+ * left here.
+ */
+@media (max-width: 63.99rem) {
+  .runway {
+    height: calc(100svh + 60svh);
+  }
+
+  /* The header wraps to two rows at these widths. */
+  .intro {
+    inset-block-start: calc(var(--header-height) * 2 + var(--space-2));
+    grid-auto-flow: column;
+    justify-content: space-between;
+    inset-inline-end: var(--layout-gutter);
+  }
+
+  .project {
+    inset-block: auto calc(clamp(1.25rem, 3.5svh, 2rem) + 5.5rem);
+    inset-inline: var(--layout-gutter);
+    width: auto;
+  }
+
+  .title {
+    font-size: clamp(2rem, 1.2rem + 4vw, 2.75rem);
+  }
+
+  .role {
+    margin-block-start: var(--space-2);
+  }
+
+  .description {
+    margin-block-start: var(--space-3);
+    font-size: var(--text-small);
+    line-height: 1.5;
+  }
+
+  .view {
+    margin-block-start: var(--space-3);
+  }
+
+  /* The continue link is too long to share a row at phone width. */
+  .controls {
+    inset-block-end: clamp(1.25rem, 3.5svh, 2rem);
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-5);
+  }
+
+  .continue {
+    flex-basis: 100%;
+    margin-inline-start: 0;
+    white-space: nowrap;
+  }
+
+  .fallback {
+    inset-block-start: calc(var(--header-height) + 3rem);
+    inset-inline: 0;
+    height: 38svh;
+    margin-inline: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copy,
+  .copy[data-phase="out"] {
+    transform: none;
+  }
+}

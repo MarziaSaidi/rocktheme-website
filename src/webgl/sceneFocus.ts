@@ -5,7 +5,7 @@ import type { ObstacleRect } from "./modules/particleField";
  *
  * A section publishes the screen rectangle it wants the environment to respond
  * to; the canvas subscribes and forwards it. The channel carries geometry only,
- * which is what keeps the corridor and the scene independent: the corridor
+ * which is what keeps the page and the scene independent: a section
  * knows nothing about particles, and the scene knows nothing about projects.
  */
 

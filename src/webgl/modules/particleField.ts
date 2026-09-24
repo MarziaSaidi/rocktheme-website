@@ -73,7 +73,8 @@ const VERTEX_SHADER = /* glsl */ `
   }
 `;
 
-const FRAGMENT_SHADER = /* glsl */ `
+/** Shared with the Selected Work display dust, so both are the same specks. */
+export const POINT_FRAGMENT_SHADER = /* glsl */ `
   precision mediump float;
 
   uniform vec3 uBotanical;
@@ -119,6 +120,8 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
   let width = options.width;
   let height = options.height;
   let config = options.config ?? particleConfig;
+  /** The stream's overall presence, eased toward `config.presence`. */
+  let presence = config.presence ?? 1;
   let capacity = options.count;
   let active = options.reducedMotion
     ? Math.round(options.count * config.density.reducedMotionFactor)
@@ -153,7 +156,7 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
   const geometry = new BufferGeometry();
   const material = new ShaderMaterial({
     vertexShader: VERTEX_SHADER,
-    fragmentShader: FRAGMENT_SHADER,
+    fragmentShader: POINT_FRAGMENT_SHADER,
     transparent: true,
     depthWrite: false,
     depthTest: false,
@@ -401,6 +404,14 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
   };
 
   const update: ParticleField["update"] = (deltaSeconds, elapsedSeconds, pointer) => {
+    const wanted = config.presence ?? 1;
+    presence =
+      deltaSeconds === 0 || options.reducedMotion
+        ? wanted
+        : presence + (wanted - presence) * Math.min(1, deltaSeconds * 6);
+    if (Math.abs(wanted - presence) < 0.002) presence = wanted;
+    points.visible = presence > 0.002;
+
     // Reduced motion holds the field still: it becomes a slow ambient texture
     // that is drawn once rather than an animated system.
     if (options.reducedMotion) {
@@ -538,7 +549,8 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
       const fadeBottom = Math.min(1, Math.max(0, (height + fade - y) / fade));
       const depthAlpha = 0.62 + depth * 0.38;
 
-      alphas[index] = fadeLeft * fadeRight * fadeTop * fadeBottom * depthAlpha * pointAlpha[index]!;
+      alphas[index] =
+        fadeLeft * fadeRight * fadeTop * fadeBottom * depthAlpha * pointAlpha[index]! * presence;
       golds[index] = goldTimer[index]! > 0 ? 1 : 0;
     }
 

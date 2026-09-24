@@ -1,5 +1,4 @@
 import type { ImageMedia, Project, VideoMedia } from "../project.types";
-import { createPlaceholderImage } from "./placeholder";
 
 const image = (file: string, alt: string, width = 430, height = 932): ImageMedia => ({
   kind: "image",
@@ -117,8 +116,14 @@ export const survueProject = {
   featured: true,
   enabled: true,
   contentStatus: "draft",
-  placeholderFields: ["homepageImage", "unprovidedProductStates"],
-  homepageImage: createPlaceholderImage("survue", "Survue"),
+  placeholderFields: ["unprovidedProductStates"],
+  homepageImage: {
+    kind: "image",
+    src: "/images/projects/survue/monolith-screen.jpg",
+    alt: "Survue welcome screen beside a live detection state warning of a vehicle at risk level 1.",
+    width: 640,
+    height: 922,
+  },
   caseStudyUrl: "/work/survue",
   visualEmphasis: "standard",
   scenePlacement: "mid",

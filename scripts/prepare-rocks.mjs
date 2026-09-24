@@ -4,16 +4,30 @@ import { basename, join } from "node:path";
 import sharp from "sharp";
 import { MeshoptSimplifier } from "meshoptimizer";
 
-const root = new URL("../public/assets/rocks/", import.meta.url);
+const selectedWork = process.argv.includes("--selected-work");
+const root = new URL(
+  selectedWork ? "../public/assets/selected-work/" : "../public/assets/rocks/",
+  import.meta.url,
+);
 const standardSources = [
   ["hero.glb", "hero-rock.glb"],
-  ["selected work.glb", "selected-work-rock.glb"],
   ["footer.glb", "footer-rock.glb"],
+];
+/*
+ * Selected Work sources: the monolith the project screens are mounted on, and
+ * the mountain range behind it. The range sits in fog far from the camera, so
+ * it keeps fewer triangles and smaller maps than the stone.
+ */
+const selectedWorkSources = [
+  ["monolith.glb", "monolith.glb", 240000, 2048],
+  ["mountains.glb", "mountains.glb", 180000, 1024],
 ];
 const sources = process.argv.includes("--intro")
   ? [["rock formation 3d model.glb", "intro-rock.glb"]]
-  : standardSources;
-const desktop = process.argv[2];
+  : selectedWork
+    ? selectedWorkSources
+    : standardSources;
+const desktop = process.argv.slice(2).find((arg) => !arg.startsWith("--"));
 if (!desktop) throw new Error("Usage: node scripts/prepare-rocks.mjs /path/to/source-folder");
 
 await MeshoptSimplifier.ready;
@@ -24,7 +38,7 @@ function pad(buffer) {
   return amount ? Buffer.concat([buffer, Buffer.alloc(amount)]) : buffer;
 }
 
-for (const [source, destination] of sources) {
+for (const [source, destination, targetIndices = 240000, mapSize = 2048] of sources) {
   const input = await readFile(join(desktop, source));
   const jsonLength = input.readUInt32LE(12);
   const sourceJson = JSON.parse(input.subarray(20, 20 + jsonLength).toString("utf8"));
@@ -54,7 +68,7 @@ for (const [source, destination] of sources) {
     originalIndices,
     originalPositions,
     3,
-    240000,
+    targetIndices,
     0.012,
   );
   const remap = new Map();
@@ -143,8 +157,11 @@ for (const [source, destination] of sources) {
     const texture = view(image.bufferView);
     const processed =
       image.mimeType === "image/png"
-        ? await sharp(texture).resize(2048, 2048).png({ compressionLevel: 9 }).toBuffer()
-        : await sharp(texture).resize(2048, 2048).jpeg({ quality: 86, mozjpeg: true }).toBuffer();
+        ? await sharp(texture).resize(mapSize, mapSize).png({ compressionLevel: 9 }).toBuffer()
+        : await sharp(texture)
+            .resize(mapSize, mapSize)
+            .jpeg({ quality: 86, mozjpeg: true })
+            .toBuffer();
     images.push({ bufferView: add(processed), mimeType: image.mimeType });
   }
   const gltf = {

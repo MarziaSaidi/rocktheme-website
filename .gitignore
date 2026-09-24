@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# raw 3D sources (reduced copies live in public/assets)
+/assets-src/

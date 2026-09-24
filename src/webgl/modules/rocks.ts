@@ -112,6 +112,9 @@ export function applyWaterlineContact(
   };
 }
 
+/** Chapter crossfade speed, per second. About 0.35 s to settle. */
+export const FADE_RATE = 6;
+
 /** Renders typed rock instances; asset paths and transforms live in configuration. */
 export function createRocks(
   scene: Scene,
@@ -274,7 +277,8 @@ export function createRocks(
         if (!entry.ready) return;
         const config = rockInstances[instanceId];
         const target = config.sectionId === sectionId ? 1 : 0;
-        entry.opacity += (target - entry.opacity) * (delta === 0 ? 1 : Math.min(1, delta * 2.4));
+        entry.opacity +=
+          (target - entry.opacity) * (delta === 0 ? 1 : Math.min(1, delta * FADE_RATE));
         if (Math.abs(target - entry.opacity) < 0.002) entry.opacity = target;
 
         const transform = resolveRockTransform(instanceId, viewport);
@@ -287,7 +291,14 @@ export function createRocks(
         entry.meshes.forEach((mesh) => {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           materials.forEach((material) => {
-            if (material instanceof MeshStandardMaterial) material.opacity = entry.opacity;
+            if (!(material instanceof MeshStandardMaterial)) return;
+            material.opacity = entry.opacity;
+            /*
+             * A fading rock must not write depth: it would hide the water,
+             * horizon and particles behind it while barely drawing itself,
+             * which reads as a black silhouette in its place.
+             */
+            material.depthWrite = entry.opacity >= 0.999;
           });
         });
       });

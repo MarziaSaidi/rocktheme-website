@@ -44,10 +44,12 @@ export const siteContent = {
   },
   work: {
     displayHeading: "Selected work",
-    lead: "Products, systems and experiments — designed and built end to end.",
-    corridorLabel: "Selected work corridor",
-    corridorHint: "Scroll sideways to explore",
+    galleryLabel: "Selected projects",
     viewLabel: "View case study",
+    scrollLabel: "Scroll",
+    previousLabel: "Previous project",
+    nextLabel: "Next project",
+    continueLabel: "Continue to How I Work",
   },
   statement: {
     heading: "How I work",

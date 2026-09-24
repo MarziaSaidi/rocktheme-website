@@ -1,4 +1,13 @@
-import { Fog, PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import {
+  Fog,
+  Group,
+  Mesh,
+  PerspectiveCamera,
+  Quaternion,
+  Scene,
+  Vector3,
+  WebGLRenderer,
+} from "three";
 
 import { sceneViewportForWidth } from "@/config/responsive";
 import type { SectionId } from "@/config/sections";
@@ -12,8 +21,10 @@ import {
   type ParticleField,
 } from "../modules/particleField";
 import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflectiveFloor";
+import { createMonolith, type Monolith } from "../modules/monolith";
 import { createRocks, type Rocks } from "../modules/rocks";
-import { getSceneSection, resolveCamera } from "../sceneConfig";
+import { subscribeMonolith } from "../monolithChannel";
+import { getSceneSection, monolithConfig, resolveCamera } from "../sceneConfig";
 import { detectCapability } from "./capability";
 import {
   createQualityManager,
@@ -55,6 +66,8 @@ export type EnvironmentOptions = Readonly<{
   onQualityChange?: (settings: QualitySettings) => void;
   /** Called with the beacon intensity so the DOM can rim-light its own edges. */
   onBeaconIntensity?: (intensity: number) => void;
+  /** Called if the Selected Work stone or its mountains cannot be loaded. */
+  onMonolithFailure?: () => void;
   onContextLost?: () => void;
   onContextRestored?: () => void;
 }>;
@@ -155,6 +168,20 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     config: activeScene.water,
   });
   worldScene.add(floor.mesh);
+  /*
+   * The water beyond the far side of the Selected Work stone. The floor is one
+   * quad running from just behind the camera to the horizon; walking round
+   * the stone turns the view toward where that quad ends. This tile is the
+   * same mesh, geometry and material, laid edge to edge behind it, so the
+   * surface is one continuous world-space field. It is behind the camera in
+   * every other view.
+   */
+  const floorBeyond = new Mesh(floor.mesh.geometry, floor.mesh.material);
+  floorBeyond.rotation.copy(floor.mesh.rotation);
+  floorBeyond.position.copy(floor.mesh.position);
+  floorBeyond.position.z += 140;
+  floorBeyond.renderOrder = floor.mesh.renderOrder;
+  worldScene.add(floorBeyond);
 
   const lights: HorizonLights = createHorizonLights(
     worldScene,
@@ -180,6 +207,59 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     },
   );
   rocks.resize(width);
+
+  const monolith: Monolith = createMonolith(worldScene, monolithConfig, {
+    onFailure: (asset) => {
+      console.error(`Selected Work ${asset} failed to load`);
+      options.canvas.dataset.monolithFailed = asset;
+      options.onMonolithFailure?.();
+    },
+    onLoaded: () => {
+      if (options.reducedMotion) renderOnce(0);
+    },
+  });
+  monolith.setSection(activeSectionId);
+  monolith.resize(width);
+
+  /*
+   * Camera rig for the walk round the stone.
+   *
+   * `camera` stays the section's composed home view; everything that lays
+   * itself out from the camera (horizon sources, mist) keeps reading it. What
+   * is rendered is `view`: the home camera carried round the stone's pivot by
+   * the orbit angle, position and heading together, so the stone keeps its
+   * place in the frame and the landscape turns past behind it. The horizon
+   * glow and mist are sky, not ground: they ride on `horizonRig`, which takes
+   * the same half turn, so every view keeps its horizon light.
+   */
+  const view = new PerspectiveCamera();
+  const horizonRig = new Group();
+  horizonRig.add(lights.group, atmosphere.group);
+  worldScene.add(horizonRig);
+  const up = new Vector3(0, 1, 0);
+  const orbitTurn = new Quaternion();
+  const orbitOffset = new Vector3();
+  const worldBeacons = lights.beacons().map((source) => ({ ...source, world: new Vector3() }));
+  let orbitAngle = 0;
+
+  const applyOrbit = () => {
+    orbitAngle = monolith.orbit() * Math.PI;
+    const pivot = monolith.pivot();
+    orbitTurn.setFromAxisAngle(up, orbitAngle);
+
+    view.copy(camera);
+    orbitOffset.copy(camera.position).sub(pivot).applyQuaternion(orbitTurn);
+    view.position.copy(pivot).add(orbitOffset);
+    view.quaternion.premultiply(orbitTurn);
+    view.updateMatrixWorld();
+    monolith.setViewer(view.position);
+
+    // Rotation about the pivot: p' = pivot + R (p - pivot).
+    horizonRig.quaternion.copy(orbitTurn);
+    orbitOffset.copy(pivot).negate().applyQuaternion(orbitTurn).add(pivot);
+    horizonRig.position.copy(orbitOffset);
+    horizonRig.updateMatrixWorld(true);
+  };
 
   // -------------------------------------------------------- orthographic pass
   options.onQualityChange?.(settings);
@@ -215,12 +295,24 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   };
 
   const renderOnce = (deltaSeconds: number) => {
+    monolith.update(deltaSeconds, performance.now());
+    applyOrbit();
+
     atmosphere.update(elapsed);
     lights.update(deltaSeconds, elapsed);
     const beaconIntensity = lights.intensity();
     options.onBeaconIntensity?.(beaconIntensity);
 
-    floor.setBeacons(lights.beacons());
+    // The water reflects the beacons where they are in the world, which is
+    // wherever the horizon rig has carried them.
+    const beacons = lights.beacons();
+    beacons.forEach((source, index) => {
+      const target = worldBeacons[index];
+      if (!target) return;
+      target.world.copy(source.world).applyMatrix4(horizonRig.matrixWorld);
+      worldBeacons[index] = { ...source, world: target.world };
+    });
+    floor.setBeacons(worldBeacons.slice(0, beacons.length));
     atmosphere.setIllumination(lights.illumination());
     floor.update(deltaSeconds, elapsed);
 
@@ -245,14 +337,15 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     // The floor must not sample itself, and the reflection is only for the
     // objects standing on the floor.
-    floor.renderReflection(renderer, worldScene, camera, [
+    floor.renderReflection(renderer, worldScene, view, [
       floor.mesh,
+      floorBeyond,
       lights.group,
       ...rocks.reflectionExclusions(),
     ]);
 
     renderer.clear();
-    renderer.render(worldScene, camera);
+    renderer.render(worldScene, view);
     renderer.clearDepth();
     renderer.render(particles.scene, particles.camera);
   };
@@ -297,6 +390,25 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     }
     start();
   };
+
+  /*
+   * Reduced motion renders single frames only. A gallery change still has to
+   * be drawn, so it gets frames for exactly as long as its fade lasts.
+   */
+  let transitionFrame = 0;
+  const drawTransition = () => {
+    transitionFrame = 0;
+    if (contextLost) return;
+    renderOnce(0);
+    if (monolith.animating(performance.now())) {
+      transitionFrame = requestAnimationFrame(drawTransition);
+    }
+  };
+  const unsubscribeMonolith = subscribeMonolith(() => {
+    if (options.reducedMotion && transitionFrame === 0) {
+      transitionFrame = requestAnimationFrame(drawTransition);
+    }
+  });
 
   options.canvas.addEventListener("webglcontextlost", handleContextLost);
   options.canvas.addEventListener("webglcontextrestored", handleContextRestored);
@@ -345,6 +457,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
       particles.resize(width, height, cappedRatio());
       rocks.resize(width);
+      monolith.resize(width);
       // Density is per megapixel, so a resize changes the count too.
       particles.setCount(particleCountFor(settings, width * height));
 
@@ -371,7 +484,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         pointerDirY = sample.dy / length;
       }
 
-      if (sample.active && sample.inside && !options.reducedMotion) {
+      // Ripples are placed for the front view; round the back they would land
+      // in the wrong place, so they wait until the viewer is back in front.
+      if (sample.active && sample.inside && !options.reducedMotion && orbitAngle < 0.01) {
         floor.requestRipple(
           Math.min(1, Math.max(0, sample.x / Math.max(1, width))),
           Math.min(1, Math.max(0, sample.y / Math.max(1, height))),
@@ -396,6 +511,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       particles.setConfig(activeScene.particles);
       rocks.setLighting(activeScene.lighting);
       rocks.setSection(sectionId);
+      monolith.setSection(sectionId);
       lights.resize(camera);
       atmosphere.resize(camera);
       if (options.reducedMotion) renderOnce(0);
@@ -414,15 +530,19 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     destroy: () => {
       stop();
+      unsubscribeMonolith();
+      if (transitionFrame !== 0) cancelAnimationFrame(transitionFrame);
       options.canvas.removeEventListener("webglcontextlost", handleContextLost);
       options.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
 
       particles.destroy();
       rocks.destroy();
+      monolith.destroy();
       lights.destroy();
       atmosphere.destroy();
       floor.destroy();
 
+      horizonRig.clear();
       worldScene.clear();
       particles.scene.clear();
 

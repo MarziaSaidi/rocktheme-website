@@ -143,11 +143,13 @@ const MIST_SHADER = /* glsl */ `
 `;
 
 export type HorizonAtmosphere = Readonly<{
+  /** The mist sheets, so the camera rig can carry them with the view. */
+  group: Group;
   resize: (camera: PerspectiveCamera) => void;
   update: (elapsedSeconds: number) => void;
   setConfig: (fog: FogConfig, camera: PerspectiveCamera) => void;
   /** Accepts each beacon's viewport centre and spread. */
-  setIllumination: (sources: readonly [number, number][]) => void;
+  setIllumination: (sources: readonly (readonly [number, number, number?])[]) => void;
   destroy: () => void;
 }>;
 
@@ -168,18 +170,21 @@ export function createHorizonAtmosphere(
    * fraction has to be remapped into plane UV or the mist would light the
    * wrong stretch of horizon.
    */
-  const applyIllumination = (sources: readonly [number, number][], widthFactor: number) => {
+  const applyIllumination = (
+    sources: readonly (readonly [number, number, number?])[],
+    widthFactor: number,
+  ) => {
     for (let index = 0; index < MAX_LIGHTS; index += 1) {
       const source = sources[index];
       if (!source) {
         lightUniform[index]!.set(0, 1, 0, 0);
         continue;
       }
-      const [centre, spread] = source;
+      const [centre, spread, strength = 1] = source;
       lightUniform[index]!.set(
         0.5 + (centre - 0.5) / widthFactor,
         Math.max(spread / widthFactor, 0.02),
-        0.6,
+        0.6 * strength,
         0,
       );
     }
@@ -231,6 +236,7 @@ export function createHorizonAtmosphere(
   resize(camera);
 
   return {
+    group,
     resize,
     update: (elapsedSeconds) => {
       timeUniform.value = reducedMotion ? 0 : elapsedSeconds;

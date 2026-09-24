@@ -104,6 +104,11 @@ export type HorizonLightConfig = Readonly<{
   focusGain: number;
   focusEase: number;
   sources: readonly HorizonLightSource[];
+  /**
+   * How visible the horizon glow is, 0 to 1 (default 1), eased on a chapter
+   * change. The water's reflection of the sources is unaffected.
+   */
+  level?: number;
 }>;
 
 export type FogConfig = Readonly<{
@@ -188,6 +193,8 @@ export type ParticleConfig = Readonly<{
   focusRadius: number;
   focusStrength: number;
   focusEase: number;
+  /** How present the stream is, 0 to 1 (default 1). Eased on a chapter change. */
+  presence?: number;
 }>;
 
 export type SceneSectionConfig = Readonly<{
@@ -205,5 +212,81 @@ export type SceneSectionConfig = Readonly<{
     animateWater: false;
     animateAtmosphere: false;
     pointerResponse: false;
+  }>;
+}>;
+
+/**
+ * The Selected Work monolith: one stone, two display faces, and the mountain
+ * range behind it. Face geometry is in the stone's own model units, measured
+ * from the supplied GLB, so the screens sit on its real faces.
+ */
+export type MonolithFace = Readonly<{
+  /**
+   * Face plane in the aligned model frame, seen from that face:
+   * depth = offset + slope × height + across × sideways.
+   */
+  offset: number;
+  slope: number;
+  across: number;
+}>;
+
+export type MonolithPlacement = Readonly<{
+  position: Vector3Tuple;
+  /** Uniform height scale; the stone's own proportions are kept on y. */
+  height: number;
+  /** Footprint scale relative to height. Applied equally to x and z. */
+  girth: number;
+  /** Fixed yaw so the front face meets the camera with a little depth. */
+  yaw: number;
+  /** Screen height and centre, in the stone's model units. */
+  screenHeight: number;
+  screenCenterY: number;
+}>;
+
+export type MountainPlacement = Readonly<{
+  position: Vector3Tuple;
+  scale: Vector3Tuple;
+  yaw: number;
+}>;
+
+export type MonolithConfig = Readonly<{
+  sectionId: SectionId;
+  stone: Readonly<{
+    source: `/assets/selected-work/${string}.glb`;
+    /** Rotation that turns the stone's faces onto the model axes. */
+    alignYaw: number;
+    /** Pillar axis in the aligned frame; the camera walks round this point. */
+    axis: Vector2Tuple;
+    placement: ResponsiveOverrides<MonolithPlacement>;
+  }>;
+  mountains: Readonly<{
+    source: `/assets/selected-work/${string}.glb`;
+    placement: ResponsiveOverrides<MountainPlacement>;
+  }>;
+  screen: Readonly<{
+    /** Width over height of the screen images, kept after the girth scale. */
+    aspect: number;
+    /** Stone left visible between screen and housing edge. */
+    bezel: number;
+    /** How far the housing sits into the stone behind the face plane. */
+    housingDepth: number;
+    /** Housing face clearance above the stone's highest point. */
+    clearance: number;
+    offColor: number;
+    /** Charcoal of the stone itself, for the housing's exposed lip. */
+    housingColor: number;
+    rimColor: number;
+    glowColor: number;
+    glowIntensity: number;
+    front: MonolithFace;
+    back: MonolithFace;
+  }>;
+  key: Readonly<{ color: number; intensity: number; position: Vector3Tuple }>;
+  timing: Readonly<{
+    fadeOutMs: number;
+    orbitMs: number;
+    fadeInMs: number;
+    reducedFadeOutMs: number;
+    reducedFadeInMs: number;
   }>;
 }>;

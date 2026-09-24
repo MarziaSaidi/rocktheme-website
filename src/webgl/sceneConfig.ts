@@ -13,6 +13,7 @@ import type {
   EnvironmentLightingConfig,
   FogConfig,
   HorizonLightConfig,
+  MonolithConfig,
   ParticleConfig,
   RockAssetDefinition,
   RockInstanceDefinition,
@@ -278,12 +279,7 @@ export const cameraConfig: CameraComposition = {
   far: 220,
 };
 
-export const ROCK_ASSET_IDS = [
-  "intro-rock",
-  "hero-rock",
-  "selected-work-rock",
-  "footer-rock",
-] as const;
+export const ROCK_ASSET_IDS = ["intro-rock", "hero-rock", "footer-rock"] as const;
 export type RockAssetId = (typeof ROCK_ASSET_IDS)[number];
 
 export const rockAssets = {
@@ -307,16 +303,6 @@ export const rockAssets = {
     fallback: "css-landscape",
     attribution: "Tripo model prepared by scripts/prepare-rocks.mjs.",
   },
-  "selected-work-rock": {
-    id: "selected-work-rock",
-    source: "/assets/rocks/selected-work-rock.glb",
-    allowedSections: ["selected-work"],
-    role: "foreground",
-    loadingGroup: "initial",
-    materialPreset: "wet-black-violet",
-    fallback: "css-landscape",
-    attribution: "Tripo model prepared by scripts/prepare-rocks.mjs.",
-  },
   "footer-rock": {
     id: "footer-rock",
     source: "/assets/rocks/footer-rock.glb",
@@ -329,11 +315,7 @@ export const rockAssets = {
   },
 } as const satisfies Readonly<Record<RockAssetId, RockAssetDefinition>>;
 
-export const ROCK_INSTANCE_IDS = [
-  "hero-dominant-right",
-  "work-foreground-left",
-  "footer-dominant-right",
-] as const;
+export const ROCK_INSTANCE_IDS = ["hero-dominant-right", "footer-dominant-right"] as const;
 export type RockInstanceId = (typeof ROCK_INSTANCE_IDS)[number];
 
 export const rockInstances = {
@@ -351,22 +333,6 @@ export const rockInstances = {
     transform: {
       desktop: { position: [10.5, -0.08, -12], rotation: [0, -0.45, 0], scale: [9, 4.5, 9] },
       mobile: { position: [3.8, 0.05, -12], rotation: [0, -0.45, 0], scale: [5.5, 4.4, 5.5] },
-    },
-  },
-  "work-foreground-left": {
-    id: "work-foreground-left",
-    assetId: "selected-work-rock",
-    sectionId: "selected-work",
-    role: "foreground",
-    depthLayer: "foreground",
-    renderOrder: 0,
-    visibility: { viewports: ["desktop", "tablet", "mobile"], reducedMotion: true },
-    materialPreset: "wet-black-violet",
-    reflection: true,
-    particleInteraction: false,
-    transform: {
-      desktop: { position: [-6.2, -0.22, -0.5], rotation: [0, 0.52, 0], scale: [4.8, 5.52, 4.8] },
-      mobile: { position: [-1.8, -0.24, -1.1], rotation: [0, 0.52, 0], scale: [2.6, 2.34, 2.6] },
     },
   },
   "footer-dominant-right": {
@@ -387,7 +353,144 @@ export const rockInstances = {
   },
 } as const satisfies Readonly<Record<RockInstanceId, RockInstanceDefinition>>;
 
+/*
+ * Selected Work is lit by the stone's own screens: the particle stream fades
+ * out and the glow of the horizon lights goes while it is on screen. The
+ * water keeps its reflections. The lowered path
+ * only matters while the stream is fading.
+ */
+export const workParticleConfig: ParticleConfig = {
+  ...particleConfig,
+  presence: 0,
+  path: [
+    [-0.2, 0.66],
+    [0.12, 0.64],
+    [0.34, 0.67],
+    [0.55, 0.63],
+    [0.76, 0.66],
+    [0.95, 0.64],
+    [1.18, 0.62],
+  ],
+  branches: [
+    { split: 0.2, merge: 0.7, offset: 0.03, fraction: 0.1 },
+    { split: 0.45, merge: 1.05, offset: -0.025, fraction: 0.08 },
+  ],
+};
+
+export const workHorizonLightConfig: HorizonLightConfig = {
+  ...horizonLightConfig,
+  level: 0,
+};
+
+/*
+ * Selected Work lighting. The landscape points sit where the monolith now
+ * stands, so here they move in front of it and to its sides: the stone is lit
+ * from the camera's side and rimmed faintly in lavender from behind.
+ */
+export const workLightingConfig: EnvironmentLightingConfig = {
+  ...environmentLightingConfig,
+  hemisphereIntensity: 2.6,
+  points: [
+    { position: [-7, 5, 3], color: 0x8066a5, intensity: 14, distance: 20, decay: 2 },
+    { position: [8.5, 7, -7], color: 0x9b7fc2, intensity: 22, distance: 16, decay: 2 },
+    { position: [13, 3.5, -2], color: 0x695483, intensity: 10, distance: 18, decay: 2 },
+  ],
+};
+
+/*
+ * The Selected Work monolith. Face planes, the alignment yaw and the pillar
+ * axis were measured from public/assets/selected-work/monolith.glb: its square
+ * section sits 36° off the model axes, each wide face leans back a few degrees,
+ * and each is twisted a little across its width (the front by 11°). The
+ * planes are least-squares fits to the rock's surface, raised to its highest
+ * point, so the housings sit flush and their walls stay inside the stone.
+ * Re-measure them if the stone asset is replaced.
+ */
+export const monolithConfig: MonolithConfig = {
+  sectionId: "selected-work",
+  stone: {
+    source: "/assets/selected-work/monolith.glb",
+    alignYaw: (-36 * Math.PI) / 180,
+    axis: [0.023, -0.015],
+    placement: {
+      desktop: {
+        position: [2.7, 0, -6.4],
+        height: 8.2,
+        girth: 1.32,
+        yaw: -0.1,
+        screenHeight: 0.35,
+        screenCenterY: 0.545,
+      },
+      /*
+       * Stacked: the stone stands centred above the project text, so it is
+       * chunkier and its screen takes more of the face to stay legible.
+       */
+      tablet: {
+        position: [0, 0, -10.5],
+        height: 6.06,
+        girth: 1.6,
+        yaw: -0.06,
+        screenHeight: 0.5,
+        screenCenterY: 0.56,
+      },
+      mobile: {
+        position: [0, 0, -10.5],
+        height: 6.06,
+        girth: 1.75,
+        yaw: -0.04,
+        screenHeight: 0.52,
+        screenCenterY: 0.565,
+      },
+    },
+  },
+  mountains: {
+    source: "/assets/selected-work/mountains.glb",
+    placement: {
+      desktop: { position: [0, -0.4, -64], scale: [104, 44, 40], yaw: 0 },
+      mobile: { position: [0, -0.4, -64], scale: [72, 40, 36], yaw: 0 },
+    },
+  },
+  screen: {
+    aspect: 640 / 922,
+    bezel: 0.007,
+    housingDepth: 0.045,
+    clearance: 0.004,
+    offColor: 0x0d0b12,
+    housingColor: 0x2c2b30,
+    rimColor: sceneColors.lavender,
+    glowColor: sceneColors.lavender,
+    glowIntensity: 3.2,
+    front: { offset: 0.2178, slope: -0.0783, across: -0.1955 },
+    back: { offset: 0.2458, slope: -0.1035, across: 0.0847 },
+  },
+  key: { color: 0xd8d4e0, intensity: 1.4, position: [-6, 9, 10] },
+  timing: {
+    fadeOutMs: 220,
+    orbitMs: 1400,
+    fadeInMs: 280,
+    reducedFadeOutMs: 200,
+    reducedFadeInMs: 250,
+  },
+};
+
 const camera = { desktop: cameraConfig } as const;
+
+/*
+ * Selected Work below the desktop breakpoint stacks the project under the
+ * stone. The landscape camera puts the horizon at 72%, which leaves no room
+ * beneath a stone standing in the water, so here the camera sits lower and
+ * level: the horizon is at mid-screen and the water carries the text.
+ */
+const stackedWorkCamera: CameraComposition = {
+  ...cameraConfig,
+  target: [0, 1.1, -1.5],
+  offset: [0, 0, 10],
+};
+const workCamera = {
+  desktop: cameraConfig,
+  tablet: stackedWorkCamera,
+  mobile: stackedWorkCamera,
+} as const;
 const reducedMotion = {
   animateParticles: false,
   animateWater: false,
@@ -411,13 +514,13 @@ export const sceneSections = {
   "selected-work": {
     sectionId: "selected-work",
     fallbackHorizonPercent: 76,
-    camera,
-    lighting: environmentLightingConfig,
-    horizonLights: horizonLightConfig,
+    camera: workCamera,
+    lighting: workLightingConfig,
+    horizonLights: workHorizonLightConfig,
     fog: horizonAtmosphereConfig,
     water: floorConfig,
-    particles: particleConfig,
-    rockInstanceIds: ["work-foreground-left"],
+    particles: workParticleConfig,
+    rockInstanceIds: [],
     reducedMotion,
   },
   about: {

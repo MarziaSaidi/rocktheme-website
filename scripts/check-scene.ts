@@ -13,6 +13,7 @@ import { sceneViewportForWidth } from "../src/config/responsive";
 import { SECTION_IDS } from "../src/config/sections";
 import { applyPointerInfluence } from "../src/webgl/modules/pointerInfluence";
 import { createParticleField } from "../src/webgl/modules/particleField";
+import { DUST_COUNT, DUST_LEAD, DUST_LIFE } from "../src/webgl/modules/monolith";
 import { createReflectiveFloor } from "../src/webgl/modules/reflectiveFloor";
 import { createHorizonLights } from "../src/webgl/modules/horizonLights";
 import {
@@ -22,7 +23,13 @@ import {
   settingsFor,
 } from "../src/webgl/core/quality";
 import {
+  evaluateMonolith,
+  monolithDuration,
+  type MonolithTimeline,
+} from "../src/webgl/monolithChannel";
+import {
   floorConfig,
+  monolithConfig,
   horizonLightConfig,
   particleConfig,
   pointerZones,
@@ -419,6 +426,107 @@ console.log("\nquality manager");
     if (spike.sample(2000)) spiked = true;
   }
   check("a tab-switch stall is not mistaken for slowness", !spiked);
+}
+
+// ---------------------------------------------------------------- monolith
+console.log("\nselected work monolith");
+{
+  for (const source of [monolithConfig.stone.source, monolithConfig.mountains.source]) {
+    const path = join(process.cwd(), "public", source.replace(/^\//, ""));
+    check(`${source} exists`, existsSync(path));
+    if (existsSync(path)) {
+      check(`${source} stays below 12 MiB`, statSync(path).size < 12 * 1024 * 1024);
+    }
+  }
+  check(
+    "monolith belongs to Selected Work, which has no other rock",
+    monolithConfig.sectionId === "selected-work" &&
+      sceneSections["selected-work"].rockInstanceIds.length === 0,
+  );
+  for (const viewport of ["desktop", "tablet", "mobile"] as const) {
+    const placement = {
+      ...monolithConfig.stone.placement.desktop,
+      ...(viewport === "desktop" ? {} : monolithConfig.stone.placement[viewport]),
+    };
+    const top = placement.screenCenterY + placement.screenHeight / 2;
+    const bottom = placement.screenCenterY - placement.screenHeight / 2;
+    // The face planes were measured between these heights of the stone.
+    check(`${viewport} screen stays on the measured face`, bottom >= 0.3 && top <= 0.83);
+    const faceWidth = 0.36;
+    const width = (placement.screenHeight * monolithConfig.screen.aspect) / placement.girth;
+    check(
+      `${viewport} screen leaves stone at its sides`,
+      width < faceWidth * 0.8,
+      width.toFixed(3),
+    );
+  }
+
+  const timing = { fadeOutMs: 200, orbitMs: 1400, fadeInMs: 250 };
+  const walk = (fromView: number, toView: number, reduced = false): MonolithTimeline => ({
+    fromView,
+    toView,
+    startedAt: 0,
+    timing,
+    reduced,
+  });
+
+  const round = walk(0, 1);
+  const total = monolithDuration(round);
+  check("one walk lasts fade out + orbit + fade in", total === 1850, String(total));
+  check(
+    "the orbit takes between 1.2 and 1.6 seconds",
+    monolithConfig.timing.orbitMs >= 1200 && monolithConfig.timing.orbitMs <= 1600,
+  );
+
+  const sweepOnce = (timeline: MonolithTimeline, rising: boolean) => {
+    let previous = rising ? -Infinity : Infinity;
+    let monotonic = true;
+    let overshoot = false;
+    for (let t = 0; t <= total + 100; t += 5) {
+      const { orbit } = evaluateMonolith(timeline, t);
+      if (rising ? orbit < previous - 1e-9 : orbit > previous + 1e-9) monotonic = false;
+      if (orbit > 1 + 1e-9 || orbit < -1e-9) overshoot = true;
+      previous = orbit;
+    }
+    return { monotonic, overshoot };
+  };
+  const out = sweepOnce(round, true);
+  check("the camera walks one way only", out.monotonic);
+  check("the camera never overshoots the back face", !out.overshoot);
+  const back = sweepOnce(walk(1, 0), false);
+  check("walking back retraces the same arc", back.monotonic && !back.overshoot);
+
+  check("the camera waits while the screen fades out", evaluateMonolith(round, 150).orbit === 0);
+  const dark = evaluateMonolith(round, 900);
+  check("both screens are dark while walking", dark.front === 0 && dark.back === 0);
+  const rest = evaluateMonolith(round, total);
+  check("behind the stone, the back face is lit", rest.back === 1 && rest.front === 0);
+  check("the walk settles behind the stone", rest.orbit === 1 && rest.settled);
+  check("walking back relights the front face", evaluateMonolith(walk(1, 0), total).front === 1);
+
+  {
+    const { fadeOutMs, orbitMs } = monolithConfig.timing;
+    const midpoint = (fadeOutMs + orbitMs / 2) / 1000;
+    check(
+      "the dissolving dust is gone before the camera is half way round",
+      fadeOutMs / 1000 + DUST_LIFE < midpoint,
+    );
+    check(
+      "the arriving dust does not start until after the half way point",
+      (fadeOutMs + orbitMs) / 1000 - DUST_LEAD > midpoint,
+    );
+    check("the dust stays restrained", DUST_COUNT >= 150 && DUST_COUNT <= 300);
+    const live = { ...round, timing: monolithConfig.timing };
+    const half = evaluateMonolith(live, midpoint * 1000);
+    check("no display is present half way round", half.front === 0 && half.back === 0);
+  }
+
+  const reduced = walk(0, 1, true);
+  check("reduced motion drops the walk", monolithDuration(reduced) === 450);
+  check(
+    "reduced motion cuts to the other side while the screens are dark",
+    evaluateMonolith(reduced, 199).orbit === 0 && evaluateMonolith(reduced, 201).orbit === 1,
+  );
 }
 
 console.log(

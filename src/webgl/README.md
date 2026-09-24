@@ -17,7 +17,11 @@ type ObstacleRect = { x: number; y: number; width: number; height: number };
 
 `SceneCanvas` measures every element carrying `data-scene-obstacle` and passes
 the rectangles down. The particle field knows it should flow around a box; it
-does not know the box is a headline or a project plane. Adding, removing or
+does not know the box is a headline or a project plane.
+
+The monolith follows the same rule. The gallery hands it two image URLs and
+a timeline of numbers (`monolithChannel.ts`); it never learns which project
+is on which face. Adding, removing or
 reordering a project changes nothing in this directory.
 
 ## Modules
@@ -34,6 +38,8 @@ reordering a project changes nothing in this directory.
 | `modules/reflectiveFloor.ts`  | Planar reflection pass, surface drift, ripples.                |
 | `modules/horizonLights.ts`    | Beacons and the intensity the floor and DOM read.              |
 | `modules/rocks.ts`            | Faceted anchors and their parallax.                            |
+| `modules/monolith.ts`         | Selected Work stone, its two screens, and the mountain range.  |
+| `monolithChannel.ts`          | The gallery timeline the camera walk and screens follow.       |
 | `SceneCanvas.tsx`             | The only React leaf: measures, mounts, tears down.             |
 
 ## Two passes, one renderer

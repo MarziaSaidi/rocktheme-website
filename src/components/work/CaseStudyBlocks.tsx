@@ -114,7 +114,7 @@ export function CaseStudyBlocks({ project, blocks }: CaseStudyBlocksProps) {
                   sizes="(max-width: 63.99rem) 92vw, 80rem"
                   priority
                   width="wide"
-                  // Pairs with the corridor plane so the two morph into one another.
+                  // Kept for any homepage media that claims the same name.
                   transitionName={projectTransitionName(project.slug)}
                 />
               </section>

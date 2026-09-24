@@ -429,10 +429,16 @@ function validateSiteContent(): void {
   validateRequiredString(siteContent.hero.planeGroupLabel, "site.hero.planeGroupLabel");
 
   validateRequiredString(siteContent.work.displayHeading, "site.work.displayHeading");
-  validateRequiredString(siteContent.work.lead, "site.work.lead");
-  validateRequiredString(siteContent.work.corridorLabel, "site.work.corridorLabel");
-  validateRequiredString(siteContent.work.corridorHint, "site.work.corridorHint");
-  validateRequiredString(siteContent.work.viewLabel, "site.work.viewLabel");
+  for (const key of [
+    "galleryLabel",
+    "viewLabel",
+    "scrollLabel",
+    "previousLabel",
+    "nextLabel",
+    "continueLabel",
+  ] as const) {
+    validateRequiredString(siteContent.work[key], `site.work.${key}`);
+  }
 
   validateRequiredString(siteContent.statement.heading, "site.statement.heading");
   validateStringArray(siteContent.statement.paragraphs, "site.statement.paragraphs");

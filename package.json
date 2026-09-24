@@ -13,7 +13,9 @@
     "format:check": "prettier --check .",
     "validate": "npm run format:check && npm run lint && npm run validate:content && npm run validate:scene && npm run typecheck && npm run build",
     "validate:scene": "node --import tsx scripts/check-scene.ts",
-    "prepare:rocks": "node scripts/prepare-rocks.mjs"
+    "prepare:rocks": "node scripts/prepare-rocks.mjs",
+    "prepare:selected-work": "node scripts/prepare-rocks.mjs --selected-work assets-src/selected-work",
+    "prepare:monolith-screens": "node scripts/prepare-monolith-screens.mjs"
   },
   "dependencies": {
     "next": "16.3.5",

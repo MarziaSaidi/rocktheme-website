@@ -133,6 +133,10 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
           // The beacons light the DOM project edges through this one variable.
           root.style.setProperty("--scene-beacon-glow", intensity.toFixed(3));
         },
+        onMonolithFailure: () => {
+          // The gallery shows its HTML screen images instead.
+          root.dataset.monolithFailed = "";
+        },
         onQualityChange: (settings) => {
           root.dataset.sceneTier = settings.tier;
         },
@@ -217,6 +221,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
 
       delete root.dataset.sceneActive;
       delete root.dataset.sceneTier;
+      delete root.dataset.monolithFailed;
       root.style.removeProperty("--scene-beacon-glow");
     };
   }, [onStats]);

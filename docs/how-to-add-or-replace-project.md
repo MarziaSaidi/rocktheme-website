@@ -106,8 +106,9 @@ caseStudy: {
 | `process`          | `steps` (non-empty)              | `heading`            |
 | `next-project`     | `projectSlug`                    | —                    |
 
-`hero` is the block that morphs out of the Selected Work corridor during
-navigation, so a case study should open with one.
+`hero` carries the project's view-transition name, so a case study should
+open with one. The Selected Work stone is drawn in WebGL and has no HTML
+element to morph from, so today the hero fades in on its own.
 
 ### Layout variants
 
