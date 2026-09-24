@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 import { projectRegistry } from "../src/content/projects/projectRegistry";
 import {
   BLOCK_LAYOUT,
+  PROJECT_ACCENT_BEHAVIORS,
   PROJECT_BLOCK_TYPES,
+  PROJECT_SCENE_PLACEMENTS,
+  PROJECT_VISUAL_EMPHASIS,
   type CaseStudyBlock,
   type CaseStudyStage,
   type ImageMedia,
@@ -13,7 +16,8 @@ import {
   type ProjectMedia,
   type VideoMedia,
 } from "../src/content/projects/project.types";
-import { sectionIds, siteContent } from "../src/content/site/siteContent";
+import { SECTION_IDS, sectionAnchors } from "../src/config/sections";
+import { siteContent } from "../src/content/site/siteContent";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const publicRoot = resolve(repositoryRoot, "public");
@@ -301,6 +305,7 @@ function validateStages(stages: readonly CaseStudyStage[], location: string): vo
 
 function validateProject(project: Project, index: number): void {
   const location = `projects[${index}]`;
+  validateRequiredString(project.id, `${location}.id`);
   const slugIsPresent = validateRequiredString(project.slug, `${location}.slug`);
 
   if (slugIsPresent && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(project.slug)) {
@@ -346,14 +351,32 @@ function validateProject(project: Project, index: number): void {
   }
 
   validateImage(project.homepageImage, `${location}.homepageImage`);
+  validateRequiredString(project.caseStudyUrl, `${location}.caseStudyUrl`);
+  validateVariant(
+    project.visualEmphasis,
+    PROJECT_VISUAL_EMPHASIS,
+    `${location}.visualEmphasis`,
+    false,
+  );
+  validateVariant(
+    project.scenePlacement,
+    PROJECT_SCENE_PLACEMENTS,
+    `${location}.scenePlacement`,
+    false,
+  );
+  validateVariant(
+    project.accentBehavior,
+    PROJECT_ACCENT_BEHAVIORS,
+    `${location}.accentBehavior`,
+    false,
+  );
   validateRequiredString(project.seo?.title, `${location}.seo.title`);
   validateRequiredString(project.seo?.description, `${location}.seo.description`);
 
   const expectedPathname = `/work/${project.slug}`;
-  if (project.seo?.pathname !== expectedPathname) {
-    addError(`${location}.seo.pathname`, `must equal ${expectedPathname}`);
+  if (project.caseStudyUrl !== expectedPathname) {
+    addError(`${location}.caseStudyUrl`, `must equal ${expectedPathname}`);
   }
-
   const blocks = project.caseStudy?.blocks;
   const stages = project.caseStudy?.stages;
   if (
@@ -432,7 +455,7 @@ function validateSiteContent(): void {
     }
   });
 
-  const knownSectionIds = new Set(Object.values(sectionIds));
+  const knownSectionIds = new Set<string>(Object.values(sectionAnchors));
 
   siteContent.navigation.forEach((item, index) => {
     validateRequiredString(item.label, `site.navigation[${index}].label`);
@@ -448,18 +471,25 @@ function validateSiteContent(): void {
 
     const anchor = item.href.split("#")[1];
 
-    if (anchor && !knownSectionIds.has(anchor as (typeof sectionIds)[keyof typeof sectionIds])) {
+    if (anchor && !knownSectionIds.has(anchor)) {
       addError(`site.navigation[${index}].href`, `references unknown section anchor: #${anchor}`);
     }
   });
 }
 
 function validateRegistry(): void {
+  const ids = new Map<string, number>();
   const slugs = new Map<string, number>();
   const orders = new Map<number, number>();
 
   projects.forEach((project, index) => {
     validateProject(project, index);
+
+    if (ids.has(project.id)) {
+      addError(`projects[${index}].id`, `duplicates projects[${ids.get(project.id)}].id`);
+    } else {
+      ids.set(project.id, index);
+    }
 
     if (slugs.has(project.slug)) {
       addError(`projects[${index}].slug`, `duplicates projects[${slugs.get(project.slug)}].slug`);
@@ -496,6 +526,24 @@ function validateRegistry(): void {
   });
 }
 
+function validateSections(): void {
+  const identities = new Set<string>();
+  const anchors = new Set<string>();
+  SECTION_IDS.forEach((sectionId, index) => {
+    if (identities.has(sectionId)) {
+      addError(`sections[${index}]`, `duplicate section id: ${sectionId}`);
+    }
+    identities.add(sectionId);
+    const anchor = sectionAnchors[sectionId];
+    if (!validateRequiredString(anchor, `sections.${sectionId}.anchor`)) return;
+    if (anchors.has(anchor)) {
+      addError(`sections.${sectionId}.anchor`, `duplicate section anchor: ${anchor}`);
+    }
+    anchors.add(anchor);
+  });
+}
+
+validateSections();
 validateSiteContent();
 validateRegistry();
 

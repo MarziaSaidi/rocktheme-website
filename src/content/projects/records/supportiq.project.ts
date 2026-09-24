@@ -24,6 +24,7 @@ const caseImage = (file: string, label: string, width: number, height: number): 
 });
 
 export const supportIqProject = {
+  id: "supportiq",
   slug: "supportiq",
   title: "SupportIQ",
   order: 3,
@@ -35,12 +36,15 @@ export const supportIqProject = {
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,
+  caseStudyUrl: "/work/supportiq",
+  visualEmphasis: "standard",
+  scenePlacement: "far",
+  accentBehavior: "project",
   shortDescription: "Placeholder description for SupportIQ. Final project summary pending.",
   accentColor: "#715A92",
   seo: {
     title: "SupportIQ case study",
     description: "Placeholder SEO description for the SupportIQ case study.",
-    pathname: "/work/supportiq",
   },
   caseStudy: {
     blocks: [

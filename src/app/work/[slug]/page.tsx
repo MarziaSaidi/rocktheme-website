@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CaseStudyWorkspace } from "@/components/work/CaseStudyWorkspace";
+import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
 import { getCaseStudyStages, getProjectBySlug, getProjectStaticParams } from "@/content/projects";
-import { sectionIds, siteContent } from "@/content/site/siteContent";
+import { siteContent } from "@/content/site/siteContent";
 
 import styles from "./page.module.css";
 
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: CaseStudyPageProps): Promise<
   return {
     title: project.seo.title,
     description: project.seo.description,
-    alternates: { canonical: project.seo.pathname },
+    alternates: { canonical: project.caseStudyUrl },
   };
 }
 
@@ -46,10 +47,10 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
   }
 
   return (
-    <main id={sectionIds.main} className={styles.page} data-case-study-page="">
+    <main id={pageLandmarkIds.main} className={styles.page} data-case-study-page="">
       <CaseStudyWorkspace project={project} stages={getCaseStudyStages(project)} />
       <p className={styles.back}>
-        <Link className={styles.backLink} href={`/#${sectionIds.work}`}>
+        <Link className={styles.backLink} href={`/#${sectionAnchors["selected-work"]}`}>
           <span aria-hidden="true">← </span>
           {siteContent.work.displayHeading}
         </Link>

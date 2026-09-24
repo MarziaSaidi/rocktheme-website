@@ -1,7 +1,8 @@
 import { Fragment, type ReactNode } from "react";
 
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
-import { sectionIds, siteContent } from "@/content/site/siteContent";
+import { sectionAnchors } from "@/config/sections";
+import { siteContent } from "@/content/site/siteContent";
 import { SectionMotion } from "@/motion/SectionMotion";
 
 import styles from "./Statement.module.css";
@@ -43,11 +44,11 @@ export function Statement() {
   const [thesis, ...rest] = statement.paragraphs;
 
   return (
-    <section id={sectionIds.about} className={styles.section} aria-labelledby="about-title">
+    <section id={sectionAnchors.about} className={styles.section} aria-labelledby="about-title">
       {/* Solid text reveals independently of the ambient particle current. */}
-      <SectionMotion sectionId={sectionIds.about} />
+      <SectionMotion sectionId={sectionAnchors.about} />
 
-      <EnvironmentLayer variant="calm" horizon={80} />
+      <EnvironmentLayer sectionId="about" />
 
       <div className={styles.inner}>
         <p className={styles.eyebrow}>{statement.heading}</p>

@@ -1,5 +1,249 @@
 # Project progress
 
+## Milestone 2: scene and content data boundaries - 2026-09-23
+
+Status: complete. The rendered composition and content are intentionally unchanged. No visual redesign, asset optimization, lazy loading, or Milestone 3 work was performed.
+
+### Configuration structure created
+
+- `src/config/sections.ts` is the only homepage chapter registry. Its stable semantic IDs are `hero`, `selected-work`, `about`, and `footer`; it also owns their existing public anchors (`index`, `selected-work`, `about`, and `contact`) and the `top`/`main` document landmarks.
+- `src/config/responsive.ts` defines the desktop, tablet, and mobile scene breakpoints plus the resolver used by Three.js transforms. Normal document layout remains in CSS.
+- `src/webgl/sceneTypes.ts` defines scene, camera, water, fog, particle, horizon-light, rock-asset, rock-instance, material, visibility, and responsive-transform contracts.
+- `src/webgl/sceneConfig.ts` now owns the four section scene records, one typed rock asset registry, one typed rock instance registry, preserved camera/environment/water/fog/particle values, and responsive rock transforms.
+- `src/webgl/loaders/rockAssetLoader.ts` is the runtime GLB path boundary. `IntroRock` and the landscape rock renderer resolve paths through the registry.
+- Scene modules now receive or switch typed configuration. `SceneCanvas` publishes a stable section ID rather than translating fallback-layer names into a separate chapter list.
+- Project records now expose an explicit stable `id`, canonical `caseStudyUrl`, `visualEmphasis`, `scenePlacement`, and `accentBehavior` alongside their existing title, role, category, year, homepage media/alt text, status, and accent color. `ProjectPlane` renders these records generically; `SelectedWork` no longer owns a depth cycle.
+
+### Files changed in this milestone
+
+- Shared identities and responsiveness: `src/config/sections.ts`, `src/config/responsive.ts`.
+- Scene contracts/configuration: `src/webgl/sceneTypes.ts`, `src/webgl/sceneConfig.ts`, `src/webgl/loaders/rockAssetLoader.ts`.
+- Scene consumers: `src/webgl/SceneCanvas.tsx`, `src/webgl/core/environment.ts`, and `src/webgl/modules/{rocks,horizonAtmosphere,horizonLights,particleField,pointerInfluence,reflectiveFloor}.ts`.
+- Document/scroll adapters: `src/app/{layout,page}.tsx`, `src/app/work/[slug]/page.tsx`, `src/components/environment/EnvironmentLayer.tsx`, `src/components/layout/{SiteFooter,SkipLink}.tsx`, `src/components/sections/{Hero,SelectedWork,Statement}.tsx`, `src/components/work/ProjectPlane.tsx`, `src/motion/CorridorPin.tsx`, and the existing untracked `src/components/entry/IntroRock.tsx`.
+- Content: `src/content/site/siteContent.ts`, `src/content/projects/{index,project.types,projectLoader}.ts`, and all eight project record files.
+- Validation: `scripts/validate-content.ts` and `scripts/check-scene.ts`.
+- Evidence/documentation: this file and `docs/baselines/milestone-2/`.
+
+The working tree already contained unrelated entry-gate, sound, token, global-style, rock-preparation, audio, image, reference, and Milestone 1 documentation changes. They were preserved. Where this milestone touched `layout.tsx` or `IntroRock.tsx`, the adaptation was limited to shared identity/asset-registry imports.
+
+### Validation added
+
+- Duplicate section identities and duplicate public anchors.
+- A missing or duplicate project ID, duplicate project slug/order, missing homepage image source, missing canonical case-study URL, invalid project presentation preset, and route/URL disagreement.
+- Duplicate rock asset IDs and rock instance IDs.
+- Unknown rock asset references, unknown section references, section/asset allow-list disagreement, and section scene records referencing unknown or foreign rock instances.
+- Missing registered public GLB assets and the existing size ceiling.
+- Invalid desktop/tablet/mobile rock transforms: non-finite positions or rotations and non-positive scales.
+- Scene registry coverage for all four known sections, mismatched section keys, and shader-supported horizon-light/plume limits.
+- Existing pointer, particle, water, horizon-alignment, reduced-motion, and quality-tier checks remain active.
+
+All validation errors identify the offending section, project, asset, instance, viewport, or field.
+
+### Hardcoding removed
+
+- Runtime GLB paths no longer appear in scene components or loaders; they occur only in the typed asset registry.
+- The `hero`/`corridor`/`calm`/`closing` fallback-variant translation in `SceneCanvas` was removed. DOM fallback layers now publish the stable section ID directly.
+- Navigation, section DOM IDs, case-study back links, corridor lookup, footer/back-to-top links, and scene selection now derive from one section registry.
+- `SelectedWork` no longer cycles a component-owned depth array. Each project record chooses a named scene-placement preset.
+- The canonical case-study URL now lives once on the project record and is reused by homepage links and canonical metadata.
+
+### Hardcoding intentionally retained
+
+- `scripts/prepare-rocks.mjs` retains source and output GLB filenames because it is an offline conversion tool that must run before application TypeScript is available. It is the only non-runtime duplicate path inventory.
+- GLSL array capacities remain fixed at four horizon lights, four concurrent water ripples, and eight atmosphere plumes because WebGL 1 shader loops require compile-time bounds. Scene validation rejects configuration beyond those capacities.
+- CSS media queries remain in CSS modules for document layout. The JavaScript responsive registry is used only by the pinned corridor and Three.js transforms.
+- Case-study block/stage IDs and `hero` block types remain content-schema identities, not homepage section identities.
+- The explicit project-registry imports remain the discoverable source list; there are no project-ID condition branches in homepage or WebGL renderers.
+- Continuous values for pointer, scroll, particles, and water remain outside React state.
+
+### Verification results
+
+- `npm run typecheck`: passed.
+- `npm run validate:content`: passed for 8 projects, 17 authored stages, 44 legacy blocks, and 6 placeholder records.
+- `npm run validate:scene`: passed all section, asset, instance, transform, pointer, particle, water, horizon, reduced-motion, and quality checks.
+- `npm run lint`: passed after removing one unused-import warning.
+- Browser console at `http://localhost:3000/`: no warnings or errors.
+- Route verification: `/` and all eight case-study URLs returned HTTP 200 (`qalin`, `relay`, `supportiq`, `get-campus`, `new-start-mobile`, `quill-and-pigeon`, `wildwood`, and `survue`).
+- Repository search found no project-slug/title condition branch in homepage, motion, or WebGL components.
+- Repository search found no runtime GLB path outside `src/webgl/sceneConfig.ts`; only the offline preparation script retains filename mappings.
+
+- `npm run validate`: passed end to end, including formatting, lint, content validation, scene validation, type checking, and the production build. The first sandboxed build attempt could not reach the existing Google font host; rerunning with network permission compiled and statically generated all 12 pages.
+
+### Post-refactor baseline comparison
+
+Capture environment: `http://localhost:3000/`, Codex in-app browser, 2026-09-23. The desktop capture session reported DPR 1; the Milestone 1 1440 × 900 baseline reported DPR 2. CSS viewport dimensions match.
+
+| Post-refactor file                                      | Compared with                                             | Result                                                                                                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `docs/baselines/milestone-2/1440x900-hero.jpg`          | `docs/baselines/current/1440x900-hero-settled.jpg`        | Composition, type, horizon, waterline, and rock placement match. Normalized RMSE `0.0228118`; remaining pixel change is ambient animation. |
+| `docs/baselines/milestone-2/1440x900-selected-work.jpg` | `docs/baselines/current/1440x900-selected-work-start.jpg` | Section top `71px`, title top `337.9375px`, and corridor progress `0.00000` exactly match. Normalized RMSE `0.0248659`.                    |
+| `docs/baselines/milestone-2/390x844-hero.jpg`           | `docs/baselines/current/390x844-mobile-hero.jpg`          | Composition and placement match; viewport and document widths remain `390px`. Normalized RMSE `0.0233224`.                                 |
+
+There is no intentional visual difference. Exact particle-level equality is neither expected nor used as the acceptance criterion because the WebGL field is animated.
+
+### Known risks for Milestone 3
+
+- The scene still starts all three landscape GLB requests together. The registry records loading groups but this milestone deliberately does not implement deferred loading.
+- Geometry and textures retain their current multi-megabyte sizes. No GLB was optimized, compressed, replaced, or duplicated.
+- The current section configs share the same water, fog, horizon, particle, lighting, and camera objects to preserve appearance. Later visual work can replace a section's owned record without changing scene components.
+- The rock loader is registry-driven but each current instance owns a distinct asset. If a later composition instantiates the same GLB multiple times, add shared geometry/texture lifetime management before cloning it broadly.
+- Atmosphere and horizon modules keep fixed shader capacities. Increasing those limits would be a shader/render-budget decision, not a data-only edit.
+- The visual issues recorded in the original audit, including header clipping, low Selected Work heading position, sparse About narrative, and composition gaps, remain intentionally unfixed.
+
+## Living Digital Landscape audit — 2026-09-23
+
+Status: approved reference paths resolved and current local visual baselines captured; visual implementation not started.
+
+### Audit scope and evidence
+
+- Inspected the deployed homepage at `https://www.marziasaidi.com/` at 1440 × 900 and 390 × 844.
+- Compared the live Hero against `docs/references/homepage-hero-natural-flow-v3.png`.
+- Compared Selected Work and Footer against `docs/references/projects-body-cinematic-with-cliff-v3.png` and `docs/references/footer-cinematic-with-end-rock-v3.png`.
+- Reviewed the homepage React, CSS, typed project content, motion, sound, Three.js scene, shaders, quality manager, rock assets, and fallbacks.
+- Applied the current Vercel Web Interface Guidelines to the relevant UI implementation.
+
+### Approved references — resolved 2026-09-23
+
+- `docs/references/homepage-hero-natural-flow-v3.png` — opened successfully; 1586 × 992; SHA-256 `b4e34d3c2335b9f41ef6b3952ab4f2d6bbfb2d24bff09e70a662c92e0b6ad068`.
+- `docs/references/projects-body-cinematic-with-cliff-v3.png` — opened successfully; 1586 × 992; SHA-256 `d43711facce7fc8fc7abb8278a0c41b8fbf3d1aff44968461a62ecb0fb787951`.
+- `docs/references/footer-cinematic-with-end-rock-v3.png` — opened successfully; 1586 × 992; SHA-256 `532e708cb9535f732621275a1641b3cb798f4d989c72a4013a56d5a9dd8c5f24`.
+- All three files are byte-for-byte copies of the supplied images; no crop, resize, recolor, regeneration, or recompression was performed.
+
+### Current local visual baselines — 2026-09-23
+
+Capture environment:
+
+- Command: `npm run dev`, as documented in `README.md`.
+- Local URL: `http://localhost:3000/`.
+- Browser: Codex in-app browser with explicit CSS viewport overrides.
+- The initial entry gate was completed with “Enter without sound.” Hero captures were taken 3 seconds later so the entrance sequence and rock load could settle.
+- No browser console warnings or errors were reported during the capture run.
+- Screenshot output from the browser is JPEG, so files use the `.jpg` extension. Dimensions below are the decoded image dimensions.
+
+| Baseline file                                                | Viewport   | Reported DPR | Section/state                                                                                  |
+| ------------------------------------------------------------ | ---------- | ------------ | ---------------------------------------------------------------------------------------------- |
+| `docs/baselines/current/1440x900-hero-settled.jpg`           | 1440 × 900 | 2            | Hero after entry and entrance animation settled                                                |
+| `docs/baselines/current/1440x900-selected-work-start.jpg`    | 1440 × 900 | 2            | Selected Work anchor/start; corridor progress `0.00000`; section top 71px; title top 338px     |
+| `docs/baselines/current/1440x900-selected-work-advanced.jpg` | 1440 × 900 | 2            | Selected Work advanced; Survue active; corridor progress `0.69522`                             |
+| `docs/baselines/current/1440x900-about.jpg`                  | 1440 × 900 | 2            | About anchor; section top 87px                                                                 |
+| `docs/baselines/current/1440x900-footer.jpg`                 | 1440 × 900 | 2            | Footer composition; footer top 119px                                                           |
+| `docs/baselines/current/1280x800-hero-settled.jpg`           | 1280 × 800 | 1            | Hero after entrance animation settled                                                          |
+| `docs/baselines/current/1280x800-selected-work-start.jpg`    | 1280 × 800 | 1            | Selected Work anchor/start; corridor progress `0.00000`; section top 69px; title top 299px     |
+| `docs/baselines/current/1280x800-selected-work-advanced.jpg` | 1280 × 800 | 1            | Selected Work advanced; Survue active; corridor progress `0.58308`                             |
+| `docs/baselines/current/1280x800-about.jpg`                  | 1280 × 800 | 1            | About anchor; section top 68px                                                                 |
+| `docs/baselines/current/1280x800-footer.jpg`                 | 1280 × 800 | 1            | Footer composition; footer top 77px                                                            |
+| `docs/baselines/current/390x844-mobile-hero.jpg`             | 390 × 844  | 1            | Mobile Hero after entrance animation settled; document width equals viewport width             |
+| `docs/baselines/current/390x844-mobile-selected-work.jpg`    | 390 × 844  | 1            | Mobile Selected Work start; section top 56px; title top 173px; no horizontal document overflow |
+
+Capture observations:
+
+- The first sandboxed attempt to bind the documented development server to port 3000 was denied by the execution environment; the same command started normally after localhost permission was granted. This was not an application failure.
+- The documented development command displays the Next.js development indicator in the bottom-left of every baseline. It is a capture-environment artifact, not production UI.
+- The custom cursor and the anchor's focus indication are visible in some captures because the screenshots preserve the real interaction state.
+- A single page-sized scroll from Selected Work overshot the entire pinned corridor. The rejected intermediate capture was overwritten; final advanced states were produced with incremental keyboard scrolling and verified from `--corridor-progress` plus the active item state.
+- At both desktop sizes, the Selected Work anchor aligns the section below the fixed header, but the visible heading remains much lower in the viewport because the pinned composition vertically centers its contents.
+- At Selected Work start and some About captures, parts of the fixed header text are clipped or occluded. At 390 × 844 Selected Work, `AVAILABLE 2026` collapses visually into `AVAILABLE26`.
+- About's secondary paragraph is visible at 1440 × 900 but falls outside the 1280 × 800 capture frame at the recorded anchor position.
+- All requested scene assets became visible during the settle window; no missing rock, canvas, or project-image load was observed.
+
+### Navigation verification — 2026-09-23
+
+Tested on the local site from the top of the page and from the Selected Work/About region:
+
+- `INDEX` updates the URL to `#index` and reaches the Hero at `scrollY: 0` when invoked from the middle of the page.
+- `WORK` updates the URL to `#selected-work` and places the section approximately 69–71px below the viewport top when invoked from another section.
+- `ABOUT` updates the URL to `#about` and places the section approximately 68–87px below the viewport top when invoked from the top or middle.
+- Mobile `WORK` reaches Selected Work with the section 56px below the viewport top.
+- No link is broken and all three targets exist.
+
+Problems recorded for later work:
+
+- Returning from About to Hero uses the global smooth scroll. It was still at `scrollY: 284.5` after 0.8 seconds and reached `scrollY: 0` only after the additional settle wait. The link works, but the return feels prolonged.
+- If the current URL already contains a section hash and the visitor has manually scrolled away from that target—for example, `#selected-work` while positioned past the corridor—clicking the same navigation link does not restore the section start. The browser treats the unchanged fragment as a no-op.
+- The Work anchor is technically aligned below the header, but its actual heading appears at 299–338px from the viewport top. This is a composition/starting-position issue rather than a missing target.
+
+### Current strengths
+
+- The deployed site preserves the intended palette, condensed display voice, reflective floor, purple horizon, yellow-green particles, sound toggle, URLs, navigation, and case-study routes.
+- The homepage is semantic: one `h1`, section `h2`s, real links/buttons, a skip link, visible global focus styles, image dimensions/alt text, and a decorative canvas hidden from assistive technology.
+- WebGL is dynamically imported, has capability/context-loss fallbacks, adapts DPR/particle/reflection quality, and stops while hidden or when no scene chapter is visible.
+- Reduced motion removes the pinned corridor, stops the WebGL loop after a static frame, disables cursor easing and depth motion, and keeps project links visible.
+- Projects are strongly data-driven. The registry/loader controls order, enablement, featured status, routes, metadata, and images; `SelectedWork` has no slug branch and cycles generic depth tiers.
+- Sound remains opt-in and independently controlled.
+
+### Known visual problems
+
+#### Hero
+
+- At 1440 × 900 the headline is materially smaller and less dominant than the approved reference. It behaves like a large heading placed in the scene rather than a landscape mass.
+- The live settled view shows one low right-side rock and no balancing left foreground group. The target uses multiple distinct silhouettes to frame the water and create depth.
+- The rock is pale/soft in places and lacks the black-violet wet edge definition of the reference.
+- The particle current is narrow, which is correct, but visually fragmented and faint. Its path does not clearly enter, bend around the typography/terrain, and exit as one coherent stream.
+- Horizon fog reads as repeated vertical purple plumes. It needs a lower, lateral atmospheric band with fewer brighter source points.
+- Water is present and calm, but reflections are visually disconnected from typography and particles and do not fully ground the scene.
+
+#### Selected Work
+
+- The desktop anchor lands on a large empty upper band; “SELECTED WORK” arrives too low and too small compared with the approved composition.
+- Project images read as a conventional horizontal row over the background. Terrain, occlusion, water contact, reflection, and depth do not yet integrate them into the landscape.
+- Only Quill & Pigeon and Survue are currently featured. The two-project state must be composed intentionally without fabricating the additional projects shown in the reference.
+- Survue still uses a marked homepage placeholder, reducing readability and confidence in the sequence.
+- Mobile is functionally clear and linear, but it loses most of the approved cinematic depth and terrain relationship.
+
+#### About
+
+- The current narrative is only two short sentences. It does not yet explain how design judgment, code, AI, experimentation, and shipping connect.
+- The section reads as empty atmosphere around a generic statement rather than a deliberate calm chapter.
+- At 390 × 844, About and the Footer headline appear in the same viewport, so About has almost no independent pacing.
+
+#### Footer
+
+- The desktop structure is directionally close, but the headline is smaller than the reference and the particle current does not form the approved broad final arc.
+- The conversation plane and rock appear placed above the background rather than physically integrated through occlusion and reflection.
+- The single end rock is not enough to establish the reference's strong terminal silhouette and water contact.
+- On mobile the Footer is readable but compressed; the persistent header and lower content compete for width and the end rock is heavily cropped.
+
+### Responsive, accessibility, and interaction problems
+
+- At 390px the fixed header clips/merges the wordmark, sound state, and availability text. `SiteHeader.module.css` keeps both status items on one unbounded row.
+- Mobile display headings lose too much authority because the shared minimum display size is small relative to the approved direction.
+- Continuous ambient WebGL motion runs for more than five seconds with no visual pause/static control. Reduced-motion support is good, but it is not a user-visible pause mechanism.
+- The pinned corridor removes the generic scroll-container tab stop and correctly reveals focused project links, but its keyboard behavior still needs a full browser/screen-reader regression pass with the fixed header.
+- The entry gate in the current working tree is not yet represented by the deployed capture. It must be validated separately for initial focus, focus containment, Escape/back behavior, scroll locking, and reduced motion before release.
+- The source disables the custom cursor on coarse pointers, but that behavior still needs real-device verification rather than narrow desktop emulation.
+
+### Performance risks
+
+- `createRocks` begins loading the Hero, Work, and Footer GLBs together. Those files are approximately 7.5 MiB, 7.7 MiB, and 7.0 MiB respectively before the visitor reaches later chapters.
+- The current working tree adds a separate approximately 6.8 MiB intro rock and approximately 3.7 MiB audio track. The sound asset is deferred by `preload="none"`; the intro rock is not.
+- High quality performs a planar reflection pass at 512px plus the main pass and can allocate up to 4,100 particles. The downgrade manager is a good foundation, but release budgets have not been recorded against representative hardware.
+- Quality only steps down, which avoids oscillation, but composition must remain intentional at low tier where planar reflection is disabled.
+
+### Maintainability assessment
+
+- Project content is in good shape: typed records, one registry, generic loaders, reusable plane rendering, validation, and no project-specific homepage layout.
+- Scene data is centralized, but rock configuration assumes exactly one asset/placement per chapter. Meeting the approved 2–3 distinct-group composition requires a typed placement array and asset lifecycle work, not duplicated component markup.
+- Color values are mirrored between CSS tokens and TypeScript scene configuration. This is documented but remains a drift risk and should be covered by validation.
+- About/contact copy is centralized in `siteContent.ts`, which is the correct place for an approved narrative revision.
+
+### Files involved in the next implementation pass
+
+See `docs/implementation-plan.md` for the complete expected file surface. Primary hotspots are:
+
+- Composition: `src/components/sections/*.tsx`, their CSS modules, `src/components/layout/SiteHeader.module.css`, `src/components/layout/SiteFooter.*`, and `src/components/work/ProjectPlane.*`.
+- Scene: `src/webgl/sceneConfig.ts`, `src/webgl/core/{environment,quality}.ts`, and `src/webgl/modules/{rocks,reflectiveFloor,horizonAtmosphere,horizonLights,particleField,pointerInfluence}.ts`.
+- Interaction: `src/motion/{CorridorPin,CustomCursor}.tsx`, `src/motion/{motion,cursor}.css`, and `src/webgl/SceneCanvas.tsx`.
+- Content/data: `src/content/site/siteContent.ts`, project records/registry/loader only when approved content or featured status changes, and the existing validators.
+- Assets: `public/assets/rocks/*.glb`, with new distinct optimized assets likely required.
+
+### Next action
+
+Reference-path resolution and the requested local visual baselines are complete. Stop here; do not begin visual tuning or the next milestone.
+
+---
+
+The entries below are the pre-audit implementation history.
+
 ## Survue case study content — 2026-09-22
 
 - Authored Survue directly in the reusable five-stage case-study model: Context, Structure, Wireframes, Detection, and Final.
@@ -47,14 +291,14 @@ Status: complete
 - Added typed static project content scaffolding without fabricated projects.
 - Added responsive, visible-focus, semantic HTML, and reduced-motion foundations.
 - Saved the authoritative creative direction verbatim.
-- Copied the three approved reference images into `design/references`.
+- Copied the three approved reference images into `docs/references` (canonical path updated on 2026-09-23).
 - Documented architecture, content editing, risks, stages, and dependency policy.
 
 ### Approved references
 
-- `design/references/homepage-hero-direction.png`
-- `design/references/projects-body-cinematic.png`
-- `design/references/footer-cinematic.png`
+- `docs/references/homepage-hero-natural-flow-v3.png`
+- `docs/references/projects-body-cinematic-with-cliff-v3.png`
+- `docs/references/footer-cinematic-with-end-rock-v3.png`
 
 ### Explicitly deferred
 
@@ -933,3 +1177,51 @@ Production build, headless Chromium on ANGLE/Metal:
 ### Evidence
 
 `design/screenshots/stage-10/` holds 20 captures: hero, selected work, statement, footer and a full case study at each of 1440x900, 1280x800, 768x1024 and 390x844.
+
+## Water and horizon rebuild
+
+Date: 2026-09-24
+
+Scope: water surface, horizon atmosphere, reflections, environmental lighting, rock-to-water contact. Layout, typography, content, camera, project UI, the particle system and rock placement were not touched.
+
+### What was actually wrong
+
+The scene was not shading a surface. It was painting one in screen space, and every complaint followed from that.
+
+- **Horizontal lines.** `pow(sin(flowingY * 1.3), 10.0)`, where `flowingY` was `gl_FragCoord.y` in CSS pixels. A period of roughly 4.8 px raised to the tenth power: a few hundred hard lines, perfectly horizontal because screen space cannot produce anything else. `travel = uTime * …` scrolled them, which is what made the motion read as a texture rather than as water.
+- **Vertical purple columns.** Each beacon drew `exp(-pow(dx / width, 2.0))` — a Gaussian in screen **x** of near-constant width — multiplied by those same horizontal stripes. A painted strip chopped into dashes, with no connection to any surface.
+- **Fog pillars.** Eight separate quads, each drawing a vertical cone at a fixed x from 0.08 to 0.89.
+- **Rocks pasted on.** The floor gated its reflection with `smoothstep(3.0, 24.0, vDepth)`, which is ~0 at a rock's contact point, so the foreground had no reflection at all. Rock materials had no waterline treatment.
+
+There were no surface normals anywhere in the module.
+
+### The change
+
+One structural decision resolves the stripes, the columns and the rock contact together: **reconstruct a world-space normal per fragment, and drive every reflective term from that same normal.**
+
+- **Surface.** Four broad swells on non-parallel headings at mutually non-harmonic wavelengths, plus three high-frequency layers riding a slowly warped domain. Slopes come from analytic derivatives, so the normal costs no extra samples and needs no geometry. Micro detail fades out by ~62 world units and the broad swell relaxes more slowly, which produces the near/middle/far gradient and also prevents sub-pixel aliasing in the distance.
+- **Reflections.** The planar lookup is displaced by that normal, weighted by Schlick Fresnel instead of gated on depth. The foreground keeps a real reflection, which is what now anchors the rock.
+- **Beacons.** Each source is mirrored through the water plane and tested against the reflected view vector — a genuine specular lobe on a moving surface. The path widens, fragments and reconnects as ripples cross it because the ripples really are crossing it. The lobe broadens with distance, since there is no detail left out there to break a tight one. Sources carry world positions now, not projected screen coordinates.
+- **Pointer ripples** tilt the normal instead of drawing a bright ring.
+- **Mist.** One continuous volume replaces the eight plumes: independent coverage, lift and interior noise fields, exponential falloff pinning density to the water, lit locally by the same beacons. Its base is pinned to the waterline rather than the fog base, and the water blends to the mist colour before any alpha falls away — matching colour first is what removed the hard boundary. The screen-space waterline pass is gone.
+- **Beacons reduced to three**, asymmetric in position, depth, elevation, spread and brightness. Luminosity drift slowed to well under a cycle per ten seconds.
+- **Rocks** darken and turn glossy below a 1.4-unit waterline via an `onBeforeCompile` injection. Ambient was lowered to 1.05: the water runs its own shader and never sees the scene lights, so the earlier bump only washed out the stone.
+
+### Verification
+
+- **Not a scrolling texture.** Two frames 4.8 s apart, pointer stationary: mean absolute difference 10.1/255, and **no vertical shift improves the match** — offset 0 is the error minimum and every offset from -12 to +12 px is worse. A scrolling surface would show a sharp minimum at a nonzero offset.
+- **Reflections fragment.** Three frames 3.2 s apart show the central light path widening, breaking into separate highlights and reconnecting, without translating.
+- Anti-pattern sweep on the 1440x900 frame: no repeating stripes, no even wave bands, no vertical columns, no evenly spaced lights or fog, no hard water-to-horizon boundary, rock no longer cut out against the surface.
+- `prefers-reduced-motion` freezes time and reduces swell and ripple to 0.55; the still composition stays complete.
+- `npm run validate` passed end to end: format, lint, content, 112 scene assertions, typecheck, production build.
+
+### Remaining visual differences from the reference
+
+1. **One rock, not two.** The reference frames both edges; this scene has a single footer rock. Rock count and placement were explicitly out of scope.
+2. **Particle spray is thinner** than the reference's. The particle system was out of scope.
+3. **Mist is still slightly subtler** than the reference band. It bridges the horizon correctly but carries less luminosity across the full width.
+4. Figures above are headless Chromium on Apple silicon, consistent with every earlier stage.
+
+### Evidence
+
+`docs/baselines/water-rebuild/` holds `footer-1440x900.png`, `hero-1440x900.png` and `water-motion-1440x900.mp4` (7.5 s, pointer stationary throughout).

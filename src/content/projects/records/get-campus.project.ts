@@ -24,6 +24,7 @@ const caseImage = (file: string, label: string, width: number, height: number): 
 });
 
 export const getCampusProject = {
+  id: "get-campus",
   slug: "get-campus",
   title: "Get Campus",
   order: 4,
@@ -35,12 +36,15 @@ export const getCampusProject = {
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,
+  caseStudyUrl: "/work/get-campus",
+  visualEmphasis: "standard",
+  scenePlacement: "near",
+  accentBehavior: "project",
   shortDescription: "Placeholder description for Get Campus. Final project summary pending.",
   accentColor: "#E6B84A",
   seo: {
     title: "Get Campus case study",
     description: "Placeholder SEO description for the Get Campus case study.",
-    pathname: "/work/get-campus",
   },
   caseStudy: {
     blocks: [

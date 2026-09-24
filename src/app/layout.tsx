@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Anton, Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SkipLink } from "@/components/layout/SkipLink";
-import { sectionIds } from "@/content/site/siteContent";
+import { SiteEntry } from "@/components/entry/SiteEntry";
+import { pageLandmarkIds } from "@/config/sections";
 import { CustomCursor } from "@/motion/CustomCursor";
 import { SoundProvider } from "@/sound/SoundProvider";
 
@@ -43,13 +44,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${displayCondensed.variable}`}
     >
-      <body id={sectionIds.top}>
-        <SkipLink />
-        <CustomCursor />
+      <body id={pageLandmarkIds.top}>
         {/* Owns the audio context. Nothing else may create one. */}
         <SoundProvider />
-        <SiteHeader />
-        {children}
+        <CustomCursor />
+        <SiteEntry>
+          <SkipLink />
+          <SiteHeader />
+          {children}
+        </SiteEntry>
       </body>
     </html>
   );

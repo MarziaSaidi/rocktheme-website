@@ -21,10 +21,8 @@ import {
  *
  * 1. Nothing is audible until the visitor switches sound on. The engine is not
  *    created before that, and the context starts silent regardless.
- * 2. The choice is remembered for the session. On a later page load the
- *    control is restored to "on", but a page load is not a user gesture, so if
- *    the browser refuses to resume the engine waits for the visitor's next
- *    interaction and resumes then. Silence in between.
+ * 2. The choice is remembered for the session. A sound-on reload returns to
+ *    the entry choice so a fresh user gesture can reliably restart playback.
  * 3. A hidden tab suspends the context.
  * 4. Unmounting disposes every node, listener and the context itself.
  *
@@ -41,6 +39,7 @@ export function SoundProvider() {
     let pending = false;
     let disarm: (() => void) | null = null;
     let disposed = false;
+    let awaitingReentry = readStoredPreference();
 
     const armForGesture = () => {
       if (disarm || disposed) {
@@ -63,7 +62,7 @@ export function SoundProvider() {
     };
 
     async function sync(): Promise<void> {
-      if (disposed || pending) {
+      if (disposed || pending || awaitingReentry) {
         return;
       }
 
@@ -83,7 +82,7 @@ export function SoundProvider() {
         const started = await created.start();
         inFlight = null;
 
-        if (disposed) {
+        if (disposed || !getSoundState().enabled) {
           pending = false;
           await created.destroy();
           return;
@@ -132,6 +131,11 @@ export function SoundProvider() {
 
     const unsubscribe = subscribeSoundState(() => void sync());
     document.addEventListener("visibilitychange", handleVisibility);
+    const handleEntry = () => {
+      awaitingReentry = false;
+      void sync();
+    };
+    window.addEventListener("marzia-saidi:sound-entry", handleEntry);
 
     // Restore the remembered choice, then run the same path a press would.
     if (readStoredPreference()) {
@@ -145,6 +149,7 @@ export function SoundProvider() {
       disarm?.();
       unsubscribe();
       document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("marzia-saidi:sound-entry", handleEntry);
       void engine?.destroy();
       void inFlight?.destroy();
       engine = null;

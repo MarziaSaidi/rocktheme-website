@@ -61,6 +61,7 @@ const contextVideo: VideoMedia = {
 };
 
 export const quillAndPigeonProject = {
+  id: "quill-and-pigeon",
   slug: "quill-and-pigeon",
   title: "Quill & Pigeon",
   order: 6,
@@ -72,6 +73,10 @@ export const quillAndPigeonProject = {
   contentStatus: "draft",
   placeholderFields: [],
   homepageImage: media.recipients,
+  caseStudyUrl: "/work/quill-and-pigeon",
+  visualEmphasis: "standard",
+  scenePlacement: "near",
+  accentBehavior: "project",
   shortDescription:
     "A bulk contact import for a recipient and reminder product, with editable review, field-level validation, and clear confirmation.",
   accentColor: "#a8c947",
@@ -79,7 +84,6 @@ export const quillAndPigeonProject = {
     title: "Quill & Pigeon bulk contact import",
     description:
       "A design engineering case study about Quill & Pigeon's spreadsheet-based contact import, review, validation, and completion flow.",
-    pathname: "/work/quill-and-pigeon",
   },
   caseStudy: {
     info: {

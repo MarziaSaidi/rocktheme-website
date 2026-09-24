@@ -9,7 +9,13 @@ export {
 } from "./projectLoader";
 export { projectRegistry } from "./projectRegistry";
 export { getCaseStudyStages } from "./caseStudyAdapter";
-export { BLOCK_LAYOUT, PROJECT_BLOCK_TYPES } from "./project.types";
+export {
+  BLOCK_LAYOUT,
+  PROJECT_ACCENT_BEHAVIORS,
+  PROJECT_BLOCK_TYPES,
+  PROJECT_SCENE_PLACEMENTS,
+  PROJECT_VISUAL_EMPHASIS,
+} from "./project.types";
 export type {
   BlockColumns,
   BlockMediaPosition,
@@ -23,6 +29,9 @@ export type {
   Project,
   ProjectBlockType,
   ProjectMedia,
+  ProjectAccentBehavior,
+  ProjectScenePlacement,
+  ProjectVisualEmphasis,
   StoryVisual,
   VideoMedia,
 } from "./project.types";

@@ -32,6 +32,7 @@ const interactionVideo: VideoMedia = {
 };
 
 export const wildwoodProject = {
+  id: "wildwood",
   slug: "wildwood",
   title: "Wildwood",
   order: 7,
@@ -43,12 +44,15 @@ export const wildwoodProject = {
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,
+  caseStudyUrl: "/work/wildwood",
+  visualEmphasis: "standard",
+  scenePlacement: "far",
+  accentBehavior: "project",
   shortDescription: "Placeholder description for Wildwood. Final project summary pending.",
   accentColor: "#715A92",
   seo: {
     title: "Wildwood case study",
     description: "Placeholder SEO description for the Wildwood case study.",
-    pathname: "/work/wildwood",
   },
   caseStudy: {
     blocks: [

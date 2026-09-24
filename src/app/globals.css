@@ -38,6 +38,10 @@ body:has([data-case-study-page]) {
   background: #000;
 }
 
+body:has([data-site-entry]) {
+  overflow: hidden;
+}
+
 ::selection {
   color: var(--color-background);
   background: var(--color-accent);

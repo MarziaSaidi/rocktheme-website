@@ -1,10 +1,11 @@
 import {
-  ATMOSPHERE,
+  BACKGROUND_TRACK,
   CUES,
   FADE_SECONDS,
   LAYER_GAIN,
   LIGHT_SCALE,
   MASTER_GAIN,
+  MUSIC_GAIN,
   VOICE_LIMITS,
   type SoundLayer,
 } from "./soundConfig";
@@ -13,16 +14,16 @@ import { subscribeSoundEvents, type SoundEvent, type SoundEventDetail } from "./
 /**
  * Procedural sound engine.
  *
- * Owns the AudioContext, the bus graph, the environmental bed, and every
- * scheduled voice. It is the only place in the codebase that touches Web Audio.
+ * Owns the AudioContext, the bus graph, the looping music, and every scheduled
+ * voice. It is the only place in the codebase that touches Web Audio.
  *
- * Nothing is loaded. Every cue is synthesised from oscillators and a shared
- * noise buffer, so there is no payload, no autoplay-blocked media element, and
- * no sample to fall out of sync with the scene.
+ * Interaction cues are synthesised from oscillators and a shared noise buffer.
+ * The music is an HTML media element routed through the same master gain so
+ * enabling, muting, and tab visibility affect the whole mix together.
  *
  * The graph:
  *
- *   voices → layer gain ×6 → master gain → limiter → destination
+ *   music + voices → master gain → limiter → destination
  *
  * A limiter sits on the output so no combination of cues can spike, and every
  * voice disconnects itself when it finishes.
@@ -103,62 +104,14 @@ export function createSoundEngine(): SoundEngine | null {
     layers[layer] = node;
   });
 
-  // ------------------------------------------------------- environmental bed
-  const atmosphere: { nodes: AudioNode[]; stop: () => void } = { nodes: [], stop: () => {} };
-
-  const buildAtmosphere = () => {
-    const started: Array<OscillatorNode | AudioBufferSourceNode> = [];
-
-    ATMOSPHERE.drones.forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      oscillator.type = index === 0 ? "sine" : "triangle";
-      oscillator.frequency.value = frequency;
-
-      // A very slow detune so the pair never sits perfectly still. This is
-      // texture, not a melody, and it never resolves or repeats a phrase.
-      const drift = context.createOscillator();
-      drift.type = "sine";
-      drift.frequency.value = 1 / ATMOSPHERE.breathSeconds;
-      const driftAmount = context.createGain();
-      driftAmount.gain.value = ATMOSPHERE.detuneCents * (index === 0 ? 1 : -1);
-      drift.connect(driftAmount).connect(oscillator.detune);
-
-      const gain = context.createGain();
-      gain.gain.value = index === 0 ? 0.6 : 0.34;
-      oscillator.connect(gain).connect(layers.atmosphere);
-
-      oscillator.start();
-      drift.start();
-      started.push(oscillator, drift);
-      atmosphere.nodes.push(oscillator, drift, driftAmount, gain);
-    });
-
-    const air = context.createBufferSource();
-    air.buffer = noiseBuffer;
-    air.loop = true;
-    const airFilter = context.createBiquadFilter();
-    airFilter.type = "lowpass";
-    airFilter.frequency.value = ATMOSPHERE.airCutoffHz;
-    const airGain = context.createGain();
-    airGain.gain.value = ATMOSPHERE.airGain;
-    air.connect(airFilter).connect(airGain).connect(layers.atmosphere);
-    air.start();
-    started.push(air);
-    atmosphere.nodes.push(air, airFilter, airGain);
-
-    atmosphere.stop = () => {
-      started.forEach((node) => {
-        try {
-          node.stop();
-        } catch {
-          // Already stopped.
-        }
-      });
-      atmosphere.nodes.forEach((node) => node.disconnect());
-      atmosphere.nodes.length = 0;
-      atmosphere.stop = () => {};
-    };
-  };
+  // ------------------------------------------------------- background music
+  const music = new Audio(BACKGROUND_TRACK);
+  music.loop = true;
+  music.preload = "none";
+  const musicSource = context.createMediaElementSource(music);
+  const musicGain = context.createGain();
+  musicGain.gain.value = MUSIC_GAIN;
+  musicSource.connect(musicGain).connect(master);
 
   // ------------------------------------------------------------ voice pool
   const voices = new Set<Voice>();
@@ -366,16 +319,33 @@ export function createSoundEngine(): SoundEngine | null {
        * rather than rejecting, so it is raced against a short timeout. An
        * unbounded await here would stall the caller permanently.
        */
+      // Both calls begin in the visitor's click handler. Browsers require a
+      // gesture for media playback as well as for the AudioContext.
+      const playback = music.play().then(
+        () => true,
+        () => false,
+      );
+
       await Promise.race([
         context.resume().catch(() => undefined),
         new Promise((resolve) => window.setTimeout(resolve, 300)),
       ]);
 
       if (context.state !== "running") {
+        music.pause();
         return false;
       }
 
-      buildAtmosphere();
+      const playing = await Promise.race([
+        playback,
+        new Promise<false>((resolve) => window.setTimeout(() => resolve(false), 8000)),
+      ]);
+
+      if (!playing) {
+        music.pause();
+        return false;
+      }
+
       fadeMaster(MASTER_GAIN, FADE_SECONDS.in);
       unsubscribe = subscribeSoundEvents(play);
       running = true;
@@ -394,7 +364,7 @@ export function createSoundEngine(): SoundEngine | null {
 
       // Let the fade finish before the bed is torn down, so it never clicks.
       await new Promise((resolve) => window.setTimeout(resolve, FADE_SECONDS.out * 1000 + 60));
-      atmosphere.stop();
+      music.pause();
       voices.forEach((voice) => voice.stop());
       voices.clear();
       await context.suspend();
@@ -404,6 +374,7 @@ export function createSoundEngine(): SoundEngine | null {
       if (destroyed || context.state !== "running") {
         return;
       }
+      music.pause();
       await context.suspend();
     },
 
@@ -412,6 +383,7 @@ export function createSoundEngine(): SoundEngine | null {
         return;
       }
       await context.resume();
+      await music.play().catch(() => undefined);
     },
 
     destroy: async () => {
@@ -423,7 +395,9 @@ export function createSoundEngine(): SoundEngine | null {
       running = false;
       unsubscribe?.();
       unsubscribe = null;
-      atmosphere.stop();
+      music.pause();
+      music.removeAttribute("src");
+      music.load();
       voices.forEach((voice) => {
         try {
           voice.stop();
@@ -435,6 +409,8 @@ export function createSoundEngine(): SoundEngine | null {
       lastFired.clear();
 
       (Object.keys(layers) as SoundLayer[]).forEach((layer) => layers[layer].disconnect());
+      musicSource.disconnect();
+      musicGain.disconnect();
       master.disconnect();
       limiter.disconnect();
 

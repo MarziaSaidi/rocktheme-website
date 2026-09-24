@@ -32,6 +32,7 @@ const interactionVideo: VideoMedia = {
 };
 
 export const newStartMobileProject = {
+  id: "new-start-mobile",
   slug: "new-start-mobile",
   title: "New Start Mobile",
   order: 5,
@@ -43,12 +44,15 @@ export const newStartMobileProject = {
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,
+  caseStudyUrl: "/work/new-start-mobile",
+  visualEmphasis: "standard",
+  scenePlacement: "mid",
+  accentBehavior: "project",
   shortDescription: "Placeholder description for New Start Mobile. Final project summary pending.",
   accentColor: "#F4EEFA",
   seo: {
     title: "New Start Mobile case study",
     description: "Placeholder SEO description for the New Start Mobile case study.",
-    pathname: "/work/new-start-mobile",
   },
   caseStudy: {
     blocks: [

@@ -32,6 +32,7 @@ const interactionVideo: VideoMedia = {
 };
 
 export const relayProject = {
+  id: "relay",
   slug: "relay",
   title: "Relay",
   order: 2,
@@ -43,12 +44,15 @@ export const relayProject = {
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,
+  caseStudyUrl: "/work/relay",
+  visualEmphasis: "standard",
+  scenePlacement: "mid",
+  accentBehavior: "project",
   shortDescription: "Placeholder description for Relay. Final project summary pending.",
   accentColor: "#B793D2",
   seo: {
     title: "Relay case study",
     description: "Placeholder SEO description for the Relay case study.",
-    pathname: "/work/relay",
   },
   caseStudy: {
     blocks: [

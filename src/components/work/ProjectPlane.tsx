@@ -10,8 +10,6 @@ type ProjectPlaneProps = Readonly<{
   project: Project;
   /** Position in the currently displayed collection. */
   displayIndex?: number;
-  /** Depth tier. Lower numbers sit closer to the viewer. */
-  depth: 0 | 1 | 2;
   variant: "hero" | "corridor";
   /** Label for the masked reveal that Stage 4 animates. */
   viewLabel: string;
@@ -29,6 +27,8 @@ type ProjectPlaneProps = Readonly<{
   sizes: string;
 }>;
 
+const SCENE_DEPTH = { near: 0, mid: 1, far: 2 } as const;
+
 function formatIndex(order: number): string {
   return order.toString().padStart(2, "0");
 }
@@ -36,7 +36,6 @@ function formatIndex(order: number): string {
 export function ProjectPlane({
   project,
   displayIndex,
-  depth,
   variant,
   viewLabel,
   headingLevel: Heading = "h3",
@@ -63,7 +62,9 @@ export function ProjectPlane({
     <article
       className={styles.plane}
       data-variant={variant}
-      data-depth={depth}
+      data-depth={SCENE_DEPTH[project.scenePlacement]}
+      data-emphasis={project.visualEmphasis}
+      data-accent={project.accentBehavior}
       data-align={labelAlign}
     >
       <div className={styles.label}>

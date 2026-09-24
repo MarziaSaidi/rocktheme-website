@@ -1,5 +1,7 @@
 import { FogExp2, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
+import { sceneViewportForWidth } from "@/config/responsive";
+import type { SectionId } from "@/config/sections";
 import type { PointerSample } from "@/motion/pointerSource";
 
 import { createHorizonLights, type HorizonLights } from "../modules/horizonLights";
@@ -11,13 +13,7 @@ import {
 } from "../modules/particleField";
 import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflectiveFloor";
 import { createRocks, type Rocks } from "../modules/rocks";
-import {
-  cameraConfig,
-  floorConfig,
-  horizonAtmosphereConfig,
-  sceneColors,
-  type RockChapter,
-} from "../sceneConfig";
+import { getSceneSection, resolveCamera } from "../sceneConfig";
 import { detectCapability } from "./capability";
 import {
   createQualityManager,
@@ -74,7 +70,7 @@ export type Environment = Readonly<{
    */
   setFocus: (rect: ObstacleRect | null) => void;
   setPointer: (sample: PointerSample) => void;
-  setChapter: (chapter: RockChapter | null) => void;
+  setSection: (sectionId: SectionId | null) => void;
   stats: () => EnvironmentStats;
   destroy: () => void;
 }>;
@@ -88,6 +84,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   let width = Math.max(1, options.canvas.clientWidth);
   let height = Math.max(1, options.canvas.clientHeight);
+  let activeSectionId: SectionId = "hero";
+  let activeScene = getSceneSection(activeSectionId);
 
   const quality = createQualityManager(pickInitialTier(capability, width * height));
   let settings = quality.current();
@@ -116,25 +114,28 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   // ---------------------------------------------------------- perspective pass
   const worldScene = new Scene();
-  worldScene.fog = new FogExp2(sceneColors.aubergine, horizonAtmosphereConfig.fogDensity);
+  worldScene.fog = new FogExp2(activeScene.fog.color, activeScene.fog.density);
+  const initialCamera = resolveCamera(activeSectionId, sceneViewportForWidth(width));
   const camera = new PerspectiveCamera(
-    cameraConfig.fov,
+    initialCamera.fov,
     width / height,
-    cameraConfig.near,
-    cameraConfig.far,
+    initialCamera.near,
+    initialCamera.far,
   );
-  camera.position.set(0, cameraConfig.height, cameraConfig.distance);
-
-  /*
-   * Place the world horizon on the same line the CSS layer uses, so swapping
-   * between them does not move the scene.
-   *
-   * Pitching the camera up pushes the horizon down the image. For a pitch `a`
-   * the horizon lands at NDC y = -tan(a) / tan(fov / 2), and NDC y for a
-   * fraction `f` measured from the top is 1 - 2f, which gives the pitch below.
-   */
-  const halfFovTangent = Math.tan((cameraConfig.fov * Math.PI) / 360);
-  camera.rotation.set(Math.atan((2 * floorConfig.horizon - 1) * halfFovTangent), 0, 0);
+  const applyCamera = () => {
+    const config = resolveCamera(activeSectionId, sceneViewportForWidth(width));
+    camera.fov = config.fov;
+    camera.near = config.near;
+    camera.far = config.far;
+    camera.position.set(
+      config.target[0] + config.offset[0],
+      config.target[1] + config.offset[1],
+      config.target[2] + config.offset[2],
+    );
+    camera.lookAt(...config.target);
+    camera.updateProjectionMatrix();
+  };
+  applyCamera();
 
   const floor: ReflectiveFloor = createReflectiveFloor({
     width: 160,
@@ -142,21 +143,29 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     reflectionSize: settings.reflectionSize,
     maxRipples: settings.maxRipples,
     reducedMotion: options.reducedMotion,
+    config: activeScene.water,
   });
   worldScene.add(floor.mesh);
 
-  const lights: HorizonLights = createHorizonLights(worldScene, camera, options.reducedMotion);
+  const lights: HorizonLights = createHorizonLights(
+    worldScene,
+    camera,
+    options.reducedMotion,
+    activeScene.horizonLights,
+  );
   const atmosphere: HorizonAtmosphere = createHorizonAtmosphere(
     worldScene,
     camera,
     options.reducedMotion,
+    activeScene.fog,
+    activeScene.horizonLights,
   );
-  floor.resize(width, height, cappedRatio());
   const rocks: Rocks = createRocks(
     worldScene,
-    (chapter) => {
-      console.error(`Landscape rock failed to load: ${chapter}`);
-      options.canvas.dataset.rockFailed = chapter;
+    activeScene.lighting,
+    (instanceId) => {
+      console.error(`Landscape rock failed to load: ${instanceId}`);
+      options.canvas.dataset.rockFailed = instanceId;
     },
     () => {
       if (options.reducedMotion) renderOnce(0);
@@ -173,6 +182,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     height,
     pixelRatio: cappedRatio(),
     reducedMotion: options.reducedMotion,
+    config: activeScene.particles,
   });
 
   // ------------------------------------------------------------- frame state
@@ -190,7 +200,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     settings = next;
     renderer.setPixelRatio(cappedRatio());
     renderer.setSize(width, height, false);
-    floor.resize(width, height, cappedRatio());
     particles.setCount(particleCountFor(next, width * height));
     particles.resize(width, height, cappedRatio());
     floor.setReflectionSize(next.reflectionSize);
@@ -203,8 +212,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     const beaconIntensity = lights.intensity();
     options.onBeaconIntensity?.(beaconIntensity);
 
-    floor.setHorizonLights(lights.reflections());
-    floor.update(deltaSeconds, elapsed, beaconIntensity);
+    floor.setBeacons(lights.beacons());
+    floor.update(deltaSeconds, elapsed);
 
     const normalisedX = pointer && width > 0 ? (pointer.x / width) * 2 - 1 : 0;
     const normalisedY = pointer && height > 0 ? (pointer.y / height) * 2 - 1 : 0;
@@ -227,11 +236,14 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     // The floor must not sample itself, and the reflection is only for the
     // objects standing on the floor.
-    floor.renderReflection(renderer, worldScene, camera, [floor.mesh, lights.group]);
+    floor.renderReflection(renderer, worldScene, camera, [
+      floor.mesh,
+      lights.group,
+      ...rocks.reflectionExclusions(),
+    ]);
 
     renderer.clear();
     renderer.render(worldScene, camera);
-    atmosphere.renderWaterline(renderer);
     renderer.clearDepth();
     renderer.render(particles.scene, particles.camera);
   };
@@ -318,10 +330,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       renderer.setSize(width, height, false);
 
       camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      applyCamera();
       lights.resize(camera);
       atmosphere.resize(camera);
-      floor.resize(width, height, cappedRatio());
 
       particles.resize(width, height, cappedRatio());
       rocks.resize(width);
@@ -360,7 +371,22 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       }
     },
 
-    setChapter: (chapter) => rocks.setChapter(chapter),
+    setSection: (sectionId) => {
+      if (!sectionId || sectionId === activeSectionId) return;
+      activeSectionId = sectionId;
+      activeScene = getSceneSection(sectionId);
+      worldScene.fog = new FogExp2(activeScene.fog.color, activeScene.fog.density);
+      applyCamera();
+      floor.setConfig(activeScene.water);
+      lights.setConfig(activeScene.horizonLights, camera);
+      atmosphere.setConfig(activeScene.fog, activeScene.horizonLights, camera);
+      particles.setConfig(activeScene.particles);
+      rocks.setLighting(activeScene.lighting);
+      rocks.setSection(sectionId);
+      lights.resize(camera);
+      atmosphere.resize(camera);
+      if (options.reducedMotion) renderOnce(0);
+    },
 
     stats: () => ({
       tier: settings.tier,
@@ -393,5 +419,4 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   };
 }
 
-export { floorConfig };
 export type { ObstacleRect, QualitySettings };

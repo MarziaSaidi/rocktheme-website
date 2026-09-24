@@ -33,6 +33,7 @@ const interactionVideo: VideoMedia = {
 };
 
 export const qalinProject = {
+  id: "qalin",
   slug: "qalin",
   title: "Qalin",
   order: 1,
@@ -44,12 +45,15 @@ export const qalinProject = {
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,
+  caseStudyUrl: "/work/qalin",
+  visualEmphasis: "standard",
+  scenePlacement: "near",
+  accentBehavior: "project",
   shortDescription: "Placeholder description for Qalin. Final project summary pending.",
   accentColor: "#A8C947",
   seo: {
     title: "Qalin case study",
     description: "Placeholder SEO description for the Qalin case study.",
-    pathname: "/work/qalin",
   },
   caseStudy: {
     info: {

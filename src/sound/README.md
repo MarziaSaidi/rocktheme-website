@@ -10,7 +10,7 @@ every cue, and never be required for navigation or comprehension.
 | ------------------- | ------------------------------------------------------------------------- |
 | `soundEvents.ts`    | The event names and the publish/subscribe channel. **Contains no audio.** |
 | `soundConfig.ts`    | Every level, timing, pitch and limit in the system.                       |
-| `soundEngine.ts`    | The AudioContext, the bus graph, the synthesis, the voice pool.           |
+| `soundEngine.ts`    | The AudioContext, looping music, synthesis, and voice pool.               |
 | `SoundProvider.tsx` | The engine's lifecycle: consent, session restore, suspend, disposal.      |
 | `SoundToggle.tsx`   | The on/off control and its visual equivalent.                             |
 | `soundStore.ts`     | The preference, shared between the control and the host.                  |
@@ -39,6 +39,7 @@ detail object. It is not a permission check.
 Everything is in `soundConfig.ts`.
 
 - `MASTER_GAIN` — the whole mix. Deliberately conservative.
+- `MUSIC_GAIN` — the level of the visitor-selected background track.
 - `LAYER_GAIN` — the six layers from the creative direction. Rebalance one
   layer against the others without touching a cue.
 - `CUES[event].peak` — one cue's level within its layer.
@@ -56,24 +57,20 @@ Everything is in `soundConfig.ts`.
 
 Removing an event is the same in reverse. Nothing else in the app changes.
 
-## Changing the assets
+## Background track
 
-There are none, and that is a decision rather than an omission.
+The intro offers a sound-on and a silent choice. The supplied track at
+`public/audio/sahtori-path-of-the-wind-lofi-223116.mp3` replaces the old
+procedural drone and air bed. It loops only after a sound-on user gesture,
+runs through the master gain, pauses when the tab is hidden, and stops with
+the header toggle. Interaction cues remain procedural and restrained.
 
-Every cue is synthesised from oscillators and one shared noise buffer. That
-keeps the payload at zero bytes, avoids media elements that autoplay policy
-blocks, and lets a cue respond to the scene through `intensity` and `step`
-instead of replaying a fixed recording. It also matches the direction, which
-asks for a procedural and responsive soundscape rather than one looping song.
-
-To move to files instead, replace the body of the switch in `soundEngine.ts`
-with `AudioBufferSourceNode`s fed from a decoded buffer cache, and load them
-lazily inside `start()` so nothing is fetched before consent. The event
-channel, the config, the limits and the lifecycle would not change.
+Change `BACKGROUND_TRACK` in `soundConfig.ts` to replace the file. The music
+is not constructed or fetched while sound is off.
 
 ## Keeping it restrained
 
-The direction rules out looping music, audio on every hover, loud beeps,
+The interaction layer still rules out audio on every hover, loud beeps,
 literal splashing, trailer impacts, and uncontrolled overlap. Two mechanisms
 enforce the last one:
 

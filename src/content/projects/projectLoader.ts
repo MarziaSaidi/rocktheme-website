@@ -39,8 +39,8 @@ export function getNextProject(project: Project): Project {
   return requireProjectBySlug(project.nextProjectSlug);
 }
 
-export function getProjectRoute(project: Pick<Project, "slug">): `/work/${string}` {
-  return `/work/${project.slug}`;
+export function getProjectRoute(project: Pick<Project, "caseStudyUrl">): `/work/${string}` {
+  return project.caseStudyUrl;
 }
 
 export function getProjectStaticParams(): readonly Readonly<{ slug: string }>[] {

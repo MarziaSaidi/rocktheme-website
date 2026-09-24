@@ -2,8 +2,9 @@ import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { ProjectPlane } from "@/components/work/ProjectPlane";
 import { projectTransitionName } from "@/components/work/transitionName";
+import { sectionAnchors } from "@/config/sections";
 import type { Project } from "@/content/projects";
-import { sectionIds, siteContent } from "@/content/site/siteContent";
+import { siteContent } from "@/content/site/siteContent";
 import { CorridorPin } from "@/motion/CorridorPin";
 
 import styles from "./SelectedWork.module.css";
@@ -11,9 +12,6 @@ import styles from "./SelectedWork.module.css";
 type SelectedWorkProps = Readonly<{
   projects: readonly Project[];
 }>;
-
-/** Depth tiers cycle, so the corridor recedes whatever the project count. */
-const DEPTH_CYCLE = [0, 1, 2] as const;
 
 function formatCount(value: number): string {
   return value.toString().padStart(2, "0");
@@ -24,7 +22,7 @@ function formatCount(value: number): string {
  *
  * Every project is rendered by the same `ProjectPlane`, from the registry, in
  * registry order. There is no branch on a slug, no per-project position, and no
- * assumption about how many projects exist: depth tiers cycle, the index rail
+ * assumption about how many projects exist: placement comes from each record, the index rail
  * counts the array, and the pinned scroll length is derived from the count.
  *
  * The corridor is a native horizontally scrollable list. `CorridorPin` upgrades
@@ -36,13 +34,17 @@ export function SelectedWork({ projects }: SelectedWorkProps) {
   const { work } = siteContent;
 
   return (
-    <section id={sectionIds.work} className={styles.section} aria-labelledby="work-title">
-      <CorridorPin sectionId={sectionIds.work} />
+    <section
+      id={sectionAnchors["selected-work"]}
+      className={styles.section}
+      aria-labelledby="work-title"
+    >
+      <CorridorPin sectionId="selected-work" />
 
       <div className={styles.pin} data-corridor-pin="">
         <div className={styles.viewport}>
           {/* Inside the viewport so it travels with the pinned frame. */}
-          <EnvironmentLayer variant="corridor" horizon={76} />
+          <EnvironmentLayer sectionId="selected-work" />
 
           <div className={styles.inner}>
             <p className={styles.tally} aria-hidden="true">
@@ -75,7 +77,6 @@ export function SelectedWork({ projects }: SelectedWorkProps) {
                   <ProjectPlane
                     project={project}
                     displayIndex={index + 1}
-                    depth={DEPTH_CYCLE[index % DEPTH_CYCLE.length] ?? 0}
                     variant="corridor"
                     viewLabel={work.viewLabel}
                     transitionName={projectTransitionName(project.slug)}

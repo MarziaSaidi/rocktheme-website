@@ -120,6 +120,6 @@
   --layer-webgl: 10;
   --layer-content: 20;
   --layer-navigation: 30;
-  --layer-cursor: 40;
+  --layer-cursor: 60;
   --layer-dialog: 50;
 }

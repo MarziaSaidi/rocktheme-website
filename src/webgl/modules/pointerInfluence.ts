@@ -1,4 +1,5 @@
-import { particleConfig, pointerZones } from "../sceneConfig";
+import { particleConfig } from "../sceneConfig";
+import type { ParticleConfig } from "../sceneTypes";
 
 /**
  * Pointer influence on the particle field.
@@ -40,11 +41,10 @@ export type PointerInfluenceResult = {
   contact: boolean;
 };
 
-const AWARENESS_SQ = pointerZones.awareness * pointerZones.awareness;
-
 export function applyPointerInfluence(
   input: PointerInfluenceInput,
   out: PointerInfluenceResult,
+  config: ParticleConfig = particleConfig,
 ): void {
   out.ax = 0;
   out.ay = 0;
@@ -55,7 +55,8 @@ export function applyPointerInfluence(
   const offsetY = input.py - input.cy;
   const distanceSq = offsetX * offsetX + offsetY * offsetY;
 
-  if (distanceSq > AWARENESS_SQ || distanceSq < 1e-6) {
+  const zones = config.pointer;
+  if (distanceSq > zones.awareness * zones.awareness || distanceSq < 1e-6) {
     return;
   }
 
@@ -65,44 +66,41 @@ export function applyPointerInfluence(
 
   // Outer zone: awareness. Particles lean into the pointer's travel direction
   // and accelerate slightly, so the field looks like it noticed the visitor.
-  const awareness = 1 - distance / pointerZones.awareness;
+  const awareness = 1 - distance / zones.awareness;
   const speedFactor = Math.min(1, input.speed / 900);
-  out.ax += input.dirX * awareness * particleConfig.pointer.awarenessForce * (0.35 + speedFactor);
-  out.ay += input.dirY * awareness * particleConfig.pointer.awarenessForce * (0.35 + speedFactor);
+  out.ax += input.dirX * awareness * zones.awarenessForce * (0.35 + speedFactor);
+  out.ay += input.dirY * awareness * zones.awarenessForce * (0.35 + speedFactor);
   // A 10 percent nudge along the particle's own heading.
   out.ax += input.vx * awareness * 0.1;
   out.ay += input.vy * awareness * 0.1;
   out.disturbance = awareness * 0.35;
 
-  if (distance > pointerZones.orbit) {
+  if (distance > zones.orbit) {
     return;
   }
 
   // Middle zone: a vertical divide, not a circular attraction or cursor halo.
   // Once past the pointer, each particle's assigned path draws it back.
-  const orbit = 1 - distance / pointerZones.orbit;
+  const orbit = 1 - distance / zones.orbit;
   const tangentX = -normalY;
   const tangentY = normalX;
   const side = offsetY === 0 ? (input.vy >= 0 ? 1 : -1) : Math.sign(offsetY);
-  out.ay += side * orbit * particleConfig.pointer.divideForce * (1 + speedFactor * 0.35);
+  out.ay += side * orbit * zones.divideForce * (1 + speedFactor * 0.35);
   out.disturbance = Math.max(out.disturbance, 0.35 + orbit * 0.4);
 
-  if (distance > pointerZones.contact) {
+  if (distance > zones.contact) {
     return;
   }
 
   // Inner zone: contact. Particles avoid the exact centre and divide around it.
   // The split is along the tangent, not a radial shove, so the field opens like
   // water around a stone instead of exploding outwards.
-  const contact = 1 - distance / pointerZones.contact;
+  const contact = 1 - distance / zones.contact;
   const tangentSide = tangentX * input.vx + tangentY * input.vy >= 0 ? 1 : -1;
-  out.ax += tangentX * tangentSide * contact * particleConfig.pointer.splitForce;
-  out.ay += tangentY * tangentSide * contact * particleConfig.pointer.splitForce;
-  out.ax += normalX * contact * particleConfig.pointer.contactForce;
-  out.ay += normalY * contact * particleConfig.pointer.contactForce;
+  out.ax += tangentX * tangentSide * contact * zones.splitForce;
+  out.ay += tangentY * tangentSide * contact * zones.splitForce;
+  out.ax += normalX * contact * zones.contactForce;
+  out.ay += normalY * contact * zones.contactForce;
   out.disturbance = 1;
   out.contact = true;
 }
-
-/** Chance that a contact-zone particle flashes gold on a given frame. */
-export const goldFlashChance = particleConfig.goldChance;

@@ -107,6 +107,7 @@ const prototype: VideoMedia = {
 const item = (label: string, screen: ImageMedia) => ({ label, media: screen });
 
 export const survueProject = {
+  id: "survue",
   slug: "survue",
   title: "Survue",
   order: 8,
@@ -118,6 +119,10 @@ export const survueProject = {
   contentStatus: "draft",
   placeholderFields: ["homepageImage", "unprovidedProductStates"],
   homepageImage: createPlaceholderImage("survue", "Survue"),
+  caseStudyUrl: "/work/survue",
+  visualEmphasis: "standard",
+  scenePlacement: "mid",
+  accentBehavior: "project",
   shortDescription:
     "A cycling safety app that pairs with a rear-facing smart device to help riders understand approaching traffic and capture what happens behind them.",
   accentColor: "#F50B46",
@@ -125,7 +130,6 @@ export const survueProject = {
     title: "Survue cycling safety app",
     description:
       "A product story covering Survue's user flow, early wireframes, detection iterations, and finished mobile experience.",
-    pathname: "/work/survue",
   },
   caseStudy: {
     info: {

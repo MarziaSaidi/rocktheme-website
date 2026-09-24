@@ -5,17 +5,17 @@ import {
   Group,
   Mesh,
   NormalBlending,
-  OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
   Scene,
   ShaderMaterial,
-  Vector3,
   Vector4,
-  type WebGLRenderer,
 } from "three";
 
 import { horizonAtmosphereConfig, horizonLightConfig, sceneColors } from "../sceneConfig";
+import type { FogConfig, HorizonLightConfig } from "../sceneTypes";
+
+const MAX_LIGHTS = 4;
 
 const VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
@@ -59,28 +59,60 @@ const HAZE_SHADER = /* glsl */ `
   }
 `;
 
-const PLUME_SHADER = /* glsl */ `
+/*
+ * One continuous mist volume, not a row of objects.
+ *
+ * Coverage, lift and internal structure are three independent noise fields at
+ * different scales, so the layer thins to nothing in some stretches and gathers
+ * in others without ever repeating a silhouette. Density is pinned to the
+ * water by an exponential vertical falloff: the mist hangs on the surface and
+ * only occasionally reaches higher.
+ */
+const MIST_SHADER = /* glsl */ `
   precision highp float;
   uniform float uTime;
-  uniform float uSeed;
   uniform float uOpacity;
-  uniform float uSpeed;
+  uniform float uCoverageScale;
+  uniform float uCling;
+  uniform float uDrift;
   uniform vec3 uColor;
+  uniform vec3 uLitColor;
+  uniform vec4 uLights[4];
   varying vec2 vUv;
   ${NOISE}
   void main() {
-    float t = uTime * uSpeed;
-    float bend = (fbm(vec2(vUv.y * 2.0 + uSeed, t * 0.26)) - 0.5) * 0.24;
-    float sideways = sin(vUv.y * 4.1 + t * 0.17 + uSeed) * 0.025;
-    float x = abs(vUv.x - 0.5 - bend * vUv.y - sideways);
-    float width = mix(0.14, 0.33, vUv.y);
-    float edgeNoise = fbm(vec2(vUv.x * 5.0 + uSeed, vUv.y * 5.8 - t * 0.17));
-    float edge = 1.0 - smoothstep(width - 0.13, width + 0.06, x + (edgeNoise - 0.5) * 0.13);
-    float inner = fbm(vec2(vUv.x * 3.8 + uSeed * 2.0, vUv.y * 5.2 - t * 0.24));
-    float base = smoothstep(0.0, 0.13, vUv.y);
-    float top = pow(1.0 - smoothstep(0.36, 1.0, vUv.y), 1.55);
-    float alpha = edge * base * top * (0.34 + 0.66 * inner) * uOpacity;
-    gl_FragColor = vec4(uColor, alpha);
+    float t = uTime * uDrift;
+
+    // Where the mist is at all. Broad and slow: whole stretches of horizon go
+    // nearly clear while others stay banked up.
+    float coverage = fbm(vec2(vUv.x * uCoverageScale + t * 0.7, t));
+    coverage = smoothstep(0.24, 0.78, coverage + 0.16);
+
+    // How high it reaches there. A separate, even broader field, so the rises
+    // do not line up with the dense patches.
+    float lift = 0.55 + fbm(vec2(vUv.x * 1.6 - 4.2, t * 0.8)) * 0.95;
+
+    // Most of the volume clings to the water.
+    float vertical = exp(-pow(vUv.y / max(uCling * lift, 0.04), 1.3));
+
+    // Domain-warped interior. The warp is what keeps this from reading as a
+    // tiled noise texture stretched along the horizon.
+    vec2 q = vec2(vUv.x * 3.6, vUv.y * 1.5);
+    q += vec2(fbm(q * 1.3 + t * 1.1), fbm(q * 1.1 - t * 0.9)) * 0.6;
+    float body = fbm(q * 2.0 + vec2(t * 0.6, -t * 0.4));
+
+    // The beacons light the mist they sit in. Same sources, same falloff as
+    // the glow layer, so one light reads as one physical thing.
+    float lit = 0.0;
+    for (int i = 0; i < 4; i++) {
+      float dx = (vUv.x - uLights[i].x) / max(uLights[i].z, 0.001);
+      lit += exp(-dx * dx * 1.7) * uLights[i].y;
+    }
+
+    vec3 colour = mix(uColor, uLitColor, clamp(lit * 0.8, 0.0, 1.0));
+    float side = smoothstep(0.0, 0.06, vUv.x) * smoothstep(0.0, 0.06, 1.0 - vUv.x);
+    float alpha = vertical * coverage * side * (0.32 + body * 0.85) * uOpacity;
+    gl_FragColor = vec4(colour, alpha);
   }
 `;
 
@@ -103,29 +135,10 @@ const GLOW_SHADER = /* glsl */ `
   }
 `;
 
-const WATERLINE_SHADER = /* glsl */ `
-  precision highp float;
-  uniform float uTime;
-  uniform float uHorizon;
-  uniform float uOpacity;
-  uniform vec3 uColor;
-  varying vec2 vUv;
-  ${NOISE}
-  void main() {
-    float wander = (fbm(vec2(vUv.x * 11.0, uTime * 0.004)) - 0.5) * 0.009;
-    float distance = vUv.y - uHorizon - wander;
-    float width = distance > 0.0 ? 0.055 : 0.062;
-    float fade = exp(-pow(distance / width, 2.0) * 1.7);
-    float texture = 0.7 + fbm(vec2(vUv.x * 14.0, vUv.y * 8.0 - uTime * 0.003)) * 0.3;
-    float side = smoothstep(0.0, 0.035, vUv.x) * smoothstep(0.0, 0.035, 1.0 - vUv.x);
-    gl_FragColor = vec4(uColor, fade * texture * side * uOpacity);
-  }
-`;
-
 export type HorizonAtmosphere = Readonly<{
   resize: (camera: PerspectiveCamera) => void;
   update: (elapsedSeconds: number) => void;
-  renderWaterline: (renderer: WebGLRenderer) => void;
+  setConfig: (fog: FogConfig, lights: HorizonLightConfig, camera: PerspectiveCamera) => void;
   destroy: () => void;
 }>;
 
@@ -134,16 +147,24 @@ export function createHorizonAtmosphere(
   scene: Scene,
   camera: PerspectiveCamera,
   reducedMotion: boolean,
+  initialFog: FogConfig = horizonAtmosphereConfig,
+  initialLights: HorizonLightConfig = horizonLightConfig,
 ): HorizonAtmosphere {
+  let fogConfig = initialFog;
+  let lightConfig = initialLights;
   const group = new Group();
   const geometry = new PlaneGeometry(1, 1);
   const materials: ShaderMaterial[] = [];
   const timeUniform = { value: 0 };
-  const horizonUniform = { value: 0.28 };
   const color = new Color(sceneColors.lavender);
-  const glowLights = horizonLightConfig.sources.map(
-    (source) => new Vector4(source.position, source.intensity, 0.075, 0),
-  );
+  // The mist body sits far darker than the light that picks it out, so a lit
+  // pocket reads as illumination rather than as a brighter cloud.
+  const mistColor = new Color(sceneColors.lavender).multiplyScalar(0.34);
+  const mistLitColor = new Color(sceneColors.lavender).multiplyScalar(1.05);
+  const glowLights = Array.from({ length: MAX_LIGHTS }, (_, index) => {
+    const source = lightConfig.sources[index];
+    return new Vector4(source?.position ?? 0, source?.intensity ?? 0, source?.spread ?? 0.075, 0);
+  });
 
   const makePlane = (fragmentShader: string, opacity: number, additive = false) => {
     const material = new ShaderMaterial({
@@ -154,8 +175,10 @@ export function createHorizonAtmosphere(
         uColor: { value: color },
         uOpacity: { value: opacity },
         uLights: { value: glowLights },
-        uSeed: { value: 0 },
-        uSpeed: { value: 1 },
+        uLitColor: { value: mistLitColor },
+        uCoverageScale: { value: fogConfig.mist.coverageScale },
+        uCling: { value: fogConfig.mist.cling },
+        uDrift: { value: fogConfig.mist.drift },
       },
       transparent: true,
       depthWrite: false,
@@ -169,82 +192,35 @@ export function createHorizonAtmosphere(
     return mesh;
   };
 
-  const haze = makePlane(HAZE_SHADER, horizonAtmosphereConfig.hazeOpacity);
-  const glow = makePlane(GLOW_SHADER, horizonAtmosphereConfig.glowOpacity, true);
-  const plumes = horizonAtmosphereConfig.plumes.map((plume, index) => {
-    const mesh = makePlane(PLUME_SHADER, plume.opacity);
-    const material = mesh.material as ShaderMaterial;
-    material.uniforms.uSeed!.value = index * 7.17 + 2.4;
-    material.uniforms.uSpeed!.value = plume.speed;
-    return mesh;
-  });
-
-  // A screen-space veil spans a few pixels on both sides of the actual water
-  // contact line. It is a separate pass so the floor cannot depth-occlude it.
-  const waterlineScene = new Scene();
-  const waterlineCamera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 2);
-  waterlineCamera.position.z = 1;
-  const waterlineGeometry = new PlaneGeometry(2, 2);
-  const waterlineMaterial = new ShaderMaterial({
-    vertexShader: VERTEX_SHADER,
-    fragmentShader: WATERLINE_SHADER,
-    uniforms: {
-      uTime: timeUniform,
-      uHorizon: horizonUniform,
-      uColor: { value: color },
-      uOpacity: { value: horizonAtmosphereConfig.waterlineOpacity },
-    },
-    transparent: true,
-    depthWrite: false,
-    depthTest: false,
-  });
-  waterlineScene.add(new Mesh(waterlineGeometry, waterlineMaterial));
+  const haze = makePlane(HAZE_SHADER, fogConfig.hazeOpacity);
+  const glow = makePlane(GLOW_SHADER, fogConfig.glowOpacity, true);
+  const mist = makePlane(MIST_SHADER, fogConfig.mist.opacity);
+  mist.material.uniforms.uColor!.value = mistColor;
+  mist.renderOrder = 2;
 
   scene.add(group);
 
+  const place = (mesh: Mesh, height: number, below: number, viewWidth: number, offset: number) => {
+    mesh.position.set(0, fogConfig.baseY + (height - below) * 0.5, fogConfig.depth + offset);
+    mesh.scale.set(viewWidth * 1.13, height + below, 1);
+  };
+
   const resize = (viewCamera: PerspectiveCamera) => {
-    const distance = viewCamera.position.z - horizonAtmosphereConfig.depth;
+    const distance = viewCamera.position.z - fogConfig.depth;
     const viewHeight = 2 * Math.tan((viewCamera.fov * Math.PI) / 360) * distance;
     const viewWidth = viewHeight * viewCamera.aspect;
-    const y = horizonAtmosphereConfig.baseY;
     viewCamera.updateMatrixWorld();
-    const contact = new Vector3(0, y, horizonAtmosphereConfig.depth).project(viewCamera);
-    horizonUniform.value = (contact.y + 1) * 0.5;
 
-    haze.position.set(
-      0,
-      y + (horizonAtmosphereConfig.hazeHeight - horizonAtmosphereConfig.hazeBelow) * 0.5,
-      horizonAtmosphereConfig.depth,
-    );
-    haze.scale.set(
-      viewWidth * 1.13,
-      horizonAtmosphereConfig.hazeHeight + horizonAtmosphereConfig.hazeBelow,
-      1,
-    );
-    haze.quaternion.copy(viewCamera.quaternion);
-
-    glow.position.set(
-      0,
-      y + (horizonAtmosphereConfig.glowHeight - horizonAtmosphereConfig.glowBelow) * 0.5,
-      horizonAtmosphereConfig.depth + 0.03,
-    );
-    glow.scale.set(
-      viewWidth * 1.13,
-      horizonAtmosphereConfig.glowHeight + horizonAtmosphereConfig.glowBelow,
-      1,
-    );
-    glow.quaternion.copy(viewCamera.quaternion);
-
-    plumes.forEach((mesh, index) => {
-      const plume = horizonAtmosphereConfig.plumes[index]!;
-      mesh.position.set(
-        (plume.x - 0.5) * viewWidth,
-        y + plume.height * 0.5,
-        horizonAtmosphereConfig.depth + 0.06,
-      );
-      mesh.scale.set(viewWidth * plume.width, plume.height, 1);
-      mesh.quaternion.copy(viewCamera.quaternion);
-    });
+    place(haze, fogConfig.hazeHeight, fogConfig.hazeBelow, viewWidth, 0);
+    place(glow, fogConfig.glowHeight, fogConfig.glowBelow, viewWidth, 0.03);
+    /*
+     * The mist is pinned to the waterline rather than to the fog base. Its
+     * whole job is to bridge water and sky, and any gap under it puts the seam
+     * straight back. It dips slightly below zero so the overlap is certain.
+     */
+    mist.position.set(0, fogConfig.mist.height * 0.5 - 0.14, fogConfig.depth + 0.06);
+    mist.scale.set(viewWidth * 1.13, fogConfig.mist.height, 1);
+    group.children.forEach((child) => child.quaternion.copy(viewCamera.quaternion));
   };
   resize(camera);
 
@@ -253,17 +229,26 @@ export function createHorizonAtmosphere(
     update: (elapsedSeconds) => {
       timeUniform.value = reducedMotion ? 0 : elapsedSeconds;
     },
-    renderWaterline: (renderer) => {
-      renderer.clearDepth();
-      renderer.render(waterlineScene, waterlineCamera);
+    setConfig: (nextFog, nextLights, viewCamera) => {
+      fogConfig = nextFog;
+      lightConfig = nextLights;
+      haze.material.uniforms.uOpacity!.value = nextFog.hazeOpacity;
+      glow.material.uniforms.uOpacity!.value = nextFog.glowOpacity;
+      const mistUniforms = mist.material.uniforms;
+      mistUniforms.uOpacity!.value = nextFog.mist.opacity;
+      mistUniforms.uCoverageScale!.value = nextFog.mist.coverageScale;
+      mistUniforms.uCling!.value = nextFog.mist.cling;
+      mistUniforms.uDrift!.value = nextFog.mist.drift;
+      glowLights.forEach((light, index) => {
+        const source = lightConfig.sources[index];
+        light.set(source?.position ?? 0, source?.intensity ?? 0, source?.spread ?? 0.075, 0);
+      });
+      resize(viewCamera);
     },
     destroy: () => {
       scene.remove(group);
       materials.forEach((material) => material.dispose());
       geometry.dispose();
-      waterlineMaterial.dispose();
-      waterlineGeometry.dispose();
-      waterlineScene.clear();
     },
   };
 }

@@ -13,11 +13,8 @@ import { emitSoundEvent, soundEventsIdle } from "@/sound/soundEvents";
 
 import { createCurlField } from "../core/noise";
 import { particleConfig, sceneColors } from "../sceneConfig";
-import {
-  applyPointerInfluence,
-  goldFlashChance,
-  type PointerInfluenceResult,
-} from "./pointerInfluence";
+import type { ParticleConfig } from "../sceneTypes";
+import { applyPointerInfluence, type PointerInfluenceResult } from "./pointerInfluence";
 
 /**
  * Particle field.
@@ -47,6 +44,7 @@ export type ParticleFieldOptions = Readonly<{
   /** Renderer pixel ratio. Point sizes are specified in device pixels. */
   pixelRatio: number;
   reducedMotion: boolean;
+  config?: ParticleConfig;
 }>;
 
 export type ParticlePointerState = Readonly<{
@@ -107,6 +105,7 @@ export type ParticleField = Readonly<{
    * given geometry only; it never learns what the rectangle contains.
    */
   setFocus: (rect: ObstacleRect | null) => void;
+  setConfig: (config: ParticleConfig) => void;
   setCount: (count: number) => void;
   /** Number of particles currently recovering from a disturbance. */
   disturbedCount: () => number;
@@ -119,9 +118,10 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
 
   let width = options.width;
   let height = options.height;
+  let config = options.config ?? particleConfig;
   let capacity = options.count;
   let active = options.reducedMotion
-    ? Math.round(options.count * particleConfig.density.reducedMotionFactor)
+    ? Math.round(options.count * config.density.reducedMotionFactor)
     : options.count;
   let obstacles: readonly ObstacleRect[] = [];
   let focus: ObstacleRect | null = null;
@@ -170,7 +170,7 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
 
   const randomFor = (index: number, channel: number): number => {
     let value =
-      (particleConfig.seed ^
+      (config.seed ^
         Math.imul(index + 1, 0x9e3779b1) ^
         Math.imul(generation[index]! + 1, 0x85ebca6b) ^
         Math.imul(channel + 1, 0xc2b2ae35)) >>>
@@ -189,7 +189,7 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
 
   /** Smooth, non-repeating centreline through the configured landscape points. */
   const centreAt = (u: number, lane: number): number => {
-    const knots = particleConfig.path;
+    const knots = config.path;
     let segment = 0;
     while (segment < knots.length - 2 && u > knots[segment + 1]![0]) segment += 1;
     const left = knots[segment]!;
@@ -209,7 +209,7 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
       (t3 - t2) * m1;
 
     if (lane > 0) {
-      const branch = particleConfig.branches[lane - 1]!;
+      const branch = config.branches[lane - 1]!;
       const split = smooth((u - branch.split) / 0.15);
       const merge = smooth((branch.merge - u) / 0.17);
       y += branch.offset * split * merge;
@@ -224,17 +224,16 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
     const branchPick = randomFor(index, 0);
     let boundary = 1;
     branchIndex[index] = 0;
-    for (let lane = 0; lane < particleConfig.branches.length; lane += 1) {
-      boundary -= particleConfig.branches[lane]!.fraction;
+    for (let lane = 0; lane < config.branches.length; lane += 1) {
+      boundary -= config.branches[lane]!.fraction;
       if (branchPick >= boundary) {
         branchIndex[index] = lane + 1;
         break;
       }
     }
-    const wisp = randomFor(index, 1) < particleConfig.wispFraction;
+    const wisp = randomFor(index, 1) < config.wispFraction;
     const bell = randomFor(index, 2) + randomFor(index, 3) + randomFor(index, 4) - 1.5;
-    laneOffset[index] =
-      bell * (wisp ? particleConfig.wispSpread : particleConfig.corridorHeight / 3);
+    laneOffset[index] = bell * (wisp ? config.wispSpread : config.corridorHeight / 3);
     posX[index] = acrossFullWidth
       ? randomFor(index, 5) * width
       : -randomFor(index, 5) * width * 0.18;
@@ -297,8 +296,8 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
   const avoidObstacles = (index: number, deltaSeconds: number) => {
     const x = posX[index]!;
     const y = posY[index]!;
-    const padding = particleConfig.obstaclePadding;
-    const band = particleConfig.obstacleInfluence;
+    const padding = config.obstaclePadding;
+    const band = config.obstacleInfluence;
 
     for (let rect = 0; rect < obstacles.length; rect += 1) {
       const box = obstacles[rect]!;
@@ -350,7 +349,7 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
       }
 
       const falloff = 1 - distance / band;
-      const force = particleConfig.obstacleStrength * falloff * falloff * deltaSeconds;
+      const force = config.obstacleStrength * falloff * falloff * deltaSeconds;
 
       velX[index]! += normalX * force;
       velY[index]! += normalY * force;
@@ -384,12 +383,12 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
     const toEdgeY = nearestY - y;
     const distance = Math.hypot(toEdgeX, toEdgeY);
 
-    if (distance > particleConfig.focusRadius || distance < 0.001) {
+    if (distance > config.focusRadius || distance < 0.001) {
       return;
     }
 
-    const falloff = 1 - distance / particleConfig.focusRadius;
-    const pull = particleConfig.focusStrength * falloff * focusAmount * deltaSeconds;
+    const falloff = 1 - distance / config.focusRadius;
+    const pull = config.focusStrength * falloff * focusAmount * deltaSeconds;
     const normalX = toEdgeX / distance;
     const normalY = toEdgeY / distance;
 
@@ -410,18 +409,18 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
     }
 
     const step = Math.min(deltaSeconds, 1 / 30);
-    const flowTime = elapsedSeconds * particleConfig.flowTimeScale;
+    const flowTime = elapsedSeconds * config.flowTimeScale;
     disturbed = 0;
 
     const wantedFocus = focus ? 1 : 0;
-    focusAmount += (wantedFocus - focusAmount) * Math.min(1, step / particleConfig.focusEase);
+    focusAmount += (wantedFocus - focusAmount) * Math.min(1, step / config.focusEase);
 
     for (let index = 0; index < active; index += 1) {
       const depth = posZ[index]!;
 
       curl.sample(
-        posX[index]! * particleConfig.flowScale,
-        posY[index]! * particleConfig.flowScale,
+        posX[index]! * config.flowScale,
+        posY[index]! * config.flowScale,
         depth * 2 + flowTime,
         flow,
       );
@@ -429,18 +428,17 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
       // Target velocity: steady rightward drift plus curl turbulence, both
       // scaled by depth so nearer particles travel faster.
       const depthScale = 0.4 + depth * 0.8;
-      const targetX =
-        particleConfig.driftSpeed * depthScale + flow[0] * particleConfig.flowStrength;
+      const targetX = config.driftSpeed * depthScale + flow[0] * config.flowStrength;
       const pathSlope = (desiredY(index, posX[index]! + 3) - desiredY(index, posX[index]! - 3)) / 6;
       const targetY =
         pathSlope * targetX +
-        flow[1] * particleConfig.flowStrength +
-        (desiredY(index, posX[index]!) - posY[index]!) * particleConfig.pathReturn;
+        flow[1] * config.flowStrength +
+        (desiredY(index, posX[index]!) - posY[index]!) * config.pathReturn;
 
       // A recovering particle steers back to the field gradually. The timer is
       // what makes a carved path close over roughly 1.4 seconds.
       const recovering = recovery[index]!;
-      const follow = particleConfig.followStrength * (recovering > 0 ? 1 - recovering * 0.75 : 1);
+      const follow = config.followStrength * (recovering > 0 ? 1 - recovering * 0.75 : 1);
 
       velX[index]! += (targetX - velX[index]!) * follow * step;
       velY[index]! += (targetY - velY[index]!) * follow * step;
@@ -459,6 +457,7 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
             speed: pointer.speed,
           },
           influence,
+          config,
         );
 
         if (influence.disturbance > 0) {
@@ -466,8 +465,8 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
           velY[index]! += influence.ay * step;
           recovery[index] = Math.max(recovering, influence.disturbance);
 
-          if (influence.contact && goldTimer[index]! <= 0 && Math.random() < goldFlashChance) {
-            goldTimer[index] = particleConfig.goldSeconds;
+          if (influence.contact && goldTimer[index]! <= 0 && Math.random() < config.goldChance) {
+            goldTimer[index] = config.goldSeconds;
 
             /*
              * Report the contact. This is an event, not a sound: the field
@@ -484,7 +483,7 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
       }
 
       if (recovery[index]! > 0) {
-        recovery[index] = Math.max(0, recovery[index]! - step / particleConfig.recoverySeconds);
+        recovery[index] = Math.max(0, recovery[index]! - step / config.recoverySeconds);
         disturbed += 1;
       }
 
@@ -492,8 +491,8 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
         goldTimer[index] = Math.max(0, goldTimer[index]! - step);
       }
 
-      velX[index]! -= velX[index]! * particleConfig.damping * step * 0.12;
-      velY[index]! -= velY[index]! * particleConfig.damping * step * 0.12;
+      velX[index]! -= velX[index]! * config.damping * step * 0.12;
+      velY[index]! -= velY[index]! * config.damping * step * 0.12;
 
       avoidObstacles(index, step);
 
@@ -505,12 +504,9 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
       posY[index]! += velY[index]! * step;
 
       // Recycle at the right edge and wrap vertically.
-      if (posX[index]! > width + particleConfig.edgeFade) {
+      if (posX[index]! > width + config.edgeFade) {
         spawn(index, false);
-      } else if (
-        posY[index]! < -particleConfig.edgeFade ||
-        posY[index]! > height + particleConfig.edgeFade
-      ) {
+      } else if (posY[index]! < -config.edgeFade || posY[index]! > height + config.edgeFade) {
         // Re-enter from the left rather than wrapping, so the stream keeps its
         // shape instead of degrading into an even spread.
         spawn(index, false);
@@ -521,8 +517,8 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
   };
 
   function writeBuffers() {
-    const [minSize, maxSize] = particleConfig.sizeRange;
-    const fade = particleConfig.edgeFade;
+    const [minSize, maxSize] = config.sizeRange;
+    const fade = config.edgeFade;
 
     for (let index = 0; index < active; index += 1) {
       const x = posX[index]!;
@@ -580,9 +576,12 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
     setFocus: (rect) => {
       focus = rect;
     },
+    setConfig: (next) => {
+      config = next;
+    },
     setCount: (count) => {
       count = options.reducedMotion
-        ? Math.round(count * particleConfig.density.reducedMotionFactor)
+        ? Math.round(count * config.density.reducedMotionFactor)
         : count;
       if (count <= capacity) {
         active = count;

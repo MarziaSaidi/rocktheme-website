@@ -1,6 +1,7 @@
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
-import { sectionIds, siteContent } from "@/content/site/siteContent";
+import { sectionAnchors } from "@/config/sections";
+import { siteContent } from "@/content/site/siteContent";
 
 import styles from "./Hero.module.css";
 
@@ -8,8 +9,8 @@ export function Hero() {
   const { hero, work } = siteContent;
 
   return (
-    <section id={sectionIds.index} className={styles.hero} aria-labelledby="hero-title">
-      <EnvironmentLayer variant="hero" horizon={72} />
+    <section id={sectionAnchors.hero} className={styles.hero} aria-labelledby="hero-title">
+      <EnvironmentLayer sectionId="hero" />
 
       <div className={styles.inner}>
         <div className={styles.statement}>
@@ -33,7 +34,7 @@ export function Hero() {
       </div>
 
       <div className={styles.baseline}>
-        <a className={styles.baselineLink} href={`#${sectionIds.work}`}>
+        <a className={styles.baselineLink} href={`#${sectionAnchors["selected-work"]}`}>
           {work.displayHeading}
           <span className={styles.baselineRule} aria-hidden="true" />
         </a>

@@ -6,7 +6,6 @@ import {
   PlaneGeometry,
   RGBAFormat,
   ShaderMaterial,
-  Vector2,
   Vector4,
   Vector3,
   WebGLRenderTarget,
@@ -18,28 +17,31 @@ import {
 import { emitSoundEvent } from "@/sound/soundEvents";
 
 import { floorConfig, sceneColors } from "../sceneConfig";
-import type { HorizonReflection } from "./horizonLights";
+import type { WaterConfig } from "../sceneTypes";
+import type { BeaconSource } from "./horizonLights";
 
 /**
  * Reflective computational floor.
  *
- * Not an ocean. There is no wave geometry, no whitecap, no constant motion.
- * The surface is near-black, drifts on a forty-six second noise cycle, and
- * carries a subdued planar reflection of rocks and analytical, source-aligned
- * glints from the distant lights. Ripples exist only in response to the pointer in the lower part of
- * the viewport, are capped in radius, and decay.
+ * The surface is shaded, not painted. Every fragment reconstructs a world-space
+ * normal from interfering swell fields, and that one normal drives all three
+ * things the viewer reads as water: the planar reflection lookup, the Fresnel
+ * balance between dark body and mirrored environment, and the specular lobe of
+ * each beacon. Because the beacon paths are lobes off the same disturbed
+ * normal, they widen, fragment and reconnect as ripples cross them instead of
+ * sitting there as fixed-width columns.
  *
- * The mirror is a planar reflection pass: the scene is re-rendered from a
- * camera reflected through the floor plane into a small render target. On the
- * low tier the pass is skipped entirely and the shader falls back to a gradient.
+ * Nothing here works in screen space. A screen-space band is a horizontal line
+ * by construction, which is what this replaces.
  */
 
 const MAX_RIPPLES = 4;
-const MAX_LIGHTS = 4;
+const MAX_BEACONS = 4;
 
 const VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
   varying vec4 vReflectUv;
+  varying vec3 vWorld;
   varying float vDepth;
 
   uniform mat4 uReflectMatrix;
@@ -47,6 +49,7 @@ const VERTEX_SHADER = /* glsl */ `
   void main() {
     vUv = uv;
     vec4 world = modelMatrix * vec4(position, 1.0);
+    vWorld = world.xyz;
     vReflectUv = uReflectMatrix * world;
     vec4 view = viewMatrix * world;
     vDepth = -view.z;
@@ -61,19 +64,15 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform float uHasReflection;
   uniform float uTime;
   uniform float uDistortion;
-  uniform float uBeaconIntensity;
+  uniform float uSwell;
+  uniform float uRipple;
   uniform vec3 uNear;
   uniform vec3 uFar;
-  uniform vec3 uReflectionTint;
-  uniform vec2 uResolution;
-  uniform vec2 uViewport;
-  uniform vec2 uRippleTravel;
-  uniform float uRippleDisplacement;
-  /** x, y, intensity, length in normalized screen coordinates. */
-  uniform vec4 uLightScreen[${MAX_LIGHTS}];
-  /** width in CSS px, shimmer, phase, unused. */
-  uniform vec4 uLightStyle[${MAX_LIGHTS}];
-  uniform vec3 uLightColor[${MAX_LIGHTS}];
+  uniform vec3 uMist;
+  uniform vec3 uSheen;
+  /** xyz world position, w intensity. */
+  uniform vec4 uBeacon[${MAX_BEACONS}];
+  uniform vec3 uBeaconColor[${MAX_BEACONS}];
   /** x, y in floor UV space, z = age in seconds, w = strength. */
   uniform vec4 uRipples[${MAX_RIPPLES}];
   uniform float uRippleRadius;
@@ -81,9 +80,9 @@ const FRAGMENT_SHADER = /* glsl */ `
 
   varying vec2 vUv;
   varying vec4 vReflectUv;
+  varying vec3 vWorld;
   varying float vDepth;
 
-  // Cheap value noise. The surface only needs a slow, smooth wander.
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
   }
@@ -99,16 +98,59 @@ const FRAGMENT_SHADER = /* glsl */ `
     );
   }
 
+  /*
+   * Analytic slope of one travelling wave. Returning the derivative rather
+   * than the height means the normal costs no extra samples, and the surface
+   * never needs geometry to carry it.
+   */
+  vec2 waveSlope(vec2 dir, float freq, float amp, float speed, float phase, vec2 p, float t) {
+    float a = dot(dir, p) * freq + t * speed + phase;
+    return dir * (freq * amp * cos(a));
+  }
+
   void main() {
-    // Extremely subtle horizontal drift. Two scales, both slow.
-    vec2 drift = vec2(uTime * 0.016, uTime * 0.004);
-    float surface = valueNoise(vUv * vec2(7.0, 26.0) + drift);
-    surface += valueNoise(vUv * vec2(19.0, 61.0) - drift * 1.7) * 0.4;
+    vec2 p = vWorld.xz;
+    float t = uTime;
 
-    vec2 offset = vec2((surface - 0.7) * uDistortion, 0.0);
+    /*
+     * Two depth ramps. Micro detail dies out well before the horizon because
+     * beyond that a world-space ripple is narrower than a pixel and would
+     * alias into crawling speckle; the broad swell relaxes more slowly, so the
+     * surface smooths into the distance rather than stopping.
+     */
+    float detail = 1.0 - smoothstep(11.0, 62.0, vDepth);
+    float broad = mix(0.4, 1.0, 1.0 - smoothstep(14.0, 104.0, vDepth));
 
-    // Pointer ripples: bounded radius, decaying, never the whole surface.
-    float ripple = 0.0;
+    /*
+     * Four swells on non-parallel headings. The wavelengths are mutually
+     * non-harmonic, so crests interfere into an irregular field instead of
+     * lining up into countable rows.
+     */
+    vec2 slope = vec2(0.0);
+    slope += waveSlope(normalize(vec2(0.94, 0.34)), 0.83, 0.060, 0.37, 0.0, p, t);
+    slope += waveSlope(normalize(vec2(-0.42, 0.91)), 1.27, 0.038, 0.29, 1.7, p, t);
+    slope += waveSlope(normalize(vec2(0.71, -0.70)), 2.11, 0.019, 0.53, 3.4, p, t);
+    slope += waveSlope(normalize(vec2(-0.87, -0.49)), 3.41, 0.011, 0.23, 5.2, p, t);
+    slope *= broad * uSwell;
+
+    /*
+     * The micro layer rides a slowly warped domain. Without the warp three
+     * high-frequency sines read as a woven grid; with it the crests wander and
+     * break, which is what stops the eye from finding a repeat.
+     */
+    vec2 warp = vec2(
+      valueNoise(p * 0.21 + vec2(t * 0.019, 0.0)),
+      valueNoise(p * 0.18 - vec2(0.0, t * 0.015))
+    ) - 0.5;
+    vec2 q = p + warp * 3.2;
+    vec2 micro = vec2(0.0);
+    micro += waveSlope(normalize(vec2(0.31, 0.95)), 6.7, 0.0042, 0.71, 2.1, q, t);
+    micro += waveSlope(normalize(vec2(-0.98, 0.19)), 9.3, 0.0027, 0.94, 4.6, q, t);
+    micro += waveSlope(normalize(vec2(0.62, -0.78)), 14.1, 0.0015, 1.21, 0.8, q, t);
+    slope += micro * detail * uRipple;
+
+    // Pointer ripples disturb the surface. They tilt the normal so the
+    // reflections bend through the ring; they do not draw a ring.
     for (int i = 0; i < ${MAX_RIPPLES}; i++) {
       vec4 data = uRipples[i];
       if (data.w <= 0.0) continue;
@@ -116,98 +158,80 @@ const FRAGMENT_SHADER = /* glsl */ `
       float age = data.z / uRippleSeconds;
       if (age >= 1.0) continue;
 
-      float distance = length((vUv - data.xy) * vec2(1.0, 0.42));
-      float radius = age * uRippleRadius;
-      // A visible but soft band. Too narrow and the ring falls below a pixel
-      // once perspective compresses the far field.
-      float band = exp(-pow(abs(distance - radius) * 42.0, 2.0));
+      vec2 d = (vUv - data.xy) * vec2(1.0, 0.42);
+      float dist = length(d);
+      if (dist < 0.0001) continue;
+
+      float x = (dist - age * uRippleRadius) * 46.0;
       float decay = (1.0 - age) * (1.0 - age);
-      ripple += band * decay * data.w;
+      slope += (d / dist) * exp(-x * x) * cos(x * 2.2) * decay * data.w * 0.09;
     }
 
-    offset += vec2(0.0, ripple * 0.02);
+    vec3 normal = normalize(vec3(-slope.x, 1.0, -slope.y));
+    vec3 view = normalize(cameraPosition - vWorld);
+    float ndv = clamp(dot(normal, view), 0.0, 1.0);
+    // Schlick, water. Near the camera the surface is mostly dark body; at the
+    // grazing angles toward the horizon it turns almost fully mirror.
+    float fresnel = 0.02 + 0.98 * pow(1.0 - ndv, 5.0);
 
-    /*
-     * Ramp on view depth, not on UV. Perspective compresses the whole visible
-     * floor into the last few percent of the UV range, so a UV ramp lands
-     * almost entirely in one band and a UV alpha fade erases the surface.
-     * Depth is uniform in world units and behaves the way it reads.
-     */
-    float far = smoothstep(3.0, 34.0, vDepth);
+    float far = smoothstep(4.0, 46.0, vDepth);
     vec3 colour = mix(uNear, uFar, far);
 
     if (uHasReflection > 0.5) {
       vec2 reflectUv = vReflectUv.xy / max(vReflectUv.w, 0.0001);
-      // Stretch vertically so the mirror reads as a wet floor, not a mirror.
-      reflectUv.y = reflectUv.y * 0.82 + 0.09;
-      vec3 mirrored = texture2D(uReflection, clamp(reflectUv + offset, 0.001, 0.999)).rgb;
+      // Stretch vertically so the mirror reads as wet floor, not as glass.
+      reflectUv.y = reflectUv.y * 0.84 + 0.08;
+      // The same slope that shades the surface displaces the lookup, so a
+      // reflected edge breaks exactly where a ripple crosses it.
+      vec2 offset = vec2(-slope.x, -slope.y) * uDistortion * mix(1.0, 0.22, far);
+      vec3 mirrored = texture2D(uReflection, clamp(reflectUv + offset, 0.002, 0.998)).rgb;
       /*
-   * The planar pass carries nearby geometry only. Distant lights are sampled
-   * analytically below from their shared projected positions, avoiding a
-   * second glow or a mirrored beam.
+       * Weighted by Fresnel rather than gated on depth. The old depth gate
+       * erased the foreground, which is what left rocks sitting on top of the
+       * water instead of standing in it.
        */
-      float strength = smoothstep(3.0, 24.0, vDepth) * 0.66;
-      colour += mirrored * uReflectionTint * strength;
+      colour += mirrored * uSheen * (0.30 + fresnel * 0.95);
     }
 
-    vec2 screen = gl_FragCoord.xy / uResolution;
-    vec2 pixel = screen * uViewport;
-    float waterDepth = clamp((uLightScreen[0].y - screen.y) / max(uLightScreen[0].y, 0.001), 0.0, 1.0);
-    // Two long, low-amplitude ripple trains travel toward the viewer. The
-    // slower distant train compresses into finer lines; the nearer one gently
-    // bends the bands, without moving any geometry or the far waterline.
-    float travel = uTime * mix(uRippleTravel.x, uRippleTravel.y, waterDepth);
-    float transverse = sin(pixel.x * 0.009 - uTime * 0.28 + pixel.y * 0.014);
-    transverse += sin(pixel.x * 0.022 + uTime * 0.19 - pixel.y * 0.009) * 0.42;
-    float displacement = transverse * uRippleDisplacement * smoothstep(0.0, 0.22, waterDepth);
-    float flowingY = pixel.y + travel + displacement;
-    float grain = valueNoise(screen * vec2(92.0, 180.0) + vec2(uTime * 0.015, 0.0));
-    float frequency = mix(1.3, 0.53, waterDepth);
-    float band = pow(max(0.0, sin(flowingY * frequency + grain * 3.2)), 10.0);
-    float broken = 0.4 + valueNoise(screen * vec2(150.0, 48.0)) * 0.6;
-    float shallow = sin(flowingY * mix(0.33, 0.18, waterDepth) + transverse * 0.45);
-    colour += vec3(0.028 + grain * 0.022 + shallow * 0.019 + band * broken * 0.052);
-    colour += uReflectionTint * band * broken * 0.045;
+    /*
+     * Ambient pickup on the micro facets. Without this the near field is a
+     * black void: there is nothing bright enough nearby for Fresnel to catch,
+     * and the viewer loses the fact that the material is water at all.
+     */
+    float facet = clamp((normal.y - 0.986) * 46.0, -1.0, 1.0);
+    float tilt = slope.y;
+    colour += uSheen * (facet * 0.05 + tilt * 0.09) * (1.0 - far * 0.55);
 
-    // Delicate horizontal fragments form each narrow vertical light path.
-    // Positions come from the same world-space source as the visible points.
-    for (int i = 0; i < ${MAX_LIGHTS}; i++) {
-      vec4 source = uLightScreen[i];
-      vec4 style = uLightStyle[i];
-      float below = source.y - screen.y;
-      float along = clamp(below / max(source.w, 0.001), 0.0, 1.0);
-      float extent = step(0.0, below) * (1.0 - smoothstep(0.72, 1.0, along));
-      float wobble = (valueNoise(vec2(flowingY * 0.027, float(i) * 7.4 + uTime * 0.014)) - 0.5)
-        * mix(0.5, 3.0, along) + displacement * along * 0.6;
-      float dx = pixel.x - source.x * uViewport.x + wobble;
-      float width = mix(2.8, style.x, along);
-      float across = exp(-pow(dx / width, 2.0) * 2.5);
-      float line = pow(max(0.0, sin(flowingY * mix(2.25, 0.85, along)
-        + grain * 3.8 + style.z)), 13.0);
-      float fragments = 0.48 + 0.52 * valueNoise(vec2(pixel.y * 0.17, float(i) * 13.0));
-      float shimmer = 1.0 + sin(uTime * (0.37 + float(i) * 0.09) + style.z)
-        * style.y;
-      float falloff = pow(1.0 - along, 0.8);
-      float glints = extent * across * line * fragments * falloff * shimmer * source.z;
-      colour += uLightColor[i] * glints * 1.6;
-      // A soft, dark-lavender underpath keeps the water legible between glints.
-      colour += uLightColor[i] * extent * across * falloff * source.z * 0.055;
+    /*
+     * Beacon reflections. Each source is mirrored through the water plane and
+     * tested against the reflected view vector, so the highlight is a genuine
+     * specular lobe on a moving surface. The lobe broadens with distance: out
+     * there the ripple detail has already faded, and a tight lobe with nothing
+     * left to break it turns into single-pixel sparkle.
+     */
+    vec3 bounce = reflect(-view, normal);
+    for (int i = 0; i < ${MAX_BEACONS}; i++) {
+      vec4 beacon = uBeacon[i];
+      if (beacon.w <= 0.0) continue;
+
+      vec3 mirrored = vec3(beacon.x, -beacon.y, beacon.z);
+      float lobe = max(dot(bounce, normalize(mirrored - vWorld)), 0.0);
+      float sharp = mix(1500.0, 90.0, smoothstep(6.0, 58.0, vDepth));
+      // A wide dim shoulder under the glint keeps the path continuous rather
+      // than leaving disconnected specks between crests.
+      float path = pow(lobe, sharp) + pow(lobe, 9.0) * 0.22;
+      colour += uBeaconColor[i] * path * beacon.w * (0.35 + fresnel);
     }
 
-    colour += uReflectionTint * ripple * 1.4;
+    /*
+     * The water dissolves into the same mist the atmosphere draws above it.
+     * Matching the colour before the alpha falls away is what removes the hard
+     * water-to-horizon boundary; a fade alone would just reveal a dark strip.
+     */
+    float haze = smoothstep(16.0, 88.0, vDepth);
+    colour = mix(colour, uMist, haze);
 
-    // Carry the low mist a little way onto the distant surface. The irregular
-    // fade joins sky and water without moving the water plane or its ripples.
-    float veilNoise = valueNoise(vec2(screen.x * 17.0, uTime * 0.005));
-    float veilReach = 0.12 + veilNoise * 0.055;
-    float waterlineVeil = 1.0 - smoothstep(0.0, veilReach, waterDepth);
-    colour += uReflectionTint * waterlineVeil * (0.075 + veilNoise * 0.025);
-
-    // Keep the distant surface present beneath the mist rather than allowing
-    // its depth fade to leave a dark strip between atmosphere and water.
-    float horizonFade = smoothstep(150.0, 64.0, vDepth);
-    horizonFade = max(horizonFade, waterlineVeil * 0.82);
-    gl_FragColor = vec4(colour, horizonFade);
+    gl_FragColor = vec4(colour, 1.0);
   }
 `;
 
@@ -219,6 +243,7 @@ export type ReflectiveFloorOptions = Readonly<{
   reflectionSize: number;
   maxRipples: number;
   reducedMotion: boolean;
+  config?: WaterConfig;
 }>;
 
 export type ReflectiveFloor = Readonly<{
@@ -230,29 +255,29 @@ export type ReflectiveFloor = Readonly<{
     camera: PerspectiveCamera,
     hide: readonly Object3D[],
   ) => void;
-  setHorizonLights: (sources: readonly HorizonReflection[]) => void;
-  resize: (width: number, height: number, pixelRatio: number) => void;
-  update: (deltaSeconds: number, elapsedSeconds: number, beaconIntensity: number) => void;
+  setBeacons: (sources: readonly BeaconSource[]) => void;
+  update: (deltaSeconds: number, elapsedSeconds: number) => void;
   /**
    * Requests a ripple from a viewport-relative pointer position. Ignored unless
    * the pointer is inside the lower band of the viewport.
    */
   requestRipple: (viewportX: number, viewportY: number, speed: number) => boolean;
   setReflectionSize: (size: number) => void;
+  setConfig: (config: WaterConfig) => void;
   /** Ripples currently alive, for reporting. */
   activeRipples: () => number;
   destroy: () => void;
 }>;
 
 export function createReflectiveFloor(options: ReflectiveFloorOptions): ReflectiveFloor {
+  let config = options.config ?? floorConfig;
   const geometry = new PlaneGeometry(options.width, options.depth, 1, 1);
   geometry.rotateX(-Math.PI / 2);
 
   const ripples: Ripple[] = [];
   const rippleData: number[] = new Array(MAX_RIPPLES * 4).fill(0);
-  const lightScreen = Array.from({ length: MAX_LIGHTS }, () => new Vector4());
-  const lightStyle = Array.from({ length: MAX_LIGHTS }, () => new Vector4());
-  const lightColor = Array.from({ length: MAX_LIGHTS }, () => new Color());
+  const beaconData = Array.from({ length: MAX_BEACONS }, () => new Vector4());
+  const beaconColor = Array.from({ length: MAX_BEACONS }, () => new Color());
   let rippleCooldown = 0;
   let target: WebGLRenderTarget | null = null;
   let reflectionSize = options.reflectionSize;
@@ -267,21 +292,18 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
       uHasReflection: { value: 0 },
       uReflectMatrix: { value: new Float32Array(16) },
       uTime: { value: 0 },
-      uDistortion: { value: options.reducedMotion ? 0 : floorConfig.distortion },
-      uBeaconIntensity: { value: 1 },
-      uNear: { value: new Color(sceneColors.waterNear).multiplyScalar(1.4) },
-      uFar: { value: new Color(sceneColors.midnight).multiplyScalar(2.2) },
-      uReflectionTint: { value: new Color(sceneColors.reflection) },
-      uResolution: { value: new Vector2(1, 1) },
-      uViewport: { value: new Vector2(1, 1) },
-      uRippleTravel: { value: new Vector2(...floorConfig.rippleTravelPxPerSecond) },
-      uRippleDisplacement: { value: floorConfig.rippleDisplacementPx },
-      uLightScreen: { value: lightScreen },
-      uLightStyle: { value: lightStyle },
-      uLightColor: { value: lightColor },
+      uDistortion: { value: config.distortion },
+      uSwell: { value: options.reducedMotion ? 0.55 : config.swell },
+      uRipple: { value: options.reducedMotion ? 0.55 : config.ripple },
+      uNear: { value: new Color(sceneColors.waterNear).multiplyScalar(1.15) },
+      uFar: { value: new Color(sceneColors.midnight).multiplyScalar(1.7) },
+      uMist: { value: new Color(sceneColors.lavender).multiplyScalar(0.22) },
+      uSheen: { value: new Color(sceneColors.reflection) },
+      uBeacon: { value: beaconData },
+      uBeaconColor: { value: beaconColor },
       uRipples: { value: rippleData },
       uRippleRadius: { value: 0.055 },
-      uRippleSeconds: { value: floorConfig.rippleSeconds },
+      uRippleSeconds: { value: config.rippleSeconds },
     },
   });
 
@@ -325,25 +347,16 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
   return {
     mesh,
 
-    resize: (width, height, pixelRatio) => {
-      (material.uniforms.uResolution!.value as Vector2).set(
-        width * pixelRatio,
-        height * pixelRatio,
-      );
-      (material.uniforms.uViewport!.value as Vector2).set(width, height);
-    },
-
-    setHorizonLights: (sources) => {
-      for (let index = 0; index < MAX_LIGHTS; index += 1) {
+    setBeacons: (sources) => {
+      for (let index = 0; index < MAX_BEACONS; index += 1) {
         const source = sources[index];
-        lightScreen[index]!.set(
-          source?.x ?? 0,
-          source?.y ?? 0,
+        beaconData[index]!.set(
+          source?.world.x ?? 0,
+          source?.world.y ?? 0,
+          source?.world.z ?? 0,
           source?.intensity ?? 0,
-          source?.length ?? 0,
         );
-        lightStyle[index]!.set(source?.width ?? 0, source?.shimmer ?? 0, source?.phase ?? 0, 0);
-        lightColor[index]!.copy(source?.color ?? new Color(0));
+        beaconColor[index]!.copy(source?.color ?? new Color(0));
       }
     },
 
@@ -402,16 +415,15 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
       });
     },
 
-    update: (deltaSeconds, elapsedSeconds, beaconIntensity) => {
+    update: (deltaSeconds, elapsedSeconds) => {
       material.uniforms.uTime!.value = options.reducedMotion ? 0 : elapsedSeconds;
-      material.uniforms.uBeaconIntensity!.value = beaconIntensity;
 
       rippleCooldown = Math.max(0, rippleCooldown - deltaSeconds);
 
       for (let index = ripples.length - 1; index >= 0; index -= 1) {
         const ripple = ripples[index]!;
         ripple.age += deltaSeconds;
-        if (ripple.age >= floorConfig.rippleSeconds) {
+        if (ripple.age >= config.rippleSeconds) {
           ripples.splice(index, 1);
         }
       }
@@ -431,7 +443,7 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
       }
 
       // Only the lower band of the viewport touches the water.
-      if (viewportY < 1 - floorConfig.pointerZone) {
+      if (viewportY < 1 - config.pointerZone) {
         return false;
       }
 
@@ -439,7 +451,7 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
         ripples.shift();
       }
 
-      const depthInBand = (viewportY - (1 - floorConfig.pointerZone)) / floorConfig.pointerZone;
+      const depthInBand = (viewportY - (1 - config.pointerZone)) / config.pointerZone;
 
       ripples.push({
         u: viewportX,
@@ -453,7 +465,7 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
         strength: Math.min(1, 0.4 + speed / 1400),
       });
 
-      rippleCooldown = floorConfig.rippleInterval;
+      rippleCooldown = config.rippleInterval;
       // One ripple, one event. The cue is gated by the same interval the
       // visible ripple is, so sound and image never disagree.
       emitSoundEvent("water:ripple", { intensity: Math.min(1, 0.3 + speed / 1600) });
@@ -465,6 +477,14 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
     setReflectionSize: (size) => {
       reflectionSize = size;
       ensureTarget();
+    },
+
+    setConfig: (next) => {
+      config = next;
+      material.uniforms.uDistortion!.value = next.distortion;
+      material.uniforms.uSwell!.value = options.reducedMotion ? 0.55 : next.swell;
+      material.uniforms.uRipple!.value = options.reducedMotion ? 0.55 : next.ripple;
+      material.uniforms.uRippleSeconds!.value = next.rippleSeconds;
     },
 
     destroy: () => {

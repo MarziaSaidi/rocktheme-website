@@ -6,21 +6,8 @@ export type SiteLink = Readonly<{
 
 export type NavigationItem = SiteLink &
   Readonly<{
-    key: "index" | "work" | "about" | "contact";
+    key: SectionId;
   }>;
-
-/**
- * Section anchors are shared by navigation, skip links, and page landmarks.
- * Keep these in sync with the `id` attributes rendered by the homepage sections.
- */
-export const sectionIds = {
-  top: "top",
-  main: "main",
-  index: "index",
-  work: "selected-work",
-  about: "about",
-  contact: "contact",
-} as const;
 
 export const siteContent = {
   name: "Marzia Saidi",
@@ -43,9 +30,9 @@ export const siteContent = {
     href: "https://github.com/MarziaSaidi",
   },
   navigation: [
-    { key: "index", label: "Index", href: `/#${sectionIds.index}` },
-    { key: "work", label: "Work", href: `/#${sectionIds.work}` },
-    { key: "about", label: "About", href: `/#${sectionIds.about}` },
+    { key: "hero", label: "Index", href: sectionHref("hero") },
+    { key: "selected-work", label: "Work", href: sectionHref("selected-work") },
+    { key: "about", label: "About", href: sectionHref("about") },
   ] satisfies readonly NavigationItem[],
   skipLinkLabel: "Skip to main content",
   hero: {
@@ -83,3 +70,4 @@ export const siteContent = {
     backToTopLabel: "Back to top",
   },
 } as const;
+import { sectionHref, type SectionId } from "@/config/sections";

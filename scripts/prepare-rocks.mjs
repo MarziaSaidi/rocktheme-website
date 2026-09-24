@@ -5,11 +5,14 @@ import sharp from "sharp";
 import { MeshoptSimplifier } from "meshoptimizer";
 
 const root = new URL("../public/assets/rocks/", import.meta.url);
-const sources = [
+const standardSources = [
   ["hero.glb", "hero-rock.glb"],
   ["selected work.glb", "selected-work-rock.glb"],
   ["footer.glb", "footer-rock.glb"],
 ];
+const sources = process.argv.includes("--intro")
+  ? [["rock formation 3d model.glb", "intro-rock.glb"]]
+  : standardSources;
 const desktop = process.argv[2];
 if (!desktop) throw new Error("Usage: node scripts/prepare-rocks.mjs /path/to/source-folder");
 

@@ -1,6 +1,7 @@
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
-import { sectionIds, siteContent } from "@/content/site/siteContent";
+import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
+import { siteContent } from "@/content/site/siteContent";
 import { CueEmitter } from "@/motion/CueEmitter";
 
 import styles from "./SiteFooter.module.css";
@@ -13,16 +14,16 @@ export function SiteFooter() {
   const socialLinks = [email, linkedIn, github];
 
   return (
-    <footer id={sectionIds.contact} className={styles.footer} aria-labelledby="contact-title">
+    <footer id={sectionAnchors.footer} className={styles.footer} aria-labelledby="contact-title">
       {/* The contact plane is the one element that speaks on arrival. */}
       <CueEmitter
-        sectionId={sectionIds.contact}
+        sectionId={sectionAnchors.footer}
         selector="[data-contact-plane]"
         hoverEvent="contact:hover"
         activateEvent="contact:open"
       />
 
-      <EnvironmentLayer variant="closing" horizon={62} />
+      <EnvironmentLayer sectionId="footer" />
 
       <div className={styles.inner}>
         <div className={styles.invitation}>
@@ -80,7 +81,7 @@ export function SiteFooter() {
           </ul>
         </nav>
 
-        <a className={styles.backToTop} href={`#${sectionIds.top}`}>
+        <a className={styles.backToTop} href={`#${pageLandmarkIds.top}`}>
           {footer.backToTopLabel}
           <span aria-hidden="true">↑</span>
         </a>

@@ -51,6 +51,12 @@ export type BlockTone = (typeof BLOCK_LAYOUT.tone)[number];
 
 export type ProjectBlockType = (typeof PROJECT_BLOCK_TYPES)[number];
 export type ProjectContentStatus = "placeholder" | "draft" | "final";
+export const PROJECT_VISUAL_EMPHASIS = ["standard", "dominant"] as const;
+export const PROJECT_SCENE_PLACEMENTS = ["near", "mid", "far"] as const;
+export const PROJECT_ACCENT_BEHAVIORS = ["project", "neutral"] as const;
+export type ProjectVisualEmphasis = (typeof PROJECT_VISUAL_EMPHASIS)[number];
+export type ProjectScenePlacement = (typeof PROJECT_SCENE_PLACEMENTS)[number];
+export type ProjectAccentBehavior = (typeof PROJECT_ACCENT_BEHAVIORS)[number];
 
 export type ImageMedia = Readonly<{
   kind: "image";
@@ -192,7 +198,6 @@ export type CaseStudyBlock =
 export type ProjectSeo = Readonly<{
   title: string;
   description: string;
-  pathname: `/work/${string}`;
 }>;
 
 /** Project-specific facts shown in the persistent rail and mobile disclosure. */
@@ -262,6 +267,8 @@ export type CaseStudyStage = Readonly<{
 }>;
 
 export type Project = Readonly<{
+  /** Stable content identity. It does not depend on display order. */
+  id: string;
   slug: string;
   title: string;
   order: number;
@@ -273,6 +280,10 @@ export type Project = Readonly<{
   contentStatus: ProjectContentStatus;
   placeholderFields: readonly string[];
   homepageImage: ImageMedia;
+  caseStudyUrl: `/work/${string}`;
+  visualEmphasis: ProjectVisualEmphasis;
+  scenePlacement: ProjectScenePlacement;
+  accentBehavior: ProjectAccentBehavior;
   shortDescription: string;
   accentColor: `#${string}`;
   seo: ProjectSeo;

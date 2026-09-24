@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { sceneMediaQueries } from "@/config/responsive";
+import { sectionAnchors, type SectionId } from "@/config/sections";
 import { emitSoundEvent } from "@/sound/soundEvents";
 import { setSceneFocus } from "@/webgl/sceneFocus";
 
@@ -24,7 +26,7 @@ import { setSceneFocus } from "@/webgl/sceneFocus";
 
 type CorridorPinProps = Readonly<{
   /** The section to pin. */
-  sectionId: string;
+  sectionId: SectionId;
 }>;
 
 const ITEM_SELECTOR = "[data-corridor-item]";
@@ -34,7 +36,6 @@ const ITEM_SELECTOR = "[data-corridor-item]";
  * the computed active index and the plane you are actually looking at in step.
  */
 const FOCUS_LINE = 0.32;
-const DESKTOP_QUERY = "(min-width: 64rem)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 type Measured = {
@@ -50,13 +51,13 @@ const clamp = (value: number, min: number, max: number) => Math.min(max, Math.ma
 
 export function CorridorPin({ sectionId }: CorridorPinProps) {
   useEffect(() => {
-    const section = document.getElementById(sectionId);
+    const section = document.getElementById(sectionAnchors[sectionId]);
 
     if (!section) {
       return;
     }
 
-    const desktop = window.matchMedia(DESKTOP_QUERY);
+    const desktop = window.matchMedia(sceneMediaQueries.desktop);
     const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY);
 
     let pinned = false;

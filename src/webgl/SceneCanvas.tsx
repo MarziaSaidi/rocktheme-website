@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { isSectionId, type SectionId } from "@/config/sections";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { Environment, EnvironmentStats } from "./core/environment";
 import type { ObstacleRect } from "./modules/particleField";
-import type { RockChapter } from "./sceneConfig";
 
 /**
  * React leaf for the environment scene.
@@ -87,15 +87,9 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     };
 
     const syncChapter = () => {
-      const variants: Readonly<Record<string, RockChapter | null>> = {
-        hero: "hero",
-        corridor: "work",
-        calm: null,
-        closing: "footer",
-      };
-      let best: RockChapter | null = null;
+      let best: SectionId | null = null;
       let bestVisible = 0;
-      document.querySelectorAll<HTMLElement>("[data-environment]").forEach((node) => {
+      document.querySelectorAll<HTMLElement>("[data-scene-section]").forEach((node) => {
         // Fallback layers are display:none while WebGL owns the backdrop, so
         // measure their owning section rather than the hidden layer itself.
         const rect = (node.closest("section, footer") ?? node).getBoundingClientRect();
@@ -105,10 +99,10 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
         );
         if (visible > bestVisible) {
           bestVisible = visible;
-          best = variants[node.dataset.environment ?? ""] ?? null;
+          best = isSectionId(node.dataset.sceneSection) ? node.dataset.sceneSection : null;
         }
       });
-      environment?.setChapter(best);
+      environment?.setSection(best);
       if (document.hidden || bestVisible === 0) environment?.stop();
       else environment?.start();
     };

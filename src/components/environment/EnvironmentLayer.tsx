@@ -1,12 +1,9 @@
 import styles from "./EnvironmentLayer.module.css";
-import { horizonLightConfig } from "@/webgl/sceneConfig";
-
-export type EnvironmentVariant = "hero" | "corridor" | "calm" | "closing";
+import type { SectionId } from "@/config/sections";
+import { getSceneSection } from "@/webgl/sceneConfig";
 
 type EnvironmentLayerProps = Readonly<{
-  variant: EnvironmentVariant;
-  /** Horizon position as a percentage of the layer height. */
-  horizon?: number;
+  sectionId: SectionId;
 }>;
 
 /**
@@ -18,15 +15,16 @@ type EnvironmentLayerProps = Readonly<{
  * hidden from assistive technology. Replacing it later must not change the DOM
  * around it.
  */
-export function EnvironmentLayer({ variant, horizon = 68 }: EnvironmentLayerProps) {
-  const lights = horizonLightConfig.sources;
+export function EnvironmentLayer({ sectionId }: EnvironmentLayerProps) {
+  const scene = getSceneSection(sectionId);
+  const lights = scene.horizonLights.sources;
 
   return (
     <div
       aria-hidden="true"
-      data-environment={variant}
+      data-scene-section={sectionId}
       className={styles.layer}
-      style={{ "--horizon": `${horizon}%` } as React.CSSProperties}
+      style={{ "--horizon": `${scene.fallbackHorizonPercent}%` } as React.CSSProperties}
     >
       <div className={styles.sky} />
 

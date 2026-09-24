@@ -1,0 +1,196 @@
+.site {
+  min-height: 100dvh;
+}
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-dialog);
+  min-height: 100dvh;
+  overflow: auto;
+  color: var(--color-text-primary);
+  background-color: #100d16;
+  background-image:
+    linear-gradient(90deg, rgb(12 10 17 / 0.75) 0%, rgb(12 10 17 / 0.2) 52%, transparent 80%),
+    url("/images/intro/rock-water.png");
+  background-position: center;
+  background-size: cover;
+  isolation: isolate;
+  transition: opacity 520ms var(--ease-interface);
+}
+
+.gate:has([data-rock-ready]) {
+  background-image: radial-gradient(ellipse at 75% 65%, #38303f 0%, #211b2a 32%, #100d16 76%);
+}
+
+.gate[data-leaving] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to bottom,
+    rgb(12 10 17 / 0.18),
+    transparent 48%,
+    rgb(12 10 17 / 0.15)
+  );
+  pointer-events: none;
+}
+
+.shade::after {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  height: 37%;
+  background: url("/images/intro/rock-water.png") center bottom / cover no-repeat;
+  opacity: 0;
+  mask-image: linear-gradient(to bottom, transparent, #000 55%);
+  content: "";
+}
+
+.gate:has([data-rock-ready]) .shade::after {
+  opacity: 0.45;
+}
+
+.rock {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: min(66vw, 78rem);
+  pointer-events: none;
+  transform: translateY(12vh);
+}
+
+.rock canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.inner {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: min(100%, var(--layout-max-width));
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: clamp(1.5rem, 4vw, 4rem) var(--layout-gutter) clamp(2.5rem, 8vh, 6rem);
+}
+
+.content {
+  width: min(100%, 42rem);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: clamp(12.5rem, 18vw, 18.5rem);
+  min-height: 3.5rem;
+  padding: 0.9rem 1.5rem;
+  border: 1px solid var(--color-text-primary);
+  border-radius: 0;
+  font-family: var(--font-technical);
+  font-size: clamp(0.75rem, 0.9vw, 0.88rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 240ms var(--ease-interface),
+    color 240ms var(--ease-interface),
+    transform 240ms var(--ease-interface);
+}
+
+.button:hover {
+  transform: translateY(-2px);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+.button:disabled {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
+}
+
+.buttonSound {
+  border-color: var(--color-text-primary);
+  color: #100d16;
+  background: var(--color-text-primary);
+}
+
+.buttonSound:hover:not(:disabled) {
+  background: #d9d4e2;
+}
+
+.buttonSilent {
+  color: var(--color-text-primary);
+  background: rgb(12 10 17 / 0.55);
+}
+
+.buttonSilent:hover:not(:disabled) {
+  color: #100d16;
+  background: var(--color-text-primary);
+}
+
+.note {
+  margin-block: 1.25rem 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-technical);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 47.99rem) {
+  .gate {
+    background-image:
+      linear-gradient(to bottom, rgb(12 10 17 / 0.45), rgb(12 10 17 / 0.75) 60%),
+      url("/images/intro/rock-water.png");
+    background-position: 65% center;
+  }
+
+  .inner {
+    padding-block-end: max(2rem, env(safe-area-inset-bottom));
+  }
+
+  .content {
+    width: 100%;
+  }
+
+  .rock {
+    inset-block-end: auto;
+    width: 100%;
+    height: 68%;
+    transform: translateY(39vh);
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gate,
+  .button {
+    transition-duration: 0ms;
+  }
+}

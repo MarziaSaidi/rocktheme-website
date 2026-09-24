@@ -9,6 +9,8 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { PerspectiveCamera, Points, Scene, ShaderMaterial, Vector3 } from "three";
+import { sceneViewportForWidth } from "../src/config/responsive";
+import { SECTION_IDS } from "../src/config/sections";
 import { applyPointerInfluence } from "../src/webgl/modules/pointerInfluence";
 import { createParticleField } from "../src/webgl/modules/particleField";
 import { createReflectiveFloor } from "../src/webgl/modules/reflectiveFloor";
@@ -20,12 +22,17 @@ import {
   settingsFor,
 } from "../src/webgl/core/quality";
 import {
-  cameraConfig,
   floorConfig,
   horizonLightConfig,
   particleConfig,
   pointerZones,
-  rockConfig,
+  ROCK_ASSET_IDS,
+  ROCK_INSTANCE_IDS,
+  resolveCamera,
+  resolveRockTransform,
+  rockAssets,
+  rockInstances,
+  sceneSections,
 } from "../src/webgl/sceneConfig";
 
 let failures = 0;
@@ -38,13 +45,96 @@ function check(label: string, condition: boolean, detail = ""): void {
   console.log(`  [${status}] ${label}${detail ? ` — ${detail}` : ""}`);
 }
 
+// ------------------------------------------------ sections and scene registry
+console.log("\nsection and scene registry");
+check("section identities are unique", new Set(SECTION_IDS).size === SECTION_IDS.length);
+for (const sectionId of SECTION_IDS) {
+  const config = sceneSections[sectionId];
+  check(`${sectionId} has a scene configuration`, Boolean(config));
+  check(
+    `${sectionId} configuration identifies its own section`,
+    config?.sectionId === sectionId,
+    `received ${String(config?.sectionId)}`,
+  );
+  check(
+    `${sectionId} has at most four horizon sources`,
+    config.horizonLights.sources.length > 0 && config.horizonLights.sources.length <= 4,
+    `${config.horizonLights.sources.length} configured`,
+  );
+  check(
+    `${sectionId} mist clings to the water`,
+    config.fog.mist.cling > 0 && config.fog.mist.cling < 0.6,
+    `cling ${config.fog.mist.cling}`,
+  );
+  check(
+    `${sectionId} horizon sources sit at distinct depths`,
+    new Set(config.horizonLights.sources.map((source) => source.depth)).size ===
+      config.horizonLights.sources.length,
+  );
+}
+
 // ------------------------------------------------------------- rock assets
-console.log("\nrock assets");
-for (const [chapter, config] of Object.entries(rockConfig.chapters)) {
-  const path = join(process.cwd(), "public", config.url.replace(/^\//, ""));
-  check(`${chapter} GLB exists`, existsSync(path));
+console.log("\nrock assets and instances");
+check("rock asset ids are unique", new Set(ROCK_ASSET_IDS).size === ROCK_ASSET_IDS.length);
+check("rock instance ids are unique", new Set(ROCK_INSTANCE_IDS).size === ROCK_INSTANCE_IDS.length);
+for (const assetId of ROCK_ASSET_IDS) {
+  const asset = rockAssets[assetId];
+  check(`${assetId} registry key matches its id`, asset.id === assetId);
+  const path = join(process.cwd(), "public", asset.source.replace(/^\//, ""));
+  check(`${assetId} GLB exists`, existsSync(path), asset.source);
   if (existsSync(path)) {
-    check(`${chapter} GLB stays below 12 MiB`, statSync(path).size < 12 * 1024 * 1024);
+    check(`${assetId} GLB stays below 12 MiB`, statSync(path).size < 12 * 1024 * 1024);
+  }
+}
+
+for (const instanceId of ROCK_INSTANCE_IDS) {
+  const instance = rockInstances[instanceId];
+  check(`${instanceId} registry key matches its id`, instance.id === instanceId);
+  check(
+    `${instanceId} references a known asset`,
+    ROCK_ASSET_IDS.includes(instance.assetId as (typeof ROCK_ASSET_IDS)[number]),
+    instance.assetId,
+  );
+  check(
+    `${instanceId} references a known section`,
+    SECTION_IDS.includes(instance.sectionId),
+    instance.sectionId,
+  );
+  check(
+    `${instanceId} asset allows ${instance.sectionId}`,
+    (rockAssets[instance.assetId].allowedSections as readonly string[]).includes(
+      instance.sectionId,
+    ),
+  );
+  for (const viewport of ["desktop", "tablet", "mobile"] as const) {
+    const transform = resolveRockTransform(instanceId, viewport);
+    check(
+      `${instanceId}.${viewport} position is finite`,
+      transform.position.length === 3 && transform.position.every(Number.isFinite),
+    );
+    check(
+      `${instanceId}.${viewport} rotation is finite`,
+      transform.rotation.length === 3 && transform.rotation.every(Number.isFinite),
+    );
+    check(
+      `${instanceId}.${viewport} scale is positive`,
+      transform.scale.length === 3 &&
+        transform.scale.every((value) => Number.isFinite(value) && value > 0),
+      transform.scale.join(", "),
+    );
+  }
+}
+
+for (const sectionId of SECTION_IDS) {
+  for (const instanceId of sceneSections[sectionId].rockInstanceIds) {
+    const known = ROCK_INSTANCE_IDS.includes(instanceId as (typeof ROCK_INSTANCE_IDS)[number]);
+    check(`${sectionId} references known rock instance ${instanceId}`, known);
+    if (known) {
+      check(
+        `${sectionId} owns rock instance ${instanceId}`,
+        rockInstances[instanceId as keyof typeof rockInstances].sectionId === sectionId,
+      );
+    }
   }
 }
 
@@ -165,7 +255,7 @@ console.log("\nreflective floor pointer gating");
 
   // Let the cooldown lapse and fill past the cap.
   for (let i = 0; i < 6; i += 1) {
-    floor.update(floorConfig.rippleInterval + 0.01, 0, 1);
+    floor.update(floorConfig.rippleInterval + 0.01, 0);
     floor.requestRipple(0.4 + i * 0.05, 0.85, 400);
   }
   check(
@@ -175,7 +265,7 @@ console.log("\nreflective floor pointer gating");
   );
 
   // Ripples decay rather than persisting.
-  floor.update(floorConfig.rippleSeconds + 0.1, 0, 1);
+  floor.update(floorConfig.rippleSeconds + 0.1, 0);
   check("ripples decay away", floor.activeRipples() === 0);
 
   floor.destroy();
@@ -188,7 +278,7 @@ console.log("\nreflective floor pointer gating");
     reducedMotion: true,
   });
   check("reduced motion never ripples", still.requestRipple(0.5, 0.95, 400) === false);
-  still.update(0, 100, 1);
+  still.update(0, 100);
   check(
     "reduced-motion water time stays fixed",
     (still.mesh.material as ShaderMaterial).uniforms.uTime?.value === 0,
@@ -199,39 +289,42 @@ console.log("\nreflective floor pointer gating");
 // ------------------------------------------------------ horizon alignment
 console.log("\nhorizon light/reflection alignment");
 {
-  const camera = new PerspectiveCamera(
-    cameraConfig.fov,
-    16 / 9,
-    cameraConfig.near,
-    cameraConfig.far,
+  const resolved = resolveCamera("hero", sceneViewportForWidth(1440));
+  const camera = new PerspectiveCamera(resolved.fov, 16 / 9, resolved.near, resolved.far);
+  camera.position.set(
+    resolved.target[0] + resolved.offset[0],
+    resolved.target[1] + resolved.offset[1],
+    resolved.target[2] + resolved.offset[2],
   );
-  camera.position.set(0, cameraConfig.height, cameraConfig.distance);
-  camera.rotation.set(
-    Math.atan((2 * floorConfig.horizon - 1) * Math.tan((cameraConfig.fov * Math.PI) / 360)),
-    0,
-    0,
-  );
+  camera.lookAt(...resolved.target);
   const lights = createHorizonLights(new Scene(), camera, true);
   lights.update(0, 30);
-  const staticIntensities = lights.reflections().map((source) => source.intensity);
+  const staticIntensities = lights.beacons().map((source) => source.intensity);
   lights.update(0, 90);
   check(
     "reduced-motion light intensity stays fixed",
-    lights.reflections().every((source, index) => source.intensity === staticIntensities[index]),
+    lights.beacons().every((source, index) => source.intensity === staticIntensities[index]),
   );
   check(
-    "every configured light has one reflection",
-    lights.reflections().length === horizonLightConfig.sources.length,
+    "every configured light publishes one beacon",
+    lights.beacons().length === horizonLightConfig.sources.length,
   );
   camera.aspect = 390 / 844;
   camera.updateProjectionMatrix();
   lights.resize(camera);
-  const aligned = lights.group.children.every((mesh, index) => {
-    const point = new Vector3().copy(mesh.position).project(camera);
-    const reflected = lights.reflections()[index]!;
-    return Math.abs((point.x + 1) * 0.5 - reflected.x) < 0.002;
+  // The water mirrors the beacon's world position, so source and reflection
+  // cannot drift apart. What must hold is that the published position is the
+  // mesh the viewer sees, at every aspect ratio.
+  const anchored = lights.beacons().every((beacon, index) => {
+    const mesh = lights.group.children[index]!;
+    return new Vector3().copy(mesh.position).distanceTo(beacon.world) < 1e-6;
   });
-  check("mobile light and reflection x remain aligned", aligned);
+  check("beacon world positions track their meshes", anchored);
+  const onScreen = lights.beacons().every((beacon) => {
+    const point = new Vector3().copy(beacon.world).project(camera);
+    return Math.abs(point.x) <= 1.05;
+  });
+  check("mobile cropping keeps every beacon in frame", onScreen);
   lights.destroy();
 }
 

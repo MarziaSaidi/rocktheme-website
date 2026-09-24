@@ -7,10 +7,15 @@ import type { SoundEvent } from "./soundEvents";
  * water is, how often particles may speak, or what a cue sounds like is an
  * edit to this file and nothing else.
  *
- * There are no audio assets. Every cue is synthesised, which keeps the payload
- * at zero bytes, avoids autoplay-blocked media elements, and lets the texture
- * respond to the scene rather than replay a recording.
+ * Interaction cues are synthesised. The environmental bed is the visitor's
+ * chosen music track, loaded only after sound is enabled.
  */
+
+/** The background track starts only after an explicit sound-on gesture. */
+export const BACKGROUND_TRACK = "/audio/sahtori-path-of-the-wind-lofi-223116.mp3";
+
+/** Music level before the master gain. Keep interaction cues underneath it. */
+export const MUSIC_GAIN = 0.62;
 
 /** Master level. Conservative on purpose; the scene is quiet by design. */
 export const MASTER_GAIN = 0.5;
@@ -68,18 +73,6 @@ export const FADE_SECONDS = { in: 1.6, out: 0.45 } as const;
  * pitches, in hertz, one per beacon. Nothing loops through them in order.
  */
 export const LIGHT_SCALE = [110, 146.83, 164.81, 220, 246.94] as const;
-
-/** The environmental bed: two low drones and one filtered air layer. */
-export const ATMOSPHERE = {
-  drones: [55, 82.4],
-  /** Slow detune in cents, so the two never sit perfectly still. */
-  detuneCents: 6,
-  /** Seconds for one full breath of the detune. */
-  breathSeconds: 24,
-  /** Lowpass on the noise layer. Keeps it as air rather than hiss. */
-  airCutoffHz: 320,
-  airGain: 0.35,
-} as const;
 
 export type CueShape = Readonly<{
   layer: SoundLayer;
