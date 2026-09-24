@@ -62,9 +62,33 @@ for (const sectionId of SECTION_IDS) {
     `${config.horizonLights.sources.length} configured`,
   );
   check(
-    `${sectionId} mist clings to the water`,
-    config.fog.mist.cling > 0 && config.fog.mist.cling < 0.6,
-    `cling ${config.fog.mist.cling}`,
+    `${sectionId} mist is built from overlapping sheets`,
+    config.fog.layers.length >= 2 && config.fog.layers.length <= 4,
+    `${config.fog.layers.length} layers`,
+  );
+  check(
+    `${sectionId} mist sheets differ in depth, drift and noise`,
+    new Set(config.fog.layers.map((layer) => layer.depth)).size === config.fog.layers.length &&
+      new Set(config.fog.layers.map((layer) => layer.speed)).size === config.fog.layers.length &&
+      new Set(config.fog.layers.map((layer) => layer.noiseScale)).size === config.fog.layers.length,
+  );
+  check(
+    `${sectionId} no mist sheet is opaque enough to read as a wall`,
+    config.fog.layers.every((layer) => layer.opacity > 0 && layer.opacity <= 1.5),
+  );
+  check(
+    `${sectionId} horizon sources are wider than they are tall`,
+    config.horizonLights.sources.every((source) => source.width > source.height * 1.6),
+  );
+  check(
+    `${sectionId} rock lights stay local rather than global`,
+    config.lighting.points.length > 0 &&
+      config.lighting.points.every((light) => light.decay === 2 && light.distance <= 20),
+  );
+  check(
+    `${sectionId} fog colour matches the DOM background`,
+    config.fog.color === 0x100b18,
+    `0x${config.fog.color.toString(16)}`,
   );
   check(
     `${sectionId} horizon sources sit at distinct depths`,

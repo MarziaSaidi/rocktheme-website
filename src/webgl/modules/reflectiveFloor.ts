@@ -231,7 +231,13 @@ const FRAGMENT_SHADER = /* glsl */ `
     float haze = smoothstep(16.0, 88.0, vDepth);
     colour = mix(colour, uMist, haze);
 
-    gl_FragColor = vec4(colour, 1.0);
+    /*
+     * Feather the far edge out before the geometry actually ends. The plane
+     * stops a little below the horizon, and holding it opaque to that edge
+     * cuts a hard line across the frame where the surface simply stops. Fading
+     * it out first lets the mist carry the last stretch instead.
+     */
+    gl_FragColor = vec4(colour, 1.0 - smoothstep(55.0, 100.0, vDepth));
   }
 `;
 

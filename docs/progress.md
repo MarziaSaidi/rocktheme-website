@@ -1225,3 +1225,36 @@ One structural decision resolves the stripes, the columns and the rock contact t
 ### Evidence
 
 `docs/baselines/water-rebuild/` holds `footer-1440x900.png`, `hero-1440x900.png` and `water-motion-1440x900.mp4` (7.5 s, pointer stationary throughout).
+
+## Horizon atmosphere and light scattering
+
+Date: 2026-09-24
+
+Scope: the visible horizon lights, the low mist, scene fog and rock illumination. The water shader, its uniforms, geometry, transforms, reflections and colours were not touched.
+
+### Port, not a drop-in
+
+The supplied components were React Three Fiber (`useFrame`, JSX `<mesh>`, `<fog attach>`). This project has no `@react-three/fiber`; `src/webgl/` is imperative three.js on a manual rAF loop. Accepting the JSX would have meant replacing the scene runtime, which would have touched the water. The GLSL was ported verbatim into the existing factory modules instead.
+
+Three deviations, all forced by this codebase rather than chosen:
+
+1. **No `<color attach="background">`.** The renderer is `alpha: true` and the canvas is `position: fixed` over the DOM background. An opaque scene background would cover the CSS fallback layer and the opacity fade-in. The stated goal — fog matching background so no seam shows — is met by setting the fog to the existing `#100b18` rather than a new `#0d0a13`.
+2. **Mist light centres are a uniform**, not the hardcoded `vUv.x = 0.29 / 0.52 / 0.79`. The sheets are wider than the viewport, so those constants would have lit the wrong stretch of horizon. The gaussian is unchanged; only its centres are supplied.
+3. **Point light intensities scaled ~20x.** Three r182 uses physically correct falloff, so irradiance is `intensity / d²`. The supplied sub-unit values left the rock an unlit silhouette. Ratios and colours are preserved.
+
+### Two defects found during integration
+
+- **The rock went black.** The supplied light at `(8, 0.5, -14.5)` sits inside the footer rock's volume (x 6–14, y 0–5.2, z −14 to −6), so it lit only interior faces. Lights were moved outside every rock volume.
+- **The horizon seam returned.** Removing the old haze and glow planes left the water's far field (which blends to `lavender × 0.22`) brighter than the new, much darker mist. Measured as a step from luminance 11.5 to 18 across four pixels. Raising the three sheet opacities closed it: the profile is now irregular (12.8 → 16.9 → 13.6 → 19.3) rather than a step, so no line is findable.
+
+### Result
+
+Sources read as a small bright core inside a wide flat scattering lobe — no orbs, no beams, no identical glows. The three sheets differ in depth, drift, noise scale and opacity and combine into one uneven field. The composition is deliberately more restrained than the previous pass.
+
+### Remaining lever
+
+The cleanest remaining improvement is water-side and was left alone: `uMist` in `reflectiveFloor.ts` is `lavender × 0.22`, brighter than the new atmosphere. Lowering it to roughly `× 0.14` would let the water meet the mist without the sheets having to carry the whole bridge. One number, water file, not touched.
+
+### Validation
+
+`npm run validate` passed end to end: format, lint (0 warnings), content, 132 scene assertions, typecheck, production build. Captures in `docs/baselines/atmosphere-pass/`.

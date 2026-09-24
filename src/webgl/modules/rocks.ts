@@ -1,10 +1,10 @@
 import {
-  AmbientLight,
   Box3,
-  DirectionalLight,
   Group,
+  HemisphereLight,
   Mesh,
   MeshStandardMaterial,
+  PointLight,
   Vector3,
   type Material,
   type Object3D,
@@ -116,12 +116,22 @@ export function createRocks(
   let destroyed = false;
   let activeLighting = lighting;
 
-  const ambient = new AmbientLight(lighting.ambientColor, lighting.ambientIntensity);
-  const edge = new DirectionalLight(lighting.edgeColor, lighting.edgeIntensity);
-  edge.position.set(...lighting.edgePosition);
-  const fill = new DirectionalLight(lighting.fillColor, lighting.fillIntensity);
-  fill.position.set(...lighting.fillPosition);
-  group.add(ambient, edge, fill);
+  /*
+   * Broad, weak, local lights. The visible glow at the horizon and the light
+   * that actually shades the rock are separate things: the atmosphere shader
+   * draws what the eye reads, these only illuminate geometry.
+   */
+  const hemisphere = new HemisphereLight(
+    lighting.hemisphereSky,
+    lighting.hemisphereGround,
+    lighting.hemisphereIntensity,
+  );
+  const points = lighting.points.map((source) => {
+    const light = new PointLight(source.color, source.intensity, source.distance, source.decay);
+    light.position.set(...source.position);
+    return light;
+  });
+  group.add(hemisphere, ...points);
   scene.add(group);
 
   const applyTransform = (instanceId: RockInstanceId) => {
@@ -132,7 +142,9 @@ export function createRocks(
     entry.root.rotation.set(...transform.rotation);
     entry.root.scale.set(...transform.scale);
     entry.root.visible =
-      entry.ready && entry.opacity > 0.002 && config.visibility.viewports.includes(viewport);
+      entry.ready &&
+      entry.opacity > 0.002 &&
+      (config.visibility.viewports as readonly string[]).includes(viewport);
   };
 
   ROCK_INSTANCE_IDS.forEach((instanceId) => {
@@ -205,13 +217,20 @@ export function createRocks(
     },
     setLighting: (config) => {
       activeLighting = config;
-      ambient.color.setHex(config.ambientColor);
-      ambient.intensity = config.ambientIntensity;
-      edge.color.setHex(config.edgeColor);
-      edge.position.set(...config.edgePosition);
-      fill.color.setHex(config.fillColor);
-      fill.intensity = config.fillIntensity;
-      fill.position.set(...config.fillPosition);
+      hemisphere.color.setHex(config.hemisphereSky);
+      hemisphere.groundColor.setHex(config.hemisphereGround);
+      hemisphere.intensity = config.hemisphereIntensity;
+      points.forEach((light, index) => {
+        const source = config.points[index];
+        if (!source) {
+          light.intensity = 0;
+          return;
+        }
+        light.color.setHex(source.color);
+        light.distance = source.distance;
+        light.decay = source.decay;
+        light.position.set(...source.position);
+      });
     },
     resize: (width) => {
       viewport = sceneViewportForWidth(width);
@@ -222,7 +241,11 @@ export function createRocks(
         (instanceId) => entries[instanceId].root,
       ),
     update: (pointerX, pointerY, beaconIntensity, delta) => {
-      edge.intensity = activeLighting.edgeIntensity + beaconIntensity * activeLighting.beaconGain;
+      points.forEach((light, index) => {
+        const source = activeLighting.points[index];
+        if (!source) return;
+        light.intensity = source.intensity * (1 + beaconIntensity * activeLighting.beaconGain);
+      });
       ROCK_INSTANCE_IDS.forEach((instanceId) => {
         const entry = entries[instanceId];
         if (!entry.ready) return;
@@ -236,7 +259,8 @@ export function createRocks(
         entry.root.position.y = transform.position[1] + pointerY * rockParallax * 0.2;
         entry.root.position.z = transform.position[2];
         entry.root.visible =
-          entry.opacity > 0.002 && config.visibility.viewports.includes(viewport);
+          entry.opacity > 0.002 &&
+          (config.visibility.viewports as readonly string[]).includes(viewport);
         entry.meshes.forEach((mesh) => {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           materials.forEach((material) => {

@@ -115,64 +115,106 @@ export const horizonLightConfig: HorizonLightConfig = {
       depth: -44,
       elevation: 0.34,
       color: 0xc6aee4,
-      intensity: 0.74,
-      spread: 0.055,
+      intensity: 0.58,
+      width: 15,
+      height: 6.8,
+      spread: 0.1,
       shimmer: 0.05,
       phase: 0.2,
+      seed: 1.7,
     },
     {
       position: 0.43,
       depth: -52,
       elevation: 0.41,
       color: 0xdcc8f2,
-      intensity: 1,
+      intensity: 0.82,
+      width: 21,
+      height: 9.5,
       spread: 0.075,
       shimmer: 0.06,
       phase: 2.6,
+      seed: 7.2,
     },
     {
       position: 0.78,
       depth: -78,
       elevation: 0.52,
       color: 0xb99fd8,
-      intensity: 0.86,
-      spread: 0.135,
+      intensity: 0.43,
+      width: 38,
+      height: 17,
+      spread: 0.13,
       shimmer: 0.04,
       phase: 4.4,
+      seed: 13.8,
     },
   ],
 };
 
 export const horizonAtmosphereConfig: FogConfig = {
-  color: sceneColors.aubergine,
-  depth: -48,
-  baseY: 0.38,
-  hazeHeight: 2.5,
-  hazeBelow: 1.1,
-  hazeOpacity: 0.3,
-  glowHeight: 3.5,
-  glowBelow: 0.65,
-  glowOpacity: 0.24,
-  density: 0.015,
-  mist: {
-    height: 3.2,
-    opacity: 0.9,
-    coverageScale: 2.4,
-    cling: 0.22,
-    drift: 0.017,
-  },
+  color: 0x100b18,
+  layers: [
+    {
+      depth: -46,
+      height: 5.2,
+      widthFactor: 1.2,
+      offsetX: 0,
+      opacity: 1.15,
+      seed: 1.2,
+      speed: 0.42,
+      noiseScale: 3.0,
+      heightBias: -0.06,
+    },
+    {
+      depth: -49,
+      height: 3.9,
+      widthFactor: 1.16,
+      offsetX: -2.4,
+      opacity: 0.9,
+      seed: 8.4,
+      speed: 0.31,
+      noiseScale: 3.8,
+      heightBias: -0.11,
+    },
+    {
+      depth: -52,
+      height: 2.6,
+      widthFactor: 1.12,
+      offsetX: 3.1,
+      opacity: 0.6,
+      seed: 16.7,
+      speed: 0.22,
+      noiseScale: 4.5,
+      heightBias: -0.16,
+    },
+  ],
 };
 
+/*
+ * Rock illumination. Broad and weak on purpose: the sharp purple key made the
+ * stone look lit by a stage lamp. Fog is matched to the DOM background colour
+ * rather than a new one, because the canvas composites over that background
+ * and a mismatch is exactly what produces a visible horizon seam.
+ */
 export const environmentLightingConfig: EnvironmentLightingConfig = {
-  ambientColor: 0xd7cde2,
-  ambientIntensity: 1.05,
-  edgeColor: sceneColors.lavender,
-  edgeIntensity: 2.5,
-  edgePosition: [-8, 7, -14],
-  fillColor: 0xc7c1d0,
-  fillIntensity: 0.9,
-  fillPosition: [5, 9, 6],
+  hemisphereSky: 0x33273f,
+  hemisphereGround: 0x07060a,
+  hemisphereIntensity: 1.5,
+  /*
+   * Ratios and colours as specified, but scaled for physically correct
+   * falloff: irradiance is intensity / d squared, so the supplied sub-unit
+   * values left the rock an unlit silhouette. Depths are pulled forward so
+   * each light actually sits among the rocks it is meant to shade.
+   */
+  points: [
+    { position: [-8, 4, 3], color: 0x8066a5, intensity: 15, distance: 18, decay: 2 },
+    { position: [2, 4, -4], color: 0x9b7fc2, intensity: 20, distance: 18, decay: 2 },
+    { position: [13, 3.5, -2], color: 0x695483, intensity: 13, distance: 18, decay: 2 },
+  ],
   beaconGain: 0.35,
+  fogNear: 19,
+  fogFar: 58,
 };
 
 export const cameraConfig: CameraComposition = {

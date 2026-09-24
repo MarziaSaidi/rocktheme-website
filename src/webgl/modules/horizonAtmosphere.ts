@@ -1,6 +1,4 @@
 import {
-  AdditiveBlending,
-  Color,
   DoubleSide,
   Group,
   Mesh,
@@ -12,8 +10,8 @@ import {
   Vector4,
 } from "three";
 
-import { horizonAtmosphereConfig, horizonLightConfig, sceneColors } from "../sceneConfig";
-import type { FogConfig, HorizonLightConfig } from "../sceneTypes";
+import { horizonAtmosphereConfig } from "../sceneConfig";
+import type { FogConfig } from "../sceneTypes";
 
 const MAX_LIGHTS = 4;
 
@@ -25,202 +23,210 @@ const VERTEX_SHADER = /* glsl */ `
   }
 `;
 
-const NOISE = /* glsl */ `
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-               mix(hash(i + vec2(0.0, 1.0)), hash(i + 1.0), u.x), u.y);
-  }
-  float fbm(vec2 p) {
-    return 0.57 * noise(p) + 0.29 * noise(p * 2.13 + 8.4)
-         + 0.14 * noise(p * 4.17 + 19.7);
-  }
-`;
-
-const HAZE_SHADER = /* glsl */ `
-  precision highp float;
-  uniform float uTime;
-  uniform float uOpacity;
-  uniform vec3 uColor;
-  varying vec2 vUv;
-  ${NOISE}
-  void main() {
-    float side = smoothstep(0.0, 0.07, vUv.x) * smoothstep(0.0, 0.07, 1.0 - vUv.x);
-    float bottom = smoothstep(0.0, 0.12, vUv.y);
-    float rise = pow(1.0 - smoothstep(0.08, 0.98, vUv.y), 2.0);
-    float texture = fbm(vec2(vUv.x * 8.0 + uTime * 0.006, vUv.y * 2.6 - uTime * 0.003));
-    float veils = 0.58 + texture * 0.55;
-    gl_FragColor = vec4(uColor, side * bottom * rise * veils * uOpacity);
-  }
-`;
-
 /*
- * One continuous mist volume, not a row of objects.
+ * A low, uneven mist sheet.
  *
- * Coverage, lift and internal structure are three independent noise fields at
- * different scales, so the layer thins to nothing in some stretches and gathers
- * in others without ever repeating a silhouette. Density is pinned to the
- * water by an exponential vertical falloff: the mist hangs on the surface and
- * only occasionally reaches higher.
+ * Three of these run at different depths with different noise, drift, size and
+ * opacity. Individually each is a plane; together they read as one irregular
+ * atmospheric field, which is the point — no single layer should be findable.
+ *
+ * The base colour is nearly the environment colour. Mist is not purple smoke;
+ * it only takes on colour where a beacon is actually lighting it.
  */
 const MIST_SHADER = /* glsl */ `
   precision highp float;
+
   uniform float uTime;
   uniform float uOpacity;
-  uniform float uCoverageScale;
-  uniform float uCling;
-  uniform float uDrift;
-  uniform vec3 uColor;
-  uniform vec3 uLitColor;
-  uniform vec4 uLights[4];
+  uniform float uSeed;
+  uniform float uSpeed;
+  uniform float uScale;
+  uniform float uHeightBias;
+  /** x = centre in plane UV, y = gaussian width, z = weight. */
+  uniform vec4 uLights[${MAX_LIGHTS}];
+
   varying vec2 vUv;
-  ${NOISE}
-  void main() {
-    float t = uTime * uDrift;
 
-    // Where the mist is at all. Broad and slow: whole stretches of horizon go
-    // nearly clear while others stay banked up.
-    float coverage = fbm(vec2(vUv.x * uCoverageScale + t * 0.7, t));
-    coverage = smoothstep(0.24, 0.78, coverage + 0.16);
-
-    // How high it reaches there. A separate, even broader field, so the rises
-    // do not line up with the dense patches.
-    float lift = 0.55 + fbm(vec2(vUv.x * 1.6 - 4.2, t * 0.8)) * 0.95;
-
-    // Most of the volume clings to the water.
-    float vertical = exp(-pow(vUv.y / max(uCling * lift, 0.04), 1.3));
-
-    // Domain-warped interior. The warp is what keeps this from reading as a
-    // tiled noise texture stretched along the horizon.
-    vec2 q = vec2(vUv.x * 3.6, vUv.y * 1.5);
-    q += vec2(fbm(q * 1.3 + t * 1.1), fbm(q * 1.1 - t * 0.9)) * 0.6;
-    float body = fbm(q * 2.0 + vec2(t * 0.6, -t * 0.4));
-
-    // The beacons light the mist they sit in. Same sources, same falloff as
-    // the glow layer, so one light reads as one physical thing.
-    float lit = 0.0;
-    for (int i = 0; i < 4; i++) {
-      float dx = (vUv.x - uLights[i].x) / max(uLights[i].z, 0.001);
-      lit += exp(-dx * dx * 1.7) * uLights[i].y;
-    }
-
-    vec3 colour = mix(uColor, uLitColor, clamp(lit * 0.8, 0.0, 1.0));
-    float side = smoothstep(0.0, 0.06, vUv.x) * smoothstep(0.0, 0.06, 1.0 - vUv.x);
-    float alpha = vertical * coverage * side * (0.32 + body * 0.85) * uOpacity;
-    gl_FragColor = vec4(colour, alpha);
+  float hash21(vec2 p) {
+    p = fract(p * vec2(123.34, 345.45));
+    p += dot(p, p + 34.345);
+    return fract(p.x * p.y);
   }
-`;
 
-const GLOW_SHADER = /* glsl */ `
-  precision highp float;
-  uniform vec4 uLights[4];
-  uniform vec3 uColor;
-  uniform float uOpacity;
-  varying vec2 vUv;
-  void main() {
-    float glow = 0.0;
-    for (int i = 0; i < 4; i++) {
-      float dx = (vUv.x - uLights[i].x) / uLights[i].z;
-      float dy = (vUv.y - 0.12) / 0.32;
-      glow += exp(-(dx * dx + dy * dy) * 2.5) * uLights[i].y;
+  float noise2D(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+
+  // Rotating the coordinates between octaves reduces obvious repetition.
+  float fbm(vec2 p) {
+    float value = 0.0;
+    float amplitude = 0.52;
+    mat2 rotation = mat2(0.80, 0.60, -0.60, 0.80);
+    for (int i = 0; i < 5; i++) {
+      value += noise2D(p) * amplitude;
+      p = rotation * p * 2.02;
+      p += vec2(17.1, 9.2);
+      amplitude *= 0.5;
     }
-    float bottom = smoothstep(0.0, 0.13, vUv.y);
-    float top = 1.0 - smoothstep(0.38, 0.96, vUv.y);
-    gl_FragColor = vec4(uColor, glow * bottom * top * uOpacity);
+    return value;
+  }
+
+  float gaussian(float x, float centre, float width) {
+    float d = (x - centre) / width;
+    return exp(-d * d);
+  }
+
+  void main() {
+    float time = uTime * uSpeed;
+
+    // Stretched horizontally: mist forms long irregular banks, not round puffs.
+    vec2 p = vec2(vUv.x * uScale, vUv.y * 2.1);
+
+    // Domain warp, so this cannot read as plain procedural noise.
+    vec2 warp;
+    warp.x = fbm(p * 0.72 + vec2(time * 0.055, uSeed));
+    warp.y = fbm(p * 0.61 + vec2(uSeed * 2.7, -time * 0.031));
+    warp -= 0.5;
+    vec2 warpedP = p + warp * vec2(0.72, 0.26);
+
+    // Banks, then irregular boundaries, then fine breakup.
+    float broad = fbm(warpedP * 0.48 + vec2(time * 0.022, uSeed));
+    float medium = fbm(warpedP * 1.15 + vec2(-time * 0.036, uSeed * 3.1));
+    float fine = fbm(warpedP * 2.65 + vec2(time * 0.051, -uSeed));
+
+    float density = broad * 0.62 + medium * 0.28 + fine * 0.10;
+    // Real mist does not cover the horizon uniformly.
+    density = smoothstep(0.39, 0.70, density);
+
+    float height = clamp(1.0 - vUv.y + uHeightBias, 0.0, 1.0);
+    float groundMist = pow(height, 2.35);
+    // Some banks rise a little above the main layer.
+    float risingMist = pow(height, 1.25) * smoothstep(0.57, 0.78, broad) * 0.30;
+
+    float alpha = density * (groundMist + risingMist);
+
+    float coverage = fbm(vec2(vUv.x * 3.0 + uSeed * 4.0 + time * 0.013, 0.73));
+    coverage = smoothstep(0.24, 0.70, coverage);
+    alpha *= coverage;
+
+    float left = smoothstep(0.0, 0.12, vUv.x);
+    float right = smoothstep(0.0, 0.12, 1.0 - vUv.x);
+    float top = smoothstep(0.0, 0.16, 1.0 - vUv.y);
+    alpha *= left * right * top;
+
+    // The beacons illuminate the mist they sit in.
+    float lightAmount = 0.0;
+    for (int i = 0; i < ${MAX_LIGHTS}; i++) {
+      lightAmount += gaussian(vUv.x, uLights[i].x, max(uLights[i].y, 0.001)) * uLights[i].z;
+    }
+    // Light mainly reaches the mist close to the water.
+    lightAmount *= pow(1.0 - vUv.y, 1.5);
+
+    vec3 baseMist = vec3(0.050, 0.043, 0.062);
+    vec3 illuminatedMist = vec3(0.19, 0.145, 0.25);
+    vec3 color = mix(baseMist, illuminatedMist, clamp(lightAmount, 0.0, 1.0));
+    color += vec3(0.025, 0.021, 0.031) * broad;
+
+    alpha *= uOpacity;
+    // Never an opaque purple wall.
+    alpha = clamp(alpha, 0.0, 0.27);
+
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
 export type HorizonAtmosphere = Readonly<{
   resize: (camera: PerspectiveCamera) => void;
   update: (elapsedSeconds: number) => void;
-  setConfig: (fog: FogConfig, lights: HorizonLightConfig, camera: PerspectiveCamera) => void;
+  setConfig: (fog: FogConfig, camera: PerspectiveCamera) => void;
+  /** Accepts each beacon's viewport centre and spread. */
+  setIllumination: (sources: readonly [number, number][]) => void;
   destroy: () => void;
 }>;
 
-/** Three independent, very low-contrast layers behind the near scene. */
 export function createHorizonAtmosphere(
   scene: Scene,
   camera: PerspectiveCamera,
   reducedMotion: boolean,
   initialFog: FogConfig = horizonAtmosphereConfig,
-  initialLights: HorizonLightConfig = horizonLightConfig,
 ): HorizonAtmosphere {
   let fogConfig = initialFog;
-  let lightConfig = initialLights;
   const group = new Group();
   const geometry = new PlaneGeometry(1, 1);
-  const materials: ShaderMaterial[] = [];
   const timeUniform = { value: 0 };
-  const color = new Color(sceneColors.lavender);
-  // The mist body sits far darker than the light that picks it out, so a lit
-  // pocket reads as illumination rather than as a brighter cloud.
-  const mistColor = new Color(sceneColors.lavender).multiplyScalar(0.34);
-  const mistLitColor = new Color(sceneColors.lavender).multiplyScalar(1.05);
-  const glowLights = Array.from({ length: MAX_LIGHTS }, (_, index) => {
-    const source = lightConfig.sources[index];
-    return new Vector4(source?.position ?? 0, source?.intensity ?? 0, source?.spread ?? 0.075, 0);
-  });
+  const lightUniform = Array.from({ length: MAX_LIGHTS }, () => new Vector4());
 
-  const makePlane = (fragmentShader: string, opacity: number, additive = false) => {
+  /*
+   * Each sheet is a touch wider than the viewport, so a beacon's viewport
+   * fraction has to be remapped into plane UV or the mist would light the
+   * wrong stretch of horizon.
+   */
+  const applyIllumination = (sources: readonly [number, number][], widthFactor: number) => {
+    for (let index = 0; index < MAX_LIGHTS; index += 1) {
+      const source = sources[index];
+      if (!source) {
+        lightUniform[index]!.set(0, 1, 0, 0);
+        continue;
+      }
+      const [centre, spread] = source;
+      lightUniform[index]!.set(
+        0.5 + (centre - 0.5) / widthFactor,
+        Math.max(spread / widthFactor, 0.02),
+        0.6,
+        0,
+      );
+    }
+  };
+
+  const layers = fogConfig.layers.map((layer) => {
     const material = new ShaderMaterial({
       vertexShader: VERTEX_SHADER,
-      fragmentShader,
+      fragmentShader: MIST_SHADER,
       uniforms: {
         uTime: timeUniform,
-        uColor: { value: color },
-        uOpacity: { value: opacity },
-        uLights: { value: glowLights },
-        uLitColor: { value: mistLitColor },
-        uCoverageScale: { value: fogConfig.mist.coverageScale },
-        uCling: { value: fogConfig.mist.cling },
-        uDrift: { value: fogConfig.mist.drift },
+        uOpacity: { value: layer.opacity },
+        uSeed: { value: layer.seed },
+        uSpeed: { value: layer.speed },
+        uScale: { value: layer.noiseScale },
+        uHeightBias: { value: layer.heightBias },
+        uLights: { value: lightUniform },
       },
       transparent: true,
       depthWrite: false,
-      blending: additive ? AdditiveBlending : NormalBlending,
       side: DoubleSide,
+      blending: NormalBlending,
     });
     const mesh = new Mesh(geometry, material);
-    mesh.renderOrder = additive ? 1 : 0;
-    materials.push(material);
+    mesh.renderOrder = 2;
     group.add(mesh);
     return mesh;
-  };
-
-  const haze = makePlane(HAZE_SHADER, fogConfig.hazeOpacity);
-  const glow = makePlane(GLOW_SHADER, fogConfig.glowOpacity, true);
-  const mist = makePlane(MIST_SHADER, fogConfig.mist.opacity);
-  mist.material.uniforms.uColor!.value = mistColor;
-  mist.renderOrder = 2;
+  });
 
   scene.add(group);
 
-  const place = (mesh: Mesh, height: number, below: number, viewWidth: number, offset: number) => {
-    mesh.position.set(0, fogConfig.baseY + (height - below) * 0.5, fogConfig.depth + offset);
-    mesh.scale.set(viewWidth * 1.13, height + below, 1);
-  };
-
   const resize = (viewCamera: PerspectiveCamera) => {
-    const distance = viewCamera.position.z - fogConfig.depth;
-    const viewHeight = 2 * Math.tan((viewCamera.fov * Math.PI) / 360) * distance;
-    const viewWidth = viewHeight * viewCamera.aspect;
     viewCamera.updateMatrixWorld();
-
-    place(haze, fogConfig.hazeHeight, fogConfig.hazeBelow, viewWidth, 0);
-    place(glow, fogConfig.glowHeight, fogConfig.glowBelow, viewWidth, 0.03);
-    /*
-     * The mist is pinned to the waterline rather than to the fog base. Its
-     * whole job is to bridge water and sky, and any gap under it puts the seam
-     * straight back. It dips slightly below zero so the overlap is certain.
-     */
-    mist.position.set(0, fogConfig.mist.height * 0.5 - 0.14, fogConfig.depth + 0.06);
-    mist.scale.set(viewWidth * 1.13, fogConfig.mist.height, 1);
-    group.children.forEach((child) => child.quaternion.copy(viewCamera.quaternion));
+    layers.forEach((mesh, index) => {
+      const layer = fogConfig.layers[index]!;
+      const distance = viewCamera.position.z - layer.depth;
+      const viewHeight = 2 * Math.tan((viewCamera.fov * Math.PI) / 360) * distance;
+      const viewWidth = viewHeight * viewCamera.aspect;
+      /*
+       * The dense edge of the sheet is its base, so the base is pinned just
+       * under the waterline. Anything higher leaves a gap; anything lower
+       * spends the density budget where the water hides it.
+       */
+      mesh.scale.set(viewWidth * layer.widthFactor, layer.height, 1);
+      mesh.position.set(layer.offsetX, layer.height * 0.5 - 0.2, layer.depth);
+      mesh.quaternion.copy(viewCamera.quaternion);
+    });
   };
   resize(camera);
 
@@ -229,25 +235,27 @@ export function createHorizonAtmosphere(
     update: (elapsedSeconds) => {
       timeUniform.value = reducedMotion ? 0 : elapsedSeconds;
     },
-    setConfig: (nextFog, nextLights, viewCamera) => {
+    setIllumination: (sources) => {
+      applyIllumination(sources, fogConfig.layers[0]?.widthFactor ?? 1.2);
+    },
+    setConfig: (nextFog, viewCamera) => {
       fogConfig = nextFog;
-      lightConfig = nextLights;
-      haze.material.uniforms.uOpacity!.value = nextFog.hazeOpacity;
-      glow.material.uniforms.uOpacity!.value = nextFog.glowOpacity;
-      const mistUniforms = mist.material.uniforms;
-      mistUniforms.uOpacity!.value = nextFog.mist.opacity;
-      mistUniforms.uCoverageScale!.value = nextFog.mist.coverageScale;
-      mistUniforms.uCling!.value = nextFog.mist.cling;
-      mistUniforms.uDrift!.value = nextFog.mist.drift;
-      glowLights.forEach((light, index) => {
-        const source = lightConfig.sources[index];
-        light.set(source?.position ?? 0, source?.intensity ?? 0, source?.spread ?? 0.075, 0);
+      layers.forEach((mesh, index) => {
+        const layer = nextFog.layers[index];
+        mesh.visible = Boolean(layer);
+        if (!layer) return;
+        const uniforms = (mesh.material as ShaderMaterial).uniforms;
+        uniforms.uOpacity!.value = layer.opacity;
+        uniforms.uSeed!.value = layer.seed;
+        uniforms.uSpeed!.value = layer.speed;
+        uniforms.uScale!.value = layer.noiseScale;
+        uniforms.uHeightBias!.value = layer.heightBias;
       });
       resize(viewCamera);
     },
     destroy: () => {
       scene.remove(group);
-      materials.forEach((material) => material.dispose());
+      layers.forEach((mesh) => (mesh.material as ShaderMaterial).dispose());
       geometry.dispose();
     },
   };

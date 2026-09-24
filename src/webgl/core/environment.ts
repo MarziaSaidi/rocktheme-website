@@ -1,4 +1,4 @@
-import { FogExp2, PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import { Fog, PerspectiveCamera, Scene, WebGLRenderer } from "three";
 
 import { sceneViewportForWidth } from "@/config/responsive";
 import type { SectionId } from "@/config/sections";
@@ -114,7 +114,16 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   // ---------------------------------------------------------- perspective pass
   const worldScene = new Scene();
-  worldScene.fog = new FogExp2(activeScene.fog.color, activeScene.fog.density);
+  /*
+   * Linear fog only sinks far geometry into the same atmosphere the mist
+   * sheets draw. Its colour is the DOM background the canvas composites over;
+   * the renderer stays alpha so the CSS fallback layer is never covered.
+   */
+  worldScene.fog = new Fog(
+    activeScene.fog.color,
+    activeScene.lighting.fogNear,
+    activeScene.lighting.fogFar,
+  );
   const initialCamera = resolveCamera(activeSectionId, sceneViewportForWidth(width));
   const camera = new PerspectiveCamera(
     initialCamera.fov,
@@ -158,7 +167,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     camera,
     options.reducedMotion,
     activeScene.fog,
-    activeScene.horizonLights,
   );
   const rocks: Rocks = createRocks(
     worldScene,
@@ -213,6 +221,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     options.onBeaconIntensity?.(beaconIntensity);
 
     floor.setBeacons(lights.beacons());
+    atmosphere.setIllumination(lights.illumination());
     floor.update(deltaSeconds, elapsed);
 
     const normalisedX = pointer && width > 0 ? (pointer.x / width) * 2 - 1 : 0;
@@ -375,11 +384,15 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       if (!sectionId || sectionId === activeSectionId) return;
       activeSectionId = sectionId;
       activeScene = getSceneSection(sectionId);
-      worldScene.fog = new FogExp2(activeScene.fog.color, activeScene.fog.density);
+      worldScene.fog = new Fog(
+        activeScene.fog.color,
+        activeScene.lighting.fogNear,
+        activeScene.lighting.fogFar,
+      );
       applyCamera();
       floor.setConfig(activeScene.water);
       lights.setConfig(activeScene.horizonLights, camera);
-      atmosphere.setConfig(activeScene.fog, activeScene.horizonLights, camera);
+      atmosphere.setConfig(activeScene.fog, camera);
       particles.setConfig(activeScene.particles);
       rocks.setLighting(activeScene.lighting);
       rocks.setSection(sectionId);
