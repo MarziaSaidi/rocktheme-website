@@ -30,6 +30,9 @@ import type { EnvironmentLightingConfig } from "../sceneTypes";
 type RockInstance = {
   root: Group;
   meshes: Mesh[];
+  /** Normalised model height, before the instance's vertical scale. */
+  height: number;
+  waterline: { value: number };
   opacity: number;
   ready: boolean;
 };
@@ -62,6 +65,11 @@ function disposeRock(root: Object3D) {
 
 /** World height over which a rock reads as wet from standing in the water. */
 const WATERLINE_HEIGHT = 1.4;
+/**
+ * The wet band never climbs past this share of a rock's own height. A fixed
+ * 1.4 units covered the whole of the low hero rock and turned it black.
+ */
+const WATERLINE_MAX_FRACTION = 0.25;
 
 /**
  * Anchors a rock to the water it stands in.
@@ -71,9 +79,12 @@ const WATERLINE_HEIGHT = 1.4;
  * darker and far glossier than the dry rock above it, so the silhouette
  * dissolves into its own reflection instead of cutting against it.
  */
-export function applyWaterlineContact(material: MeshStandardMaterial) {
+export function applyWaterlineContact(
+  material: MeshStandardMaterial,
+  waterline: { value: number } = { value: WATERLINE_HEIGHT },
+) {
   material.onBeforeCompile = (shader) => {
-    shader.uniforms.uWaterline = { value: WATERLINE_HEIGHT };
+    shader.uniforms.uWaterline = waterline;
 
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying float vRockHeight;")
@@ -141,6 +152,10 @@ export function createRocks(
     entry.root.position.set(...transform.position);
     entry.root.rotation.set(...transform.rotation);
     entry.root.scale.set(...transform.scale);
+    entry.waterline.value = Math.min(
+      WATERLINE_HEIGHT,
+      entry.height * transform.scale[1] * WATERLINE_MAX_FRACTION,
+    );
     entry.root.visible =
       entry.ready &&
       entry.opacity > 0.002 &&
@@ -153,7 +168,14 @@ export function createRocks(
     const root = new Group();
     root.visible = false;
     group.add(root);
-    entries[instanceId] = { root, meshes: [], opacity: 0, ready: false };
+    entries[instanceId] = {
+      root,
+      meshes: [],
+      height: 0,
+      waterline: { value: WATERLINE_HEIGHT },
+      opacity: 0,
+      ready: false,
+    };
 
     loadRockAsset(
       loader,
@@ -184,6 +206,7 @@ export function createRocks(
         root.add(model);
 
         const entry = entries[instanceId];
+        entry.height = size.y * normalization;
         model.traverse((item) => {
           if (!(item instanceof Mesh)) return;
           item.castShadow = false;
@@ -197,7 +220,7 @@ export function createRocks(
               material.transparent = true;
               material.opacity = 0;
               material.depthWrite = true;
-              applyWaterlineContact(material);
+              applyWaterlineContact(material, entry.waterline);
               material.needsUpdate = true;
             }
           });

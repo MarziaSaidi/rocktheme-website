@@ -245,9 +245,14 @@ export const introAtmosphereConfig: FogConfig = {
 };
 
 export const environmentLightingConfig: EnvironmentLightingConfig = {
-  hemisphereSky: 0x33273f,
-  hemisphereGround: 0x07060a,
-  hemisphereIntensity: 1.5,
+  /*
+   * Neutral base light for the stone. The rocks are the only lit materials in
+   * the scene, and the former 0x33273f sky was too dim and too violet to show
+   * the grey surface and cracks baked into the textures.
+   */
+  hemisphereSky: 0x9a9a9c,
+  hemisphereGround: 0x3a3a3c,
+  hemisphereIntensity: 3,
   /*
    * Ratios and colours as specified, but scaled for physically correct
    * falloff: irradiance is intensity / d squared, so the supplied sub-unit
