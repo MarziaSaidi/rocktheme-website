@@ -71,7 +71,7 @@ const WATERLINE_HEIGHT = 1.4;
  * darker and far glossier than the dry rock above it, so the silhouette
  * dissolves into its own reflection instead of cutting against it.
  */
-function applyWaterlineContact(material: MeshStandardMaterial) {
+export function applyWaterlineContact(material: MeshStandardMaterial) {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uWaterline = { value: WATERLINE_HEIGHT };
 

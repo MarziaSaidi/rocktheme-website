@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   getServerSoundState,
   getSoundState,
+  readStoredPreference,
   setSoundState,
   subscribeSoundState,
   writeStoredPreference,
@@ -46,10 +47,18 @@ function subscribeEntry(listener: () => void): () => void {
 export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>) {
   const [forcedEntered, setForcedEntered] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  /*
+   * Off unless this session already chose otherwise. Read through the store so
+   * the server render and the first client render agree, with the local choice
+   * taking over the moment the visitor picks one.
+   */
+  const [soundChoice, setSoundChoice] = useState<boolean | null>(null);
   const exitTimer = useRef<number | null>(null);
   const sound = useSyncExternalStore(subscribeSoundState, getSoundState, getServerSoundState);
   const storedEntry = useSyncExternalStore(subscribeEntry, hasEntered, () => false);
+  const storedSound = useSyncExternalStore(subscribeSoundState, readStoredPreference, () => false);
   const entered = storedEntry || forcedEntered;
+  const soundWanted = soundChoice ?? storedSound;
 
   useEffect(() => {
     return () => {
@@ -98,25 +107,44 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
           <IntroRock />
           <div className={styles.inner}>
             <div className={styles.content}>
-              <div className={styles.actions} role="group" aria-label="Choose your sound setting">
-                <button
-                  className={`${styles.button} ${styles.buttonSound}`}
-                  type="button"
-                  onClick={() => enter(true)}
-                  disabled={sound.unsupported || leaving}
-                >
-                  {sound.unsupported ? "SOUND UNAVAILABLE" : "ENTER WITH SOUND"}
-                </button>
-                <button
-                  className={`${styles.button} ${styles.buttonSilent}`}
-                  type="button"
-                  onClick={() => enter(false)}
-                  disabled={leaving}
-                >
-                  ENTER WITHOUT SOUND
-                </button>
+              <button
+                className={styles.enter}
+                type="button"
+                onClick={() => enter(soundWanted && !sound.unsupported)}
+                disabled={leaving}
+              >
+                ENTER EXPERIENCE
+              </button>
+
+              <div className={styles.sound} role="group" aria-label="Sound">
+                {sound.unsupported ? (
+                  <span className={styles.soundNote}>SOUND UNAVAILABLE</span>
+                ) : (
+                  <>
+                    <button
+                      className={styles.soundChoice}
+                      type="button"
+                      aria-pressed={soundWanted}
+                      onClick={() => setSoundChoice(true)}
+                      disabled={leaving}
+                    >
+                      SOUND ON
+                    </button>
+                    <span className={styles.soundDivider} aria-hidden="true">
+                      /
+                    </span>
+                    <button
+                      className={styles.soundChoice}
+                      type="button"
+                      aria-pressed={!soundWanted}
+                      onClick={() => setSoundChoice(false)}
+                      disabled={leaving}
+                    >
+                      SOUND OFF
+                    </button>
+                  </>
+                )}
               </div>
-              <p className={styles.note}>Sound is optional.</p>
             </div>
           </div>
         </section>

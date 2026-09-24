@@ -1258,3 +1258,57 @@ The cleanest remaining improvement is water-side and was left alone: `uMist` in 
 ### Validation
 
 `npm run validate` passed end to end: format, lint (0 warnings), content, 132 scene assertions, typecheck, production build. Captures in `docs/baselines/atmosphere-pass/`.
+
+## Intro experience
+
+Date: 2026-09-24
+
+Scope: the entry screen only. Hero, Selected Work, the water shader, the horizon modules and the global navigation were not modified.
+
+### What was actually wrong
+
+- **The purple was the lights, not the model.** `IntroRock` lit the stone with a lavender ambient (`0xa99ebc`), a lavender key (`0xd5b9ed` at 4.5) and a purple rim, at 1.35 exposure. The GLB carries no `baseColorFactor`, and its baked base-colour texture measures `[54, 55, 58]` — essentially neutral, and already the intended charcoal ratio. Nothing needed replacing; the lighting needed neutralising.
+- **The rock orbited** on `rock.rotation.y += 0.0011` every frame.
+- **The water was a photograph.** `SiteEntry.module.css` used `url("/images/intro/rock-water.png")` as a background image, twice. There was no water in the intro at all, and the rock canvas floated over the picture with no contact.
+- **The controls were two large rectangles**, one filled porcelain, each at least 200px wide.
+
+### What it is now
+
+The intro mounts the approved landscape modules rather than imitating them: `createReflectiveFloor`, `createHorizonLights` and `createHorizonAtmosphere`, driven by the site's own `cameraConfig`. The intro water _is_ the site's water — same shader, same normals, same planar reflection — and the rock reflects in it through that existing pass. One animation loop, one renderer.
+
+The stone reads charcoal because the lighting is neutral: a grey hemisphere and key, with the single lavender light pulled back behind the rock so it grazes the silhouette instead of washing the upper faces. Measured mean is `[28, 25, 33]` against a `#19191d` target of `[25, 25, 29]`; the residual cast is the approved purple scene fog. Geometry, maps and surface variation are untouched.
+
+The rock is normalised so its base sits exactly on `y = 0`, which is the water plane, and it carries the same `applyWaterlineContact` treatment the landscape rocks use, so the base turns wet and dissolves into the surface.
+
+Nothing rotates. The only motion is a bounded forward camera settle, `1 - exp(-t/16)` over 0.55 world units, which eases to a stop rather than looping.
+
+### Water and rock reading as one place
+
+First pass had the water at `[38, 29, 51]` against stone at `[10, 11, 11]` — the rock looked pasted onto a violet surface. The beacons were the cause: three sources at landscape intensity lighting water that now sits beside a neutral rock. Resolved with intro-specific light and mist **configuration**, not shader changes: two dim beacons held to the left, mist at 45% of the landscape opacity. Water now measures `[17, 13, 25]`.
+
+### Controls
+
+One primary `ENTER EXPERIENCE` at 218 x 44 (was ~296 x 56), a thin 1px border over a barely-there dark surface, with `SOUND ON / SOUND OFF` beneath it at 25px tall. Sound defaults off and is read through the store rather than an effect, so the server and first client render agree. Entering never requires touching it.
+
+### Verified
+
+| Check                              | Result                                                          |
+| ---------------------------------- | --------------------------------------------------------------- |
+| Rock charcoal, not purple          | mean `[28, 25, 33]` vs target `[25, 25, 29]`                    |
+| Rock does not rotate or orbit      | no per-frame rotation; no pointer handlers                      |
+| Water moves with the pointer still | motion capture, 8s, pointer parked off-screen                   |
+| Rock meets the water               | base pinned to `y = 0`, waterline wetness applied               |
+| Controls smaller and integrated    | 218x44 and 25px, thin border, no fill                           |
+| Sound optional                     | `sessionStorage` reads `off` after entering without touching it |
+| Entering works                     | gate removed, site content reachable                            |
+
+`npm run validate` passed: format, lint, content, 132 scene assertions, typecheck, production build.
+
+### Remaining
+
+1. The intro runs its own renderer while the main scene canvas also runs behind the gate. Pausing the main scene while the gate is up would be a straightforward saving, but it touches the entry transition and was left alone.
+2. `public/images/intro/rock-water.png` is now unreferenced and can be deleted.
+
+### Evidence
+
+`docs/baselines/intro/` holds `intro-1440x900.png` and `intro-motion-1440x900.mp4` (8s, pointer stationary).

@@ -152,6 +152,44 @@ export const horizonLightConfig: HorizonLightConfig = {
   ],
 };
 
+/*
+ * The intro keeps two quiet beacons well to the left. At landscape intensity
+ * they lit the water into a bright violet that the charcoal rock could not
+ * belong to; here the rock is the subject and the water stays close to it.
+ */
+export const introLightConfig: HorizonLightConfig = {
+  focusGain: 0,
+  focusEase: 1.2,
+  sources: [
+    {
+      position: 0.11,
+      depth: -46,
+      elevation: 0.34,
+      color: 0xbca7d8,
+      intensity: 0.26,
+      width: 14,
+      height: 6.2,
+      spread: 0.09,
+      shimmer: 0.04,
+      phase: 0.6,
+      seed: 3.1,
+    },
+    {
+      position: 0.33,
+      depth: -58,
+      elevation: 0.42,
+      color: 0xc9b6e4,
+      intensity: 0.34,
+      width: 24,
+      height: 10.5,
+      spread: 0.11,
+      shimmer: 0.05,
+      phase: 3.2,
+      seed: 9.4,
+    },
+  ],
+};
+
 export const horizonAtmosphereConfig: FogConfig = {
   color: 0x100b18,
   layers: [
@@ -197,6 +235,15 @@ export const horizonAtmosphereConfig: FogConfig = {
  * rather than a new one, because the canvas composites over that background
  * and a mismatch is exactly what produces a visible horizon seam.
  */
+/** Same mist, held back so it does not lift the water off the stone. */
+export const introAtmosphereConfig: FogConfig = {
+  color: 0x100b18,
+  layers: horizonAtmosphereConfig.layers.map((layer) => ({
+    ...layer,
+    opacity: layer.opacity * 0.45,
+  })),
+};
+
 export const environmentLightingConfig: EnvironmentLightingConfig = {
   hemisphereSky: 0x33273f,
   hemisphereGround: 0x07060a,
