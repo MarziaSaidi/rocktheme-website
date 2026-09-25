@@ -112,6 +112,11 @@ export type Environment = Readonly<{
   setFocus: (rect: ObstacleRect | null) => void;
   setPointer: (sample: PointerSample) => void;
   setSection: (sectionId: SectionId | null) => void;
+  /**
+   * The viewer has just come through the entry doorway: the hero camera
+   * arrives from a little behind and below its rest instead of appearing there.
+   */
+  beginEntryArrival: () => void;
   /** The page's scroll offset; the camera journey follows it. */
   setScroll: (scrollY: number) => void;
   /** Where each chapter's scroll range begins and ends, measured from the DOM. */
@@ -326,6 +331,15 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   /** World units the resting hero camera drifts by, at most. */
   const IDLE_DRIFT = 0.035;
   let shownArrival: number | null | undefined;
+  /*
+   * The entry arrival: the camera carries on forward out of the doorway and
+   * decelerates into the hero rest. Offsets are where it starts relative to
+   * that rest; -1 means no arrival is running.
+   */
+  const ENTRY_SETTLE_SECONDS = 1.1;
+  const ENTRY_EYE_OFFSET = new Vector3(0, -0.3, 2.6);
+  const ENTRY_TARGET_OFFSET = new Vector3(0, 0.35, 0);
+  let entryAge = -1;
 
   const buildRests = (): JourneyRests => ({
     about: chapterRest("about", viewport),
@@ -447,6 +461,14 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       pose.eye.y += Math.sin(elapsed * 0.083 + 1.3) * idle * 0.6;
       pose.target.x += Math.sin(elapsed * 0.07 + 2.1) * idle;
       pose.target.y += Math.sin(elapsed * 0.095 + 0.4) * idle * 0.5;
+    }
+
+    if (entryAge >= 0) {
+      // Ease-out: leaves at speed, as the doorway camera was moving, and stops.
+      const remaining = Math.pow(1 - Math.min(1, entryAge / ENTRY_SETTLE_SECONDS), 3);
+      pose.eye.addScaledVector(ENTRY_EYE_OFFSET, remaining);
+      pose.target.addScaledVector(ENTRY_TARGET_OFFSET, remaining);
+      entryAge = remaining > 0 ? entryAge + deltaSeconds : -1;
     }
 
     view.fov = pose.fov;
@@ -738,6 +760,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       lights.resize(camera);
       atmosphere.resize(camera);
       if (options.reducedMotion) renderOnce(0);
+    },
+
+    beginEntryArrival: () => {
+      if (options.reducedMotion) return;
+      entryAge = 0;
     },
 
     setScroll: (scrollY) => {

@@ -6,6 +6,7 @@ import { isSectionId, sectionAnchors, type SectionId } from "@/config/sections";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
+import { subscribeEntryArrival } from "./entryChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { JourneyStops } from "./core/cameraJourney";
 import type { Environment, EnvironmentStats } from "./core/environment";
@@ -51,6 +52,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     let resizeObserver: ResizeObserver | null = null;
     let pageObserver: ResizeObserver | null = null;
     let unsubscribeFocus: (() => void) | null = null;
+    let unsubscribeEntry: (() => void) | null = null;
     let statsTimer = 0;
     let obstacleFrame = 0;
     let disposed = false;
@@ -220,6 +222,10 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
         environment?.setFocus(rect);
       });
 
+      unsubscribeEntry = subscribeEntryArrival(() => {
+        environment?.beginEntryArrival();
+      });
+
       resizeObserver = new ResizeObserver((entries) => {
         const entry = entries[0];
         if (!entry) {
@@ -267,6 +273,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       resizeObserver?.disconnect();
       pageObserver?.disconnect();
       unsubscribeFocus?.();
+      unsubscribeEntry?.();
       unsubscribePointer?.();
       pointerSource?.destroy();
       environment?.destroy();

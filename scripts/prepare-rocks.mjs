@@ -38,13 +38,20 @@ const heroSources = [
   ["front rock taht the robot sets on it hero .glb", "perch-rock.glb", 360000, 2048],
   ["correct robot 3d model.glb", "robot.glb", 300000, 2048],
 ];
+/*
+ * The entry doorway. The camera flies through its opening, so the stone keeps
+ * far more triangles than a rock seen across the water.
+ */
+const introArchSources = [["intro stone arch 3d model.glb", "intro-arch.glb", 600000, 2048]];
 const sources = hero
   ? heroSources
-  : process.argv.includes("--intro")
-    ? [["rock formation 3d model.glb", "intro-rock.glb"]]
-    : selectedWork
-      ? selectedWorkSources
-      : standardSources;
+  : process.argv.includes("--intro-arch")
+    ? introArchSources
+    : process.argv.includes("--intro")
+      ? [["rock formation 3d model.glb", "intro-rock.glb"]]
+      : selectedWork
+        ? selectedWorkSources
+        : standardSources;
 const desktop = process.argv.slice(2).find((arg) => !arg.startsWith("--"));
 if (!desktop) throw new Error("Usage: node scripts/prepare-rocks.mjs /path/to/source-folder");
 

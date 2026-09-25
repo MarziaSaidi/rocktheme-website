@@ -402,6 +402,35 @@ export const cameraConfig: CameraComposition = {
   far: 420,
 };
 
+/*
+ * The entry doorway: the supplied stone arch, prepared by
+ * `npm run prepare:intro-arch`. It stands square to the camera and never
+ * moves; the camera travels through it.
+ *
+ * `opening` is measured from the model, in its own units (height 0.98): the
+ * gap between the columns is centred just left of the model's middle, its
+ * floor is the top of the stone step and its head the underside of the arch.
+ */
+export const introDoorwayConfig = {
+  source: "/assets/rocks/intro-arch.glb",
+  /** World height of the whole model, base rocks to crown. */
+  height: 6.6,
+  /** How far the base stands below the water, so the surface cuts the rocks. */
+  sink: 0.38,
+  /** Distance of the doorway's plane down the water. */
+  z: -6,
+  opening: { x: -0.012, floor: 0.14, head: 0.79 },
+  /** Resting camera: the landscape eye height and lens. */
+  eyeHeight: cameraConfig.target[1] + cameraConfig.offset[1],
+  fov: cameraConfig.fov,
+  /** Eye to doorway when the viewport is wide enough to hold it. */
+  distance: 14.5,
+  /** Share of a narrow viewport's width the base rocks may span. */
+  narrowFill: 0.94,
+  /** Where the camera aims at rest: a little below the doorway's middle. */
+  aimHeight: 2.75,
+} as const;
+
 export const ROCK_ASSET_IDS = ["intro-rock", "footer-rock"] as const;
 export type RockAssetId = (typeof ROCK_ASSET_IDS)[number];
 

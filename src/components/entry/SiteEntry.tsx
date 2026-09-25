@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import {
   getServerSoundState,
   getSoundState,
-  readStoredPreference,
   setSoundState,
   subscribeSoundState,
   writeStoredPreference,
 } from "@/sound/soundStore";
 
+import { requestEntryArrival } from "@/webgl/entryChannel";
+
 import styles from "./SiteEntry.module.css";
-import { IntroRock } from "./IntroRock";
+import { IntroDoorway, type IntroDoorwayHandle } from "./IntroDoorway";
 
 const ENTRY_KEY = "marzia-saidi:entered";
 const ENTRY_EVENT = "marzia-saidi:entry-change";
@@ -44,30 +45,60 @@ function subscribeEntry(listener: () => void): () => void {
   return () => window.removeEventListener(ENTRY_EVENT, listener);
 }
 
+/** How long the gate takes to open onto the hero once the camera has crossed. */
+const REVEAL_MS = 380;
+
 export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>) {
   const [forcedEntered, setForcedEntered] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  /*
-   * Off unless this session already chose otherwise. Read through the store so
-   * the server render and the first client render agree, with the local choice
-   * taking over the moment the visitor picks one.
-   */
-  const [soundChoice, setSoundChoice] = useState<boolean | null>(null);
-  const exitTimer = useRef<number | null>(null);
+  const gate = useRef<HTMLElement>(null);
+  const doorway = useRef<IntroDoorwayHandle>(null);
+  const revealTimer = useRef<number | null>(null);
   const sound = useSyncExternalStore(subscribeSoundState, getSoundState, getServerSoundState);
   const storedEntry = useSyncExternalStore(subscribeEntry, hasEntered, () => false);
-  const storedSound = useSyncExternalStore(subscribeSoundState, readStoredPreference, () => false);
   const entered = storedEntry || forcedEntered;
-  const soundWanted = soundChoice ?? storedSound;
+
+  /*
+   * While the gate is up, scrolling belongs to it: it walks the camera round
+   * the doorway. The page underneath must not move until a choice is made.
+   */
+  useEffect(() => {
+    if (entered) return;
+    const root = document.documentElement;
+    const previous = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = previous;
+    };
+  }, [entered]);
 
   useEffect(() => {
     return () => {
-      if (exitTimer.current !== null) {
-        window.clearTimeout(exitTimer.current);
+      if (revealTimer.current !== null) {
+        window.clearTimeout(revealTimer.current);
       }
     };
   }, []);
 
+  /*
+   * The camera is through the doorway. The hero camera takes over the last
+   * stretch of the journey while the gate opens onto it, then the gate goes.
+   */
+  const reveal = useCallback(() => {
+    if (revealTimer.current !== null) return;
+    gate.current?.setAttribute("data-revealing", "");
+    requestEntryArrival();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    revealTimer.current = window.setTimeout(
+      () => {
+        rememberEntry();
+        setForcedEntered(true);
+      },
+      reducedMotion ? 240 : REVEAL_MS,
+    );
+  }, []);
+
+  /* Both choices are the same entrance; only the sound differs. */
   const enter = (withSound: boolean) => {
     if (leaving) {
       return;
@@ -79,15 +110,7 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
     writeStoredPreference(withSound);
     window.dispatchEvent(new Event("marzia-saidi:sound-entry"));
     setLeaving(true);
-
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    exitTimer.current = window.setTimeout(
-      () => {
-        rememberEntry();
-        setForcedEntered(true);
-      },
-      reducedMotion ? 0 : 520,
-    );
+    doorway.current?.enter();
   };
 
   return (
@@ -98,54 +121,36 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
 
       {!entered && (
         <section
+          ref={gate}
           className={styles.gate}
           data-site-entry=""
           data-leaving={leaving ? "" : undefined}
           aria-label="Enter the portfolio"
         >
-          <div className={styles.shade} aria-hidden="true" />
-          <IntroRock />
-          <div className={styles.inner}>
-            <div className={styles.content}>
-              <button
-                className={styles.enter}
-                type="button"
-                onClick={() => enter(soundWanted && !sound.unsupported)}
-                disabled={leaving}
-              >
-                ENTER EXPERIENCE
-              </button>
-
-              <div className={styles.sound} role="group" aria-label="Sound">
-                {sound.unsupported ? (
-                  <span className={styles.soundNote}>SOUND UNAVAILABLE</span>
-                ) : (
-                  <>
-                    <button
-                      className={styles.soundChoice}
-                      type="button"
-                      aria-pressed={soundWanted}
-                      onClick={() => setSoundChoice(true)}
-                      disabled={leaving}
-                    >
-                      SOUND ON
-                    </button>
-                    <span className={styles.soundDivider} aria-hidden="true">
-                      /
-                    </span>
-                    <button
-                      className={styles.soundChoice}
-                      type="button"
-                      aria-pressed={!soundWanted}
-                      onClick={() => setSoundChoice(false)}
-                      disabled={leaving}
-                    >
-                      SOUND OFF
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+          <IntroDoorway ref={doorway} surface={gate} onCrossed={reveal} />
+          <div className={styles.choices}>
+            <button
+              className={styles.withSound}
+              type="button"
+              onClick={() => enter(true)}
+              disabled={leaving || sound.unsupported}
+              aria-describedby={sound.unsupported ? "entry-sound-note" : undefined}
+            >
+              ENTER WITH SOUND
+            </button>
+            <button
+              className={styles.withoutSound}
+              type="button"
+              onClick={() => enter(false)}
+              disabled={leaving}
+            >
+              ENTER WITHOUT SOUND
+            </button>
+            {sound.unsupported && (
+              <span id="entry-sound-note" className={styles.visuallyHidden}>
+                Sound is not available in this browser.
+              </span>
+            )}
           </div>
         </section>
       )}
