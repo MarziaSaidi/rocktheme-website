@@ -13,10 +13,10 @@ type SelectedWorkProps = Readonly<{
 /**
  * Selected Work.
  *
- * The featured projects share one stone: the first is on its front face, the
- * next on the back. The stone never moves; the gallery walks the camera round
- * it from one face to the other. The stone
- * and mountains are scene decoration; every project fact here is HTML.
+ * Each featured project has its own stone in the landscape, with the project
+ * set into its face. Scrolling walks the camera from one stone to the next;
+ * the stones never move. The stones and mountains are scene decoration; every
+ * project fact here is HTML, taken from the project records.
  *
  * Only the few fields the gallery shows cross into the client component, so
  * the case-study bodies stay on the server.
@@ -28,6 +28,7 @@ export function SelectedWork({ projects }: SelectedWorkProps) {
     slug: project.slug,
     title: project.title,
     role: project.role.join(" + "),
+    meta: [project.category, String(project.year)],
     description: project.shortDescription,
     href: getProjectRoute(project),
     image: { src: project.homepageImage.src, alt: project.homepageImage.alt },

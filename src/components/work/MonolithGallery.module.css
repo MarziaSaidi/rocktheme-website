@@ -1,11 +1,11 @@
 /*
- * The runway is taller than the screen so the stage can pin. Its extra length
- * is what absorbs the tail of the scroll that brings a visitor here; the
- * gallery captures forward input once the stage has pinned.
+ * The runway is one screen for the stage plus the whole journey from stone to
+ * stone (`--work-screens`, set from workJourney.ts). The stage stays pinned
+ * for all of it while the scroll moves the camera.
  */
 .runway {
   position: relative;
-  height: calc(100svh + 45svh);
+  height: calc(100svh + var(--work-screens, 0) * 100svh);
 }
 
 .stage {
@@ -32,8 +32,6 @@
   z-index: var(--layer-content);
   inset-block-start: calc(var(--header-height) + clamp(1.5rem, 5vh, 3.5rem));
   inset-inline-start: var(--layout-gutter);
-  display: grid;
-  gap: var(--space-2);
 }
 
 .heading {
@@ -42,49 +40,80 @@
   color: var(--color-text-secondary);
 }
 
-.counter {
+/* ---------------------------------------------------------------- project */
+
+/*
+ * Right of the stone, which holds the left half of the settled view. The
+ * card never reaches back over the screen set into the rock.
+ */
+.project {
+  position: absolute;
+  z-index: var(--layer-content);
+  inset-block-start: 50%;
+  inset-inline-end: var(--layout-gutter);
+  width: clamp(22rem, 32vw, 30rem);
+  translate: 0 -46%;
+}
+
+/*
+ * Interface glass over the night: dark, barely tinted, a hairline edge and
+ * the faintest lit rim along the top. No glow and no drop shadow, so it sits
+ * quietly on the landscape instead of lifting off it.
+ */
+.card {
+  padding: clamp(1.75rem, 1rem + 1.6vw, 2.5rem);
+  border: 1px solid color-mix(in srgb, var(--brand-porcelain) 9%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--brand-porcelain) 3.5%, transparent),
+      transparent 40%
+    ),
+    color-mix(in srgb, var(--brand-aubergine) 52%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-porcelain) 7%, transparent);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+
+  /* Leaving: fades as one, then stops being there at all. */
+  opacity: 0;
+  translate: 1.5rem 0;
+  filter: blur(4px);
+  visibility: hidden;
+  transition:
+    opacity 280ms var(--ease-interface),
+    translate 280ms var(--ease-interface),
+    filter 280ms var(--ease-interface),
+    visibility 0s linear 280ms;
+}
+
+/* Arriving: a short, settled move in from the right as the camera stops. */
+.card[data-shown] {
+  opacity: 1;
+  translate: 0 0;
+  filter: none;
+  visibility: visible;
+  transition:
+    opacity 560ms var(--ease-interface),
+    translate 640ms var(--ease-interface),
+    filter 480ms var(--ease-interface),
+    visibility 0s;
+}
+
+.index {
   composes: micro from "../../styles/type.module.css";
   margin: 0;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.counter span {
+.index span {
   color: var(--color-text-primary);
-  transition: opacity 280ms var(--ease-interface);
-}
-
-.counter span[data-phase="out"] {
-  opacity: 0;
-}
-
-/* ---------------------------------------------------------------- project */
-
-.project {
-  position: absolute;
-  z-index: var(--layer-content);
-  inset-block-start: 31svh;
-  inset-inline-start: var(--layout-gutter);
-  /* Stops well short of the stone, which stands centre right. */
-  width: min(27rem, 32vw);
-}
-
-.copy {
-  transition:
-    opacity 320ms var(--ease-interface),
-    transform 320ms var(--ease-interface);
-}
-
-.copy[data-phase="out"] {
-  opacity: 0;
-  transform: translateY(0.375rem);
-  transition-duration: 280ms;
 }
 
 .title {
-  margin: 0;
+  margin: var(--space-5) 0 0;
   font-family: var(--font-display);
-  font-size: clamp(2.5rem, 1.1rem + 3.2vw, 4.25rem);
+  font-size: clamp(2.5rem, 1.3rem + 2.6vw, 3.75rem);
   font-weight: 400;
   line-height: var(--leading-display);
   letter-spacing: var(--tracking-display);
@@ -95,17 +124,24 @@
 
 .role {
   composes: micro from "../../styles/type.module.css";
-  margin: var(--space-4) 0 0;
+  margin: var(--space-3) 0 0;
   letter-spacing: var(--tracking-micro-tight);
 }
 
 .description {
-  margin: var(--space-5) 0 0;
-  max-width: 34ch;
+  margin: var(--space-6) 0 0;
+  max-width: 38ch;
   color: var(--color-text-secondary);
   font-size: var(--text-body);
   line-height: var(--leading-body);
   text-wrap: pretty;
+}
+
+.meta {
+  composes: micro from "../../styles/type.module.css";
+  margin: var(--space-5) 0 0;
+  color: var(--color-text-muted);
+  letter-spacing: var(--tracking-micro-tight);
 }
 
 .view {
@@ -114,9 +150,14 @@
   gap: var(--space-3);
   align-items: center;
   margin-block-start: var(--space-8);
-  padding-block: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border: var(--border-subtle);
   color: var(--color-text-primary);
   text-decoration: none;
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    border-color var(--duration-interface) var(--ease-interface),
+    background-color var(--duration-interface) var(--ease-interface);
 }
 
 .arrow {
@@ -125,6 +166,8 @@
 }
 
 .view:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+  background-color: color-mix(in srgb, var(--color-accent) 6%, transparent);
   color: var(--color-accent);
 }
 
@@ -151,12 +194,6 @@
   align-items: center;
   margin: 0;
   color: var(--color-text-muted);
-  opacity: 0.35;
-  transition: opacity 400ms var(--ease-interface);
-}
-
-.scroll[data-ready] {
-  opacity: 1;
 }
 
 .scrollIcon {
@@ -223,15 +260,16 @@
 /* --------------------------------------------------------------- fallback */
 
 /*
- * Without the scene there is no stone, so the active screen stands where it
- * would have been. With the scene running, the stone carries the screens.
+ * Without the scene there are no stones, so the current project's screen
+ * stands where its stone would have been. With the scene running, the stones
+ * carry the screens.
  */
 .fallback {
   position: absolute;
   z-index: var(--layer-content);
   inset-block-start: 18svh;
-  inset-inline-end: clamp(4rem, 16vw, 16rem);
-  height: 58svh;
+  inset-inline-start: clamp(4rem, 18vw, 18rem);
+  height: 62svh;
   aspect-ratio: 640 / 922;
   box-shadow:
     0 0 0 1px var(--color-plane-rim),
@@ -259,30 +297,36 @@
 /* ---------------------------------------------------------------- stacked */
 
 /*
- * Tablet and phone: heading, stone, then the project beneath it, then the
- * instruction. The stone's place is set in the scene so it stands in the gap
- * left here.
+ * Tablet and phone: the stone holds the upper part of the view, as the scene
+ * frames it there, and the details arrive below it rather than beside a
+ * stone too small to read. Title and action stay near the thumb.
  */
 @media (max-width: 63.99rem) {
-  .runway {
-    height: calc(100svh + 60svh);
-  }
-
   /* The header wraps to two rows at these widths. */
   .intro {
     inset-block-start: calc(var(--header-height) * 2 + var(--space-2));
-    grid-auto-flow: column;
-    justify-content: space-between;
-    inset-inline-end: var(--layout-gutter);
   }
 
   .project {
-    inset-block: auto calc(clamp(1.25rem, 3.5svh, 2rem) + 5.5rem);
+    inset-block: auto calc(clamp(1.25rem, 3.5svh, 2rem) + 5.25rem);
     inset-inline: var(--layout-gutter);
     width: auto;
+    max-width: 34rem;
+    margin-inline: auto;
+    translate: none;
+  }
+
+  .card {
+    padding: var(--space-5);
+    translate: 0 1rem;
+  }
+
+  .card[data-shown] {
+    translate: 0 0;
   }
 
   .title {
+    margin-block-start: var(--space-3);
     font-size: clamp(2rem, 1.2rem + 4vw, 2.75rem);
   }
 
@@ -296,8 +340,12 @@
     line-height: 1.5;
   }
 
-  .view {
+  .meta {
     margin-block-start: var(--space-3);
+  }
+
+  .view {
+    margin-block-start: var(--space-4);
   }
 
   /* The continue link is too long to share a row at phone width. */
@@ -322,8 +370,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .copy,
-  .copy[data-phase="out"] {
-    transform: none;
+  .card,
+  .card[data-shown] {
+    translate: none;
+    filter: none;
+    transition-property: opacity, visibility;
   }
 }

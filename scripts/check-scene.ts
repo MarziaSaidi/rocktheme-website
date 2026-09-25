@@ -13,7 +13,6 @@ import { resolveResponsiveValue, sceneViewportForWidth } from "../src/config/res
 import { SECTION_IDS } from "../src/config/sections";
 import { applyPointerInfluence } from "../src/webgl/modules/pointerInfluence";
 import { createParticleField } from "../src/webgl/modules/particleField";
-import { DUST_COUNT, DUST_LEAD, DUST_LIFE } from "../src/webgl/modules/monolith";
 import { createReflectiveFloor } from "../src/webgl/modules/reflectiveFloor";
 import { createHorizonLights } from "../src/webgl/modules/horizonLights";
 import {
@@ -23,10 +22,12 @@ import {
   settingsFor,
 } from "../src/webgl/core/quality";
 import {
-  evaluateMonolith,
-  monolithDuration,
-  type MonolithTimeline,
-} from "../src/webgl/monolithChannel";
+  WORK_STRETCHES,
+  detailsPoint,
+  holdStart,
+  workMoment,
+  workScreens,
+} from "../src/webgl/workJourney";
 import {
   evaluateJourney,
   nearestRest,
@@ -52,6 +53,7 @@ import {
   rockAssets,
   rockInstances,
   sceneSections,
+  workStations,
 } from "../src/webgl/sceneConfig";
 
 let failures = 0;
@@ -455,98 +457,96 @@ console.log("\nselected work monolith");
     monolithConfig.sectionId === "selected-work" &&
       sceneSections["selected-work"].rockInstanceIds.length === 0,
   );
+  check("one stone per featured project", monolithConfig.stones.length === 2);
   for (const viewport of ["desktop", "tablet", "mobile"] as const) {
-    const placement = {
-      ...monolithConfig.stone.placement.desktop,
-      ...(viewport === "desktop" ? {} : monolithConfig.stone.placement[viewport]),
-    };
-    const top = placement.screenCenterY + placement.screenHeight / 2;
-    const bottom = placement.screenCenterY - placement.screenHeight / 2;
-    // The face planes were measured between these heights of the stone.
-    check(`${viewport} screen stays on the measured face`, bottom >= 0.3 && top <= 0.83);
-    const faceWidth = 0.36;
-    const width = (placement.screenHeight * monolithConfig.screen.aspect) / placement.girth;
-    check(
-      `${viewport} screen leaves stone at its sides`,
-      width < faceWidth * 0.8,
-      width.toFixed(3),
+    const placements = monolithConfig.stones.map((stone) =>
+      resolveResponsiveValue(stone, viewport),
     );
-  }
-
-  const timing = { fadeOutMs: 200, orbitMs: 1400, fadeInMs: 250 };
-  const walk = (fromView: number, toView: number, reduced = false): MonolithTimeline => ({
-    fromView,
-    toView,
-    startedAt: 0,
-    timing,
-    reduced,
-  });
-
-  const round = walk(0, 1);
-  const total = monolithDuration(round);
-  check("one walk lasts fade out + orbit + fade in", total === 1850, String(total));
-  check(
-    "the orbit takes between 1.2 and 1.6 seconds",
-    monolithConfig.timing.orbitMs >= 1200 && monolithConfig.timing.orbitMs <= 1600,
-  );
-
-  const sweepOnce = (timeline: MonolithTimeline, rising: boolean) => {
-    let previous = rising ? -Infinity : Infinity;
-    let monotonic = true;
-    let overshoot = false;
-    for (let t = 0; t <= total + 100; t += 5) {
-      const { orbit } = evaluateMonolith(timeline, t);
-      if (rising ? orbit < previous - 1e-9 : orbit > previous + 1e-9) monotonic = false;
-      if (orbit > 1 + 1e-9 || orbit < -1e-9) overshoot = true;
-      previous = orbit;
+    placements.forEach((placement, index) => {
+      const top = placement.screenCenterY + placement.screenHeight / 2;
+      const bottom = placement.screenCenterY - placement.screenHeight / 2;
+      const label = `${viewport} stone ${index + 1}`;
+      // The face plane was measured between these heights of the stone.
+      check(`${label}: screen stays on the measured face`, bottom >= 0.3 && top <= 0.83);
+      const faceWidth = 0.36;
+      const width = (placement.screenHeight * monolithConfig.screen.aspect) / placement.girth;
+      check(
+        `${label}: screen leaves stone at its sides`,
+        width < faceWidth * 0.8,
+        width.toFixed(3),
+      );
+    });
+    const [first, second] = placements;
+    if (first && second) {
+      const apart = Math.hypot(
+        first.position[0] - second.position[0],
+        first.position[2] - second.position[2],
+      );
+      check(`${viewport}: the projects stand in different places`, apart > 20, apart.toFixed(1));
     }
-    return { monotonic, overshoot };
-  };
-  const out = sweepOnce(round, true);
-  check("the camera walks one way only", out.monotonic);
-  check("the camera never overshoots the back face", !out.overshoot);
-  const back = sweepOnce(walk(1, 0), false);
-  check("walking back retraces the same arc", back.monotonic && !back.overshoot);
-
-  check("the camera waits while the screen fades out", evaluateMonolith(round, 150).orbit === 0);
-  const dark = evaluateMonolith(round, 900);
-  check("both screens are dark while walking", dark.front === 0 && dark.back === 0);
-  const rest = evaluateMonolith(round, total);
-  check("behind the stone, the back face is lit", rest.back === 1 && rest.front === 0);
-  check("the walk settles behind the stone", rest.orbit === 1 && rest.settled);
-  check("walking back relights the front face", evaluateMonolith(walk(1, 0), total).front === 1);
-
-  {
-    const { fadeOutMs, orbitMs } = monolithConfig.timing;
-    const midpoint = (fadeOutMs + orbitMs / 2) / 1000;
     check(
-      "the dissolving dust is gone before the camera is half way round",
-      fadeOutMs / 1000 + DUST_LIFE < midpoint,
+      `${viewport}: one camera station per stone`,
+      workStations(viewport).length === monolithConfig.stones.length,
     );
-    check(
-      "the arriving dust does not start until after the half way point",
-      (fadeOutMs + orbitMs) / 1000 - DUST_LEAD > midpoint,
-    );
-    check("the dust stays restrained", DUST_COUNT >= 150 && DUST_COUNT <= 300);
-    const live = { ...round, timing: monolithConfig.timing };
-    const half = evaluateMonolith(live, midpoint * 1000);
-    check("no display is present half way round", half.front === 0 && half.back === 0);
   }
+}
 
-  const reduced = walk(0, 1, true);
-  check("reduced motion drops the walk", monolithDuration(reduced) === 450);
+// --------------------------------------------------------- work journey
+console.log("\nselected work journey");
+{
+  const count = 2;
+  const total = workScreens(count);
   check(
-    "reduced motion cuts to the other side while the screens are dark",
-    evaluateMonolith(reduced, 199).orbit === 0 && evaluateMonolith(reduced, 201).orbit === 1,
+    "the stage runs approach + two holds + one travel",
+    Math.abs(total - (WORK_STRETCHES.approach + 2 * WORK_STRETCHES.hold + WORK_STRETCHES.travel)) <
+      1e-9,
   );
+  check("the far view shows no details", !workMoment(0, count).details);
+  check(
+    "no details during the approach",
+    !workMoment(WORK_STRETCHES.approach * 0.95, count).details,
+  );
+  check("details once settled at the first stone", workMoment(detailsPoint(0), count).details);
+  check("details once settled at the second stone", workMoment(detailsPoint(1), count).details);
+
+  let detailsWhileMoving = false;
+  let projectChangedWhileShown = false;
+  let lastProject = 0;
+  const firstDetails = [-1, -1];
+  for (let screens = 0; screens <= total; screens += 0.001) {
+    const moment = workMoment(screens, count);
+    if (moment.details && moment.leg.kind !== "hold") detailsWhileMoving = true;
+    if (moment.project !== lastProject && moment.details) projectChangedWhileShown = true;
+    if (moment.details && firstDetails[moment.project] === -1)
+      firstDetails[moment.project] = screens;
+    lastProject = moment.project;
+  }
+  check("details only ever show while the camera holds still", !detailsWhileMoving);
+  check("the card only changes project while it is hidden", !projectChangedWhileShown);
+  check(
+    "details wait for the camera to settle",
+    firstDetails.every((at, index) => at > holdStart(index)),
+    firstDetails.map((at) => at.toFixed(2)).join(", "),
+  );
+  const leaveAt = holdStart(0) + WORK_STRETCHES.hold;
+  check(
+    "the card is gone well before the camera moves on",
+    !workMoment(leaveAt - 0.2, count).details,
+  );
+  check(
+    "the camera travels to the second stone",
+    workMoment(leaveAt + 0.1, count).leg.kind === "move",
+  );
+  check("the stage ends settled at the last stone", workMoment(total, count).leg.kind === "hold");
 }
 
 // ------------------------------------------------------------ camera journey
 console.log("\ncamera journey");
 {
+  // Scroll offsets as the page measures them; the work stage pins for its journey.
   const layouts = {
-    desktop: { introEnd: 720, workStart: 1620, workEnd: 2025, about: 2838, contact: 3533 },
-    mobile: { introEnd: 0, workStart: 844, workEnd: 1350, about: 2300, contact: 3100 },
+    desktop: { introEnd: 720, workStart: 1620, workEnd: 7200, about: 8070, contact: 8763 },
+    mobile: { introEnd: 0, workStart: 844, workEnd: 6077, about: 7000, contact: 7700 },
   } as const satisfies Record<string, JourneyStops>;
 
   for (const [viewport, stops] of Object.entries(layouts) as [
@@ -556,7 +556,6 @@ console.log("\ncamera journey");
     const rests = {
       hero: chapterRest("hero", viewport),
       intro: viewport === "desktop" ? poseInFrame(chapterFrames.hero, introPose) : null,
-      work: chapterRest("selected-work", viewport),
       about: chapterRest("about", viewport),
       contact: chapterRest("footer", viewport),
     };
@@ -564,8 +563,11 @@ console.log("\ncamera journey");
       ...journeyWaypoints,
       approach: poseInFrame(chapterFrames.hero, journeyWaypoints.approach),
     };
-    const stone = resolveResponsiveValue(monolithConfig.stone.placement, viewport);
-    const pivot = new Vector3(stone.position[0], 0, stone.position[2]);
+    const stations = workStations(viewport);
+    const pivots = monolithConfig.stones.map((stone) => {
+      const { position } = resolveResponsiveValue(stone, viewport);
+      return new Vector3(position[0], 0, position[2]);
+    });
     const rocks = ROCK_INSTANCE_IDS.map((instanceId) => {
       const transform = resolveRockTransform(instanceId, viewport);
       const world = toWorld(chapterFrames[rockInstances[instanceId].sectionId], transform.position);
@@ -578,87 +580,104 @@ console.log("\ncamera journey");
       half: Math.max(perch.width, perch.depth) / 2,
     });
 
-    const at = (scroll: number, orbit: number) => {
+    const at = (scroll: number) => {
       const pose: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
-      evaluateJourney({ scroll, stops, rests, waypoints, orbit, pivot }, pose);
+      evaluateJourney({ scroll, stops, rests, waypoints, stations }, pose);
       return pose;
     };
     const same = (a: CameraPose, eye: readonly number[]) =>
       a.eye.distanceTo(new Vector3(eye[0], eye[1], eye[2])) < 1e-6;
+    const total = workScreens(stations.length);
+    const workScroll = (screens: number) =>
+      stops.workStart + (screens / total) * (stops.workEnd - stops.workStart);
 
-    check(
-      `${viewport}: the journey starts at the hero composition`,
-      same(at(0, 0), rests.hero.eye),
-    );
+    check(`${viewport}: the journey starts at the hero composition`, same(at(0), rests.hero.eye));
     if (rests.intro) {
       check(
         `${viewport}: the hero holds still for the intro`,
-        same(at(stops.introEnd - 1, 0), rests.intro.eye),
+        same(at(stops.introEnd - 1), rests.intro.eye),
       );
     }
     check(
-      `${viewport}: Selected Work rests at its composition`,
-      same(at(stops.workStart, 0), rests.work.eye),
+      `${viewport}: Selected Work opens on the far view of the first stone`,
+      same(at(stops.workStart), stations[0]!.approach[0]!.eye),
+    );
+    stations.forEach((station, index) => {
+      check(
+        `${viewport}: the camera settles at stone ${index + 1} while its details show`,
+        same(at(workScroll(detailsPoint(index))), station.settle.eye),
+      );
+    });
+    check(
+      `${viewport}: the stage ends settled at the last stone`,
+      same(at(stops.workEnd), stations[stations.length - 1]!.settle.eye),
     );
     check(
       `${viewport}: How I Work rests at its composition`,
-      same(at(stops.about, 1), rests.about.eye),
+      same(at(stops.about), rests.about.eye),
     );
     check(
       `${viewport}: Contact rests at its composition`,
-      same(at(stops.contact, 1), rests.contact.eye),
+      same(at(stops.contact), rests.contact.eye),
     );
 
-    for (const orbit of [0, 1]) {
-      let previous = at(0, orbit);
-      let largestStep = 0;
-      let largestTurn = 0;
-      let nearestStone = Number.POSITIVE_INFINITY;
-      let nearestRock = Number.POSITIVE_INFINITY;
-      for (let scroll = 1; scroll <= stops.contact; scroll += 1) {
-        const pose = at(scroll, orbit);
-        const direction = pose.target.clone().sub(pose.eye).normalize();
-        const before = previous.target.clone().sub(previous.eye).normalize();
-        largestStep = Math.max(largestStep, pose.eye.distanceTo(previous.eye));
-        largestTurn = Math.max(largestTurn, Math.acos(Math.min(1, direction.dot(before))));
+    let previous = at(0);
+    let largestStep = 0;
+    let largestTurn = 0;
+    let nearestStone = Number.POSITIVE_INFINITY;
+    let nearestRock = Number.POSITIVE_INFINITY;
+    for (let scroll = 1; scroll <= stops.contact; scroll += 1) {
+      const pose = at(scroll);
+      const direction = pose.target.clone().sub(pose.eye).normalize();
+      const before = previous.target.clone().sub(previous.eye).normalize();
+      largestStep = Math.max(largestStep, pose.eye.distanceTo(previous.eye));
+      largestTurn = Math.max(largestTurn, Math.acos(Math.min(1, direction.dot(before))));
+      pivots.forEach((pivot) => {
         nearestStone = Math.min(
           nearestStone,
           Math.hypot(pose.eye.x - pivot.x, pose.eye.z - pivot.z),
         );
-        rocks.forEach((rock) => {
-          const gap = Math.hypot(pose.eye.x - rock.world.x, pose.eye.z - rock.world.z) - rock.half;
-          nearestRock = Math.min(nearestRock, gap);
-        });
-        previous = pose;
-      }
-      const label = `${viewport}, ${orbit ? "behind" : "in front of"} the stone`;
-      check(`${label}: no jump between scroll pixels`, largestStep < 0.6, largestStep.toFixed(3));
-      check(
-        `${label}: no sudden turn between scroll pixels`,
-        (largestTurn * 180) / Math.PI < 2,
-        `${((largestTurn * 180) / Math.PI).toFixed(2)}°`,
-      );
-      check(
-        `${label}: the camera keeps clear of the stone`,
-        nearestStone > 8,
-        nearestStone.toFixed(2),
-      );
-      check(
-        `${label}: the camera keeps clear of every rock`,
-        nearestRock > 3,
-        nearestRock.toFixed(2),
-      );
+      });
+      rocks.forEach((rock) => {
+        const gap = Math.hypot(pose.eye.x - rock.world.x, pose.eye.z - rock.world.z) - rock.half;
+        nearestRock = Math.min(nearestRock, gap);
+      });
+      previous = pose;
     }
-
-    const reversed = at(1200, 0);
-    at(3000, 1);
+    check(`${viewport}: no jump between scroll pixels`, largestStep < 0.6, largestStep.toFixed(3));
     check(
-      `${viewport}: scrolling back returns the same pose`,
-      reversed.eye.distanceTo(at(1200, 0).eye) < 1e-9,
+      `${viewport}: no sudden turn between scroll pixels`,
+      (largestTurn * 180) / Math.PI < 2,
+      `${((largestTurn * 180) / Math.PI).toFixed(2)}°`,
     );
     check(
+      `${viewport}: the camera keeps clear of both stones`,
+      nearestStone > 8,
+      nearestStone.toFixed(2),
+    );
+    check(
+      `${viewport}: the camera keeps clear of every rock`,
+      nearestRock > 3,
+      nearestRock.toFixed(2),
+    );
+
+    const reversed = at(4200);
+    at(stops.contact);
+    check(
+      `${viewport}: scrolling back returns the same pose`,
+      reversed.eye.distanceTo(at(4200).eye) < 1e-9,
+    );
+    const hasIntro = rests.intro !== null;
+    check(
       `${viewport}: reduced motion cuts to a rest`,
-      nearestRest(stops.workStart - 50, stops, rests.intro !== null) === stops.workStart,
+      nearestRest(stops.workStart - 50, stops, hasIntro, stations.length) === stops.workStart,
+    );
+    check(
+      `${viewport}: reduced motion inside the stage cuts to a settled project`,
+      same(
+        at(nearestRest(workScroll(3.9), stops, hasIntro, stations.length)),
+        stations[1]!.settle.eye,
+      ),
     );
   }
 }

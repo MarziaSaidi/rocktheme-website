@@ -19,10 +19,12 @@ type ObstacleRect = { x: number; y: number; width: number; height: number };
 the rectangles down. The particle field knows it should flow around a box; it
 does not know the box is a headline or a project plane.
 
-The monolith follows the same rule. The gallery hands it two image URLs and
-a timeline of numbers (`monolithChannel.ts`); it never learns which project
-is on which face. Adding, removing or
-reordering a project changes nothing in this directory.
+The stones follow the same rule. The gallery hands the scene one image URL per
+stone (`monolithChannel.ts`); it never learns which project is on which stone.
+Which stone is in view, and whether the details card is on screen, both come
+from one table of scroll lengths (`workJourney.ts`) that the camera journey and
+the gallery read with the same progress. Reordering a project changes nothing
+in this directory.
 
 ## Modules
 
@@ -42,8 +44,9 @@ reordering a project changes nothing in this directory.
 | `modules/rocks.ts`            | Faceted anchors and their parallax.                            |
 | `modules/heroLandscape.ts`    | Hero range, moon, the perch rock and the seated robot.         |
 | `modules/stoneMaterial.ts`    | Brings every rock's colour map to the footer stone's.          |
-| `modules/monolith.ts`         | Selected Work stone, its two screens, and the mountain range.  |
-| `monolithChannel.ts`          | The gallery timeline the walk round the stone and screens use. |
+| `modules/monolith.ts`         | Selected Work stones, one screen each, and the mountain range. |
+| `monolithChannel.ts`          | The screen image for each stone, handed over by the gallery.   |
+| `workJourney.ts`              | Selected Work stretches: approach, hold, travel, and the card. |
 | `SceneCanvas.tsx`             | The only React leaf: measures, mounts, tears down.             |
 
 ## Two passes, one renderer

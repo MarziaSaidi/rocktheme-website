@@ -1,6 +1,8 @@
 import type { ResponsiveOverrides, SceneViewport } from "@/config/responsive";
 import type { SectionId } from "@/config/sections";
 
+import type { PosePoint } from "./core/chapterFrame";
+
 export type Vector2Tuple = readonly [number, number];
 export type Vector3Tuple = readonly [number, number, number];
 
@@ -292,7 +294,7 @@ export type MonolithPlacement = Readonly<{
   height: number;
   /** Footprint scale relative to height. Applied equally to x and z. */
   girth: number;
-  /** Fixed yaw so the front face meets the camera with a little depth. */
+  /** Fixed yaw so the screen face meets the settled camera with a little depth. */
   yaw: number;
   /** Screen height and centre, in the stone's model units. */
   screenHeight: number;
@@ -305,16 +307,27 @@ export type MountainPlacement = Readonly<{
   yaw: number;
 }>;
 
+/**
+ * One stop of the Selected Work journey. The camera comes in through
+ * `approach` (for the first stone, its first point is the far view where the
+ * stage pins) and stands still at `settle` while the project is shown.
+ */
+export type WorkStation = Readonly<{
+  approach: readonly PosePoint[];
+  settle: PosePoint;
+}>;
+
 export type MonolithConfig = Readonly<{
   sectionId: SectionId;
   stone: Readonly<{
     source: `/assets/selected-work/${string}.glb`;
     /** Rotation that turns the stone's faces onto the model axes. */
     alignYaw: number;
-    /** Pillar axis in the aligned frame; the camera walks round this point. */
+    /** Pillar axis in the aligned frame. */
     axis: Vector2Tuple;
-    placement: ResponsiveOverrides<MonolithPlacement>;
   }>;
+  /** One stone per featured project, in project order, each at its own place. */
+  stones: readonly ResponsiveOverrides<MonolithPlacement>[];
   mountains: Readonly<{
     source: `/assets/selected-work/${string}.glb`;
     placement: ResponsiveOverrides<MountainPlacement>;
@@ -337,17 +350,12 @@ export type MonolithConfig = Readonly<{
     rimColor: number;
     glowColor: number;
     glowIntensity: number;
-    front: MonolithFace;
-    back: MonolithFace;
+    /** The wide face the screen is set into. */
+    face: MonolithFace;
   }>;
   key: Readonly<{ color: number; intensity: number; position: Vector3Tuple }>;
-  timing: Readonly<{
-    fadeOutMs: number;
-    orbitMs: number;
-    fadeInMs: number;
-    reducedFadeOutMs: number;
-    reducedFadeInMs: number;
-  }>;
+  /** The camera's stops, one per stone. Stacked layouts get their own framing. */
+  stations: Readonly<Record<"desktop" | "stacked", readonly WorkStation[]>>;
 }>;
 
 /**

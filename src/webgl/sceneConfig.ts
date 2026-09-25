@@ -24,6 +24,7 @@ import type {
   RockTransform,
   SceneSectionConfig,
   WaterConfig,
+  WorkStation,
 } from "./sceneTypes";
 
 /** Mirrors the brand colours in `src/styles/tokens.css`. */
@@ -501,62 +502,64 @@ export const distanceFogConfig: DistanceFogConfig = {
 };
 
 /*
- * The Selected Work monolith. Face planes, the alignment yaw and the pillar
- * axis were measured from public/assets/selected-work/monolith.glb: its square
- * section sits 36° off the model axes, each wide face leans back a few degrees,
- * and each is twisted a little across its width (the front by 11°). The
- * planes are least-squares fits to the rock's surface, raised to its highest
- * point, so the housings sit flush and their walls stay inside the stone.
- * Re-measure them if the stone asset is replaced.
+ * The Selected Work stones. Face plane, alignment yaw and pillar axis were
+ * measured from public/assets/selected-work/monolith.glb: its square section
+ * sits 36° off the model axes, the wide face leans back a few degrees and is
+ * twisted 11° across its width. The plane is a least-squares fit to the rock's
+ * surface, raised to its highest point, so the housing sits flush and its
+ * walls stay inside the stone. Re-measure it if the stone asset is replaced.
+ *
+ * Each featured project has its own stone at its own place on the water:
+ * Quill & Pigeon where the single stone used to stand, Survue 18 units
+ * further out and 21 to the left, in front of the same range. Further out
+ * than that, its settled view would stand so close to the range that the
+ * peaks lose their haze and read as nearer, paler rock than anywhere else. The camera
+ * travels from one to the other (see `stations`); neither stone ever moves.
  */
+const stoneOnDesktop = {
+  height: 18,
+  /*
+   * A little broader than the model's own proportions, so the stone holds
+   * close to half the settled view, but not so broad that it turns into a
+   * slab. It is tall because it is big, not because it is stretched.
+   */
+  girth: 1.2,
+  screenHeight: 0.34,
+  screenCenterY: 0.49,
+} as const;
+
+/*
+ * Stacked, the stone stands centred above the details, so it is squatter and
+ * its screen takes more of the face to stay legible on a narrow screen.
+ */
+const stoneStacked = {
+  height: 10.5,
+  girth: 1.4,
+  screenHeight: 0.44,
+  screenCenterY: 0.53,
+} as const;
+
 export const monolithConfig: MonolithConfig = {
   sectionId: "selected-work",
   stone: {
     source: "/assets/selected-work/monolith.glb",
     alignYaw: (-36 * Math.PI) / 180,
     axis: [0.023, -0.015],
-    placement: {
-      /*
-       * Close to the model's own proportions. A girth of 1.32 squashed the
-       * pillar to three quarters of its native height and turned it into a
-       * slab; at 0.92 it is barely stretched, so the rock texture keeps its
-       * grain, and the base keeps the width of its rubble skirt.
-       */
-      desktop: {
-        position: [2.7, 0, -6.4],
-        height: 10.4,
-        girth: 0.92,
-        yaw: -0.1,
-        screenHeight: 0.25,
-        screenCenterY: 0.52,
-      },
-      /*
-       * Stacked: the stone stands centred above the project text, so it is
-       * chunkier and its screen takes more of the face to stay legible.
-       */
-      /*
-       * The stacked camera is level and its frame has no height to spare above
-       * the stone, so here it gains mostly in proportion: a little taller, and
-       * slimmer, with the screen kept at its former size on the face.
-       */
-      tablet: {
-        position: [0, 0, -10.5],
-        height: 6.5,
-        girth: 1.35,
-        yaw: -0.06,
-        screenHeight: 0.44,
-        screenCenterY: 0.52,
-      },
-      mobile: {
-        position: [0, 0, -10.5],
-        height: 6.5,
-        girth: 1.45,
-        yaw: -0.04,
-        screenHeight: 0.45,
-        screenCenterY: 0.525,
-      },
-    },
   },
+  stones: [
+    // Quill & Pigeon
+    {
+      desktop: { ...stoneOnDesktop, position: [2.7, 0, -6.4], yaw: -0.1 },
+      tablet: stoneStacked,
+      mobile: stoneStacked,
+    },
+    // Survue: turned a little further toward the viewer's side of its approach.
+    {
+      desktop: { ...stoneOnDesktop, height: 17, position: [-18, 0, -24], yaw: 0.25 },
+      tablet: stoneStacked,
+      mobile: stoneStacked,
+    },
+  ],
   mountains: {
     source: "/assets/selected-work/mountains.glb",
     /*
@@ -583,17 +586,50 @@ export const monolithConfig: MonolithConfig = {
     rimColor: sceneColors.lavender,
     glowColor: sceneColors.lavender,
     glowIntensity: 3.2,
-    front: { offset: 0.2178, slope: -0.0783, across: -0.1955 },
-    back: { offset: 0.2458, slope: -0.1035, across: 0.0847 },
+    face: { offset: 0.2178, slope: -0.0783, across: -0.1955 },
   },
   // Held low enough that the lit face stays the footer stone's charcoal.
   key: { color: 0xd8d4e0, intensity: 1.0, position: [-6, 9, 10] },
-  timing: {
-    fadeOutMs: 220,
-    orbitMs: 1400,
-    fadeInMs: 280,
-    reducedFadeOutMs: 200,
-    reducedFadeInMs: 250,
+  /*
+   * The camera's stops, in world space. Each settled view stands level with
+   * the screen, a little right of its axis, and looks past the stone's right
+   * side, so the stone holds the left of the frame and the details the right.
+   * Level, the screen keeps its proportions and reads as set into the rock
+   * rather than as a plate seen from below. The two settles differ on
+   * purpose: at Survue the camera stands lower against the screen, further
+   * off the face and turned well to the left, toward the deeper water.
+   *
+   * On the way from one to the other the camera swings out left of Quill &
+   * Pigeon's stone, more than 9 units clear of its axis, and turns in on
+   * Survue as it slows.
+   */
+  stations: {
+    desktop: [
+      {
+        approach: [{ eye: [3.6, 5.0, 29], target: [4.2, 7.8, -4], fov: 42 }],
+        settle: { eye: [6.0, 7.6, 15.5], target: [6.55, 8.4, -2.3], fov: 40 },
+      },
+      {
+        approach: [
+          { eye: [-3.5, 6.4, 11], target: [-8, 7.6, -20], fov: 41 },
+          { eye: [-8.5, 6.2, 3], target: [-14, 7.8, -24], fov: 41 },
+        ],
+        settle: { eye: [-6.45, 6.6, -4.6], target: [-12.5, 7.9, -22.1], fov: 40 },
+      },
+    ],
+    stacked: [
+      {
+        approach: [{ eye: [4.4, 3.2, 29], target: [3.0, 4.5, -3.2], fov: 46 }],
+        settle: { eye: [4.6, 3.0, 14.3], target: [3.0, 3.1, -3.2], fov: 46 },
+      },
+      {
+        approach: [
+          { eye: [-3.5, 3, 10], target: [-7, 3.4, -20], fov: 46 },
+          { eye: [-9, 3, 4], target: [-16, 3.4, -20], fov: 46 },
+        ],
+        settle: { eye: [-7.7, 3.2, -5.5], target: [-16.6, 2.8, -21.1], fov: 46 },
+      },
+    ],
   },
 };
 
@@ -806,19 +842,17 @@ export const sceneSections = {
  * viewer stood at the origin looking down -z. A frame moves that composition
  * into place, so at rest each chapter looks exactly as composed.
  *
- * Selected Work is the fixed point: the stone stands at (2.7, 0, -6.4) and
- * its range spans z -45 to -83, so the approved Selected Work view is left
- * untouched. The hero stands 40 units back across the water. From there the
- * stone is 55 units out, lost in the scene fog (far 58), and the range is a
- * distant ridge. The hero rock (9 wide, x 6 to 15) ends up at z 28, to the
- * right of the line the camera travels along.
+ * Selected Work is the fixed point: the first stone stands at (2.7, 0, -6.4),
+ * the second at (-18, 0, -24), and the range spans z -45 to -83. The hero
+ * stands 40 units back across the water. From there the stones are lost in
+ * the scene fog (far 58) and the range is a distant ridge.
  *
- * After the walk round the stone the viewer faces back across the water
+ * After the second stone the viewer turns to face back across the water
  * (+z), so How I Work and Contact are composed facing that way (yaw π), on a
- * lane 12 units to the right of the approach. That keeps both clear of the
- * stone's base (x -2.6 to 8), puts the Contact rock at (-22, 56.5), behind
- * the hero camera where the hero never sees it, and keeps every chapter in
- * front of the mountain range rather than walking into it.
+ * lane 12 units to the left of the approach. That keeps both clear of the
+ * stones, puts the Contact rock at (-22, 56.5), behind the hero camera where
+ * the hero never sees it, and keeps every chapter in front of the mountain
+ * range rather than walking into it.
  */
 export const chapterFrames = {
   hero: { origin: [0, 0, 40], yaw: 0 },
@@ -845,24 +879,29 @@ export const introPose: PosePoint = {
  *
  * approach    hero frame. Early in the move forward, already easing left of
  *             the perch so the rock and robot slide out of the right edge.
- * arrival     world. 26 units from the stone, a little higher and wider
- *             than the Selected Work view, turned toward the stone as the
- *             range opens up behind it.
- * departure   world. Round the stone's -x side, 3 units clear of its base,
- *             turning from its back face toward How I Work.
+ * arrival     world. Crossing the open water toward the far view of the first
+ *             stone, left of the line to it so the perch is left well behind.
+ * departure   world. From the last stone the camera turns left, away from
+ *             both stones, until it faces back across the water toward How I
+ *             Work.
  */
 export const journeyWaypoints = {
   approach: { eye: [-3.3, 1.5, 6.0], target: [-3.0, 2.65, -3.9], fov: 42 },
-  arrival: { eye: [-2.5, 2.4, 20], target: [1.2, 3.2, 3], fov: 44 },
+  arrival: { eye: [-3, 3.2, 35], target: [1.8, 5.2, 0], fov: 43 },
   departure: [
-    { eye: [-6, 1.6, -18], target: [-8, 2.8, -6], fov: 42 },
-    { eye: [-12, 1.6, -2], target: [-12, 3.0, 10], fov: 42 },
+    { eye: [-10, 4.5, -2], target: [-32, 4, 2], fov: 42 },
+    { eye: [-13, 2.6, 5], target: [-12, 3, 25], fov: 42 },
   ],
 } as const satisfies Readonly<{
   approach: PosePoint;
   arrival: PosePoint;
   departure: readonly PosePoint[];
 }>;
+
+/** The Selected Work stations for a viewport: desktop, or stacked below it. */
+export function workStations(viewport: SceneViewport): readonly WorkStation[] {
+  return monolithConfig.stations[viewport === "desktop" ? "desktop" : "stacked"];
+}
 
 /** The resting pose of a chapter, in world space. */
 export function chapterRest(sectionId: SectionId, viewport: SceneViewport): PosePoint {

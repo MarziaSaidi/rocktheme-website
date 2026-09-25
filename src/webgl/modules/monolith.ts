@@ -25,53 +25,36 @@ import {
   type SceneViewport,
 } from "@/config/responsive";
 
-import {
-  evaluateMonolith,
-  getMonolithFaces,
-  getMonolithTimeline,
-  subscribeMonolith,
-} from "../monolithChannel";
-import type { MonolithConfig, MonolithFace } from "../sceneTypes";
+import { getMonolithFaces, subscribeMonolith } from "../monolithChannel";
+import type { MonolithConfig, MonolithPlacement } from "../sceneTypes";
 import { applyDistanceFog, createDistanceFogUniforms } from "./distanceFog";
-import { createDisplayDust, DISSOLVE_GLSL, type DisplayDust } from "./displayDust";
 import { applyWaterlineContact, presenceAt } from "./rocks";
 import { matchStone } from "./stoneMaterial";
 
 /**
- * The Selected Work monolith.
+ * The Selected Work stones.
  *
- * One stone with a screen set into each of its two wide faces, standing in
- * front of the mountain range. The transform tree is the whole contract:
+ * One stone per featured project, each standing at its own place on the
+ * water with the project's screen set into its wide face, and one mountain
+ * range behind them all. Every stone has the same transform tree:
  *
  *   root      world position, height and girth, resting yaw
  *   ├ aligned  the stone model, rotated so its faces meet the axes and
  *   │          offset so its pillar stands on the root's origin
- *   ├ front    screen, housing and glow on the front face
- *   └ back     the same, turned 180° onto the opposite face
+ *   └ anchor   screen, housing and glow, turned and tilted onto the face
  *
- * Nothing here ever turns. The stone is a fixed object in the landscape; the
- * viewer walks round it (see `orbit` and the camera rig in environment.ts).
- * The pillar's axis is exposed as `pivot`, the point that walk is centred on.
- *
- * The mountain range stands in front of the stone, and copies of the same
- * model stand at each quarter turn round the pivot, so every view along the
- * walk looks onto a landscape rather than an empty horizon.
+ * Nothing here ever moves. The camera travels from stone to stone (see the
+ * camera journey); each stone only reports how much of it the viewer can see.
  */
 
 export type Monolith = Readonly<{
-  update: (delta: number, now: number) => void;
-  /** Progress round the stone from the latest update, 0 in front and 1 behind. */
-  orbit: () => number;
-  /** World position of the pillar's axis, the centre of the walk round it. */
-  pivot: () => Vector3;
   /**
-   * Where the viewer is standing this frame. Each screen fades out as it turns
-   * edge-on: flat on uneven rock, a screen stands a little proud of it, and at
-   * a grazing angle that lip would read as a plate fixed to the stone.
+   * Where the viewer is standing this frame. A stone emerges from the haze as
+   * the viewer nears it, and its screen fades out as it turns edge-on: flat on
+   * uneven rock, a screen stands a little proud of it, and at a grazing angle
+   * that lip would read as a plate fixed to the stone.
    */
   setViewer: (position: Vector3) => void;
-  /** True while a walk or fade is still in progress. */
-  animating: (now: number) => boolean;
   resize: (width: number) => void;
   destroy: () => void;
 }>;
@@ -87,18 +70,12 @@ const SCREEN_VERTEX = /* glsl */ `
 /*
  * One quad covers the housing face. Inside the inner rectangle it is the
  * screen; outside it is the dark recessed edge, with a hairline rim on the
- * boundary. The whole assembly, content, backing, edge and rim alike,
- * dissolves cell by cell with `uDisplay`: at 0 nothing of it is drawn and
- * the rock beneath shows through. Under reduced motion it crossfades instead.
+ * boundary.
  */
 const SCREEN_FRAGMENT = /* glsl */ `
-  ${DISSOLVE_GLSL}
-
   varying vec2 vUv;
   uniform sampler2D uMap;
   uniform float uHasMap;
-  uniform float uDisplay;
-  uniform float uDissolve;
   uniform float uVisibility;
   uniform vec2 uHousing;
   uniform vec2 uScreen;
@@ -106,10 +83,7 @@ const SCREEN_FRAGMENT = /* glsl */ `
   uniform vec3 uRim;
 
   void main() {
-    float present = uDissolve > 0.5
-      ? smoothstep(-0.012, 0.012, uDisplay - (1.0 - dissolveThreshold(vUv)))
-      : uDisplay;
-    if (present <= 0.001) discard;
+    if (uVisibility <= 0.001) discard;
 
     vec2 p = (vUv - 0.5) * uHousing;
     vec2 d2 = abs(p) - uScreen * 0.5;
@@ -118,14 +92,18 @@ const SCREEN_FRAGMENT = /* glsl */ `
 
     vec2 suv = p / uScreen + 0.5;
     vec3 image = uHasMap > 0.5 ? texture2D(uMap, suv).rgb : uOff;
-    // A lit screen at dusk, not a white card: held a little below full white.
-    vec3 colour = mix(uOff * 0.7, image * 0.9, inside);
+    // Set into the rock: the image falls a little into shadow at its edges,
+    // as if the stone's lip overhangs it.
+    float recess = mix(0.62, 1.0, smoothstep(0.0, 0.035 * uScreen.y, -dist));
+    // A lit screen at night, not a white card: held well below full white.
+    vec3 colour = mix(uOff * 0.7, image * 0.8 * recess, inside);
 
     float line = exp(-pow(dist / 0.0011, 2.0));
     float spill = exp(-max(dist, 0.0) / 0.0025) * step(0.0, dist);
-    colour += uRim * (line * 0.7 + spill * 0.06) * 0.6;
+    // A hairline of lit edge, not a coloured frame.
+    colour += uRim * (line * 0.7 + spill * 0.06) * 0.28;
 
-    gl_FragColor = vec4(colour, uVisibility * present);
+    gl_FragColor = vec4(colour, uVisibility);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
@@ -134,8 +112,6 @@ const SCREEN_FRAGMENT = /* glsl */ `
 type ScreenUniforms = {
   uMap: { value: Texture | null };
   uHasMap: { value: number };
-  uDisplay: { value: number };
-  uDissolve: { value: number };
   uVisibility: { value: number };
   uHousing: { value: [number, number] };
   uScreen: { value: [number, number] };
@@ -143,22 +119,29 @@ type ScreenUniforms = {
   uRim: { value: Color };
 };
 
-type Face = {
-  plane: MonolithFace;
-  /** 1 facing the viewer, 0 edge-on or turned away. */
-  facing: number;
-  /** How much of the display assembly is present, 0 to 1. */
-  display: number;
-  /** The face's frame on the stone: the display and its dust both live in it. */
+type Stone = {
+  placement: MonolithConfig["stones"][number];
+  root: Group;
+  aligned: Group;
+  /** The face's frame on the stone: housing, screen and glow live in it. */
   anchor: Group;
-  /** Housing, screen and glow: everything that must vanish together. */
+  /** Housing and screen: everything that must vanish together. */
   group: Group;
-  dust: DisplayDust;
+  housingMesh: Mesh;
+  screenMesh: Mesh;
   material: ShaderMaterial;
   uniforms: ScreenUniforms;
   housing: MeshStandardMaterial;
   light: PointLight;
   texture: Texture | null;
+  stoneMaterials: MeshStandardMaterial[];
+  /** World height below which the rock darkens where it meets the water. */
+  waterline: { value: number };
+  pivot: Vector3;
+  /** How much of the stone the viewer sees, from their distance to it. */
+  visibility: number;
+  /** 1 facing the viewer, 0 edge-on or turned away. */
+  facing: number;
 };
 
 function disposeModel(root: Object3D) {
@@ -179,21 +162,12 @@ function disposeModel(root: Object3D) {
 }
 
 /*
- * Distances from the stone's axis. The Selected Work view stands 15 units
- * out and the arrival 26; the hero is 55 out, deep in the scene fog. The
- * walk-round copies are only for the views round the back of the stone.
+ * Distances from a stone's axis. Settled, the camera stands about 16 units
+ * out; the far view where the stage pins is 34 out. From the hero, 50 or
+ * more away, no stone is drawn at all.
  */
-const STONE_PRESENT = 30;
-const STONE_GONE = 44;
-const RING_PRESENT = 17;
-const RING_GONE = 22;
-
-/** Specks per display. Enough to read as dust, few enough to stay delicate. */
-export const DUST_COUNT = 260;
-/** Seconds a dissolving speck may outlive the dissolve itself. */
-export const DUST_LIFE = 0.56;
-/** Seconds before arrival that the first speck starts drifting in. */
-export const DUST_LEAD = 0.6;
+const STONE_PRESENT = 36;
+const STONE_GONE = 48;
 
 export function createMonolith(
   scene: Scene,
@@ -204,79 +178,52 @@ export function createMonolith(
   const textureLoader = new TextureLoader();
   let destroyed = false;
   let viewport: SceneViewport = "desktop";
-  let visibility = 0;
-  /** How much of the walk-round backdrop (the three copies) is present. */
-  let ringPresence = 0;
-  /** Where the viewer stood at the last `setViewer`; far away until told. */
-  const viewer = new Vector3(0, 0, Number.POSITIVE_INFINITY);
-  let stoneReady = false;
+  let stonesReady = false;
   let mountainsReady = false;
 
-  const root = new Group();
-  const aligned = new Group();
-  root.visible = false;
-  root.add(aligned);
-  aligned.rotation.y = config.stone.alignYaw;
-  aligned.position.set(-config.stone.axis[0], 0, -config.stone.axis[1]);
-
-  /** The supplied range, then the same range at 90°, 180° and 270° round the pivot. */
-  const RING = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2] as const;
-  const ranges = RING.map(() => {
-    const range = new Group();
-    range.visible = false;
-    return range;
-  });
-  const [mountains] = ranges as [Group, ...Group[]];
+  const mountains = new Group();
+  mountains.visible = false;
 
   /*
-   * Two fixed keys, one on each side of the stone, mirrored about it. From
-   * either side the near one lights the face and the far one rims the edge,
-   * so the back face is as readable as the front without any light moving.
+   * One key for every stone, from the camera's side: each stone's face is
+   * turned toward its own settled view, so the same light shows both.
    */
-  const key = new DirectionalLight(config.key.color, 0);
-  const keyBehind = new DirectionalLight(config.key.color, 0);
-  key.target = root;
-  keyBehind.target = root;
+  const key = new DirectionalLight(config.key.color, config.key.intensity);
+  const keyTarget = new Group();
+  key.target = keyTarget;
 
-  const pivot = new Vector3();
-  let orbit = 0;
+  scene.add(mountains, key, keyTarget);
+
+  const mountainMaterials: MeshStandardMaterial[] = [];
+  const mountainFog = createDistanceFogUniforms(config.mountains.fog);
+  const { screen } = config;
+  const plane = new PlaneGeometry(1, 1);
+  const box = new BoxGeometry(1, 1, 1);
+
   const faceCentre = new Vector3();
   const faceNormal = new Vector3();
   const toViewer = new Vector3();
 
-  scene.add(root, ...ranges, key, keyBehind);
-
-  const stoneMaterials: MeshStandardMaterial[] = [];
-  const mountainMaterials: MeshStandardMaterial[] = [];
-  const ringMaterials: MeshStandardMaterial[] = [];
-  const mountainFog = createDistanceFogUniforms(config.mountains.fog);
-  const waterline = { value: 0.05 };
-
-  // ------------------------------------------------------------------ faces
-  const { screen } = config;
-  const geometries: (PlaneGeometry | BoxGeometry)[] = [];
-
-  const createFace = (face: MonolithFace, turned: boolean): Face => {
-    const holder = new Group();
-    if (turned) holder.rotation.y = Math.PI;
-    root.add(holder);
+  const createStone = (placement: MonolithConfig["stones"][number], seed: number): Stone => {
+    const root = new Group();
+    root.visible = false;
+    const aligned = new Group();
+    aligned.rotation.y = config.stone.alignYaw;
+    aligned.position.set(-config.stone.axis[0], 0, -config.stone.axis[1]);
+    root.add(aligned);
 
     const anchor = new Group();
     // Turn and tilt with the face so the screen lies flat on it.
     anchor.rotation.order = "YXZ";
-    anchor.rotation.y = Math.atan(-face.across);
-    anchor.rotation.x = Math.atan(face.slope);
-    holder.add(anchor);
+    anchor.rotation.y = Math.atan(-screen.face.across);
+    anchor.rotation.x = Math.atan(screen.face.slope);
+    root.add(anchor);
 
     const group = new Group();
     anchor.add(group);
 
-    const plane = new PlaneGeometry(1, 1);
-    const box = new BoxGeometry(1, 1, 1);
-    geometries.push(plane, box);
-
-    // Seen edge-on from the side of the walk, the housing's lip reads as a
-    // ledge of the same stone rather than a plate fixed to it.
+    // Seen at an angle, the housing's lip reads as a ledge of the same stone
+    // rather than a plate fixed to it.
     const housing = new MeshStandardMaterial({
       color: screen.housingColor,
       roughness: 0.9,
@@ -291,8 +238,6 @@ export function createMonolith(
     const uniforms: ScreenUniforms = {
       uMap: { value: null },
       uHasMap: { value: 0 },
-      uDisplay: { value: 0 },
-      uDissolve: { value: 1 },
       uVisibility: { value: 0 },
       uHousing: { value: [1, 1] },
       uScreen: { value: [1, 1] },
@@ -308,6 +253,7 @@ export function createMonolith(
     });
     const screenMesh = new Mesh(plane, material);
     screenMesh.renderOrder = 2;
+    screenMesh.name = `monolith-screen-${seed}`;
     group.add(screenMesh);
 
     /*
@@ -319,57 +265,58 @@ export function createMonolith(
     light.position.set(0, 0, 0.05);
     anchor.add(light);
 
-    const dust = createDisplayDust(DUST_COUNT, turned ? 0x51c3 : 0x2e9b);
-    anchor.add(dust.points);
-
+    scene.add(root);
     return {
-      plane: face,
-      facing: turned ? 0 : 1,
-      display: turned ? 0 : 1,
+      placement,
+      root,
+      aligned,
       anchor,
       group,
-      dust,
+      housingMesh,
+      screenMesh,
       material,
       uniforms,
       housing,
       light,
       texture: null,
+      stoneMaterials: [],
+      waterline: { value: 0.05 },
+      pivot: new Vector3(),
+      visibility: 0,
+      facing: 1,
     };
   };
 
-  const faces: [Face, Face] = [createFace(screen.front, false), createFace(screen.back, true)];
+  const stones = config.stones.map(createStone);
 
   /*
    * The stone is scaled by girth on x and z but not on y. The screen is sized
    * in local units so that, after that scale, it keeps the image's aspect.
    */
-  const layoutFaces = (girth: number, screenHeight: number, centerY: number) => {
+  const layoutFace = (stone: Stone, placement: MonolithPlacement) => {
+    const { girth, screenHeight, screenCenterY: centerY } = placement;
     const screenWidth = (screenHeight * screen.aspect) / girth;
     const housingWidth = screenWidth + (screen.bezel * 2) / girth;
     const housingHeight = screenHeight + screen.bezel * 2;
-    faces.forEach((face) => {
-      face.anchor.position.set(
-        0,
-        centerY,
-        face.plane.offset + face.plane.slope * centerY + screen.clearance,
-      );
-      const [housingMesh, screenMesh] = face.group.children as [Mesh, Mesh];
-      housingMesh.scale.set(housingWidth, housingHeight, screen.housingDepth);
-      housingMesh.position.z = -screen.housingDepth / 2;
-      screenMesh.scale.set(housingWidth, housingHeight, 1);
-      screenMesh.position.z = 0.0008;
-      // The shader measures in world-proportional units so the rim is even.
-      face.uniforms.uHousing.value = [housingWidth * girth, housingHeight];
-      face.uniforms.uScreen.value = [screenWidth * girth, screenHeight];
-      face.dust.layout([housingWidth, housingHeight], girth);
-    });
+    stone.anchor.position.set(
+      0,
+      centerY,
+      screen.face.offset + screen.face.slope * centerY + screen.clearance,
+    );
+    stone.housingMesh.scale.set(housingWidth, housingHeight, screen.housingDepth);
+    stone.housingMesh.position.z = -screen.housingDepth / 2;
+    stone.screenMesh.scale.set(housingWidth, housingHeight, 1);
+    stone.screenMesh.position.z = 0.0008;
+    // The shader measures in world-proportional units so the rim is even.
+    stone.uniforms.uHousing.value = [housingWidth * girth, housingHeight];
+    stone.uniforms.uScreen.value = [screenWidth * girth, screenHeight];
   };
 
   const loadFaceTextures = () => {
     const sources = getMonolithFaces();
-    faces.forEach((face, index) => {
+    stones.forEach((stone, index) => {
       const source = sources[index];
-      const current = face.uniforms.uMap.value;
+      const current = stone.uniforms.uMap.value;
       if (!source || current?.userData.source === source) return;
       textureLoader.load(source, (texture) => {
         if (destroyed) {
@@ -378,12 +325,13 @@ export function createMonolith(
         }
         texture.colorSpace = SRGBColorSpace;
         texture.minFilter = LinearMipmapLinearFilter;
-        texture.anisotropy = 4;
+        texture.anisotropy = 8;
         texture.userData.source = source;
-        face.texture?.dispose();
-        face.texture = texture;
-        face.uniforms.uMap.value = texture;
-        face.uniforms.uHasMap.value = 1;
+        stone.texture?.dispose();
+        stone.texture = texture;
+        stone.uniforms.uMap.value = texture;
+        stone.uniforms.uHasMap.value = 1;
+        handlers.onLoaded?.();
       });
     });
   };
@@ -398,24 +346,42 @@ export function createMonolith(
         disposeModel(model);
         return;
       }
-      model.traverse((item) => {
-        if (!(item instanceof Mesh)) return;
-        item.renderOrder = 0;
-        const materials = Array.isArray(item.material) ? item.material : [item.material];
-        materials.forEach((material) => {
-          if (!(material instanceof MeshStandardMaterial)) return;
-          material.metalness = 0.05;
-          material.roughness = Math.max(0.86, material.roughness);
-          material.transparent = true;
-          material.opacity = 0;
-          material.depthWrite = true;
-          applyWaterlineContact(material, waterline);
-          matchStone(material);
-          stoneMaterials.push(material);
+      /*
+       * Every stone shares the geometry but fades on its own materials, so the
+       * copies are cloned from the untouched originals before any is adjusted.
+       */
+      const copies = stones.map((_, index) => {
+        if (index === 0) return model;
+        const copy = model.clone();
+        copy.traverse((item) => {
+          if (!(item instanceof Mesh)) return;
+          item.material = Array.isArray(item.material)
+            ? item.material.map((material) => material.clone())
+            : item.material.clone();
         });
+        return copy;
       });
-      aligned.add(model);
-      stoneReady = true;
+      copies.forEach((copy, index) => {
+        const stone = stones[index]!;
+        copy.traverse((item) => {
+          if (!(item instanceof Mesh)) return;
+          item.renderOrder = 0;
+          const materials = Array.isArray(item.material) ? item.material : [item.material];
+          materials.forEach((material) => {
+            if (!(material instanceof MeshStandardMaterial)) return;
+            material.metalness = 0.05;
+            material.roughness = Math.max(0.86, material.roughness);
+            material.transparent = true;
+            material.opacity = 0;
+            material.depthWrite = true;
+            applyWaterlineContact(material, stone.waterline);
+            matchStone(material);
+            stone.stoneMaterials.push(material);
+          });
+        });
+        stone.aligned.add(copy);
+      });
+      stonesReady = true;
       handlers.onLoaded?.();
     },
     undefined,
@@ -444,8 +410,6 @@ export function createMonolith(
           material.roughness = 1;
           material.roughnessMap = null;
           material.normalScale.setScalar(0.6);
-          material.transparent = true;
-          material.opacity = 0;
           // The range stands beyond the scene fog's far distance, which would
           // flatten it to the fog colour; it takes its own aerial perspective.
           applyDistanceFog(material, mountainFog);
@@ -454,29 +418,8 @@ export function createMonolith(
         });
       });
       mountains.add(model);
-      /*
-       * The copies share geometry but carry their own materials: the range in
-       * front is part of the landscape from every chapter, while the copies
-       * only fill the views round the back of the stone and fade with it.
-       */
-      ranges.slice(1).forEach((range) => {
-        const copy = model.clone();
-        copy.traverse((item) => {
-          if (!(item instanceof Mesh)) return;
-          const source = Array.isArray(item.material) ? item.material : [item.material];
-          const cloned = source.map((material) => {
-            if (!(material instanceof MeshStandardMaterial)) return material;
-            const next = material.clone();
-            applyDistanceFog(next, mountainFog);
-            matchStone(next, config.mountains.shade);
-            ringMaterials.push(next);
-            return next;
-          });
-          item.material = Array.isArray(item.material) ? cloned : cloned[0]!;
-        });
-        range.add(copy);
-      });
       mountainsReady = true;
+      mountains.visible = true;
       applyPlacement();
       handlers.onLoaded?.();
     },
@@ -486,162 +429,70 @@ export function createMonolith(
 
   // -------------------------------------------------------------- placement
   function applyPlacement() {
-    const stone = resolveResponsiveValue(config.stone.placement, viewport);
-    const scaleXZ = stone.height * stone.girth;
-    root.position.set(...stone.position);
-    root.scale.set(scaleXZ, stone.height, scaleXZ);
-    root.rotation.y = stone.yaw;
-    waterline.value = stone.height * 0.05;
-    layoutFaces(stone.girth, stone.screenHeight, stone.screenCenterY);
-
-    faces.forEach((face) => {
+    stones.forEach((stone) => {
+      const placement = resolveResponsiveValue(stone.placement, viewport);
+      const scaleXZ = placement.height * placement.girth;
+      stone.root.position.set(...placement.position);
+      stone.root.scale.set(scaleXZ, placement.height, scaleXZ);
+      stone.root.rotation.y = placement.yaw;
+      stone.pivot.set(placement.position[0], 0, placement.position[2]);
+      stone.waterline.value = placement.height * 0.05;
+      layoutFace(stone, placement);
       // Light reach is in world units; the face group is scaled with the stone.
-      face.light.distance = stone.height * 0.5;
+      stone.light.distance = placement.height * 0.5;
+      stone.root.updateMatrixWorld(true);
     });
-
-    pivot.set(stone.position[0], 0, stone.position[2]);
 
     const range = resolveResponsiveValue(config.mountains.placement, viewport);
-    const dx = range.position[0] - pivot.x;
-    const dz = range.position[2] - pivot.z;
-    ranges.forEach((copy, index) => {
-      // Rotation about the pivot, matching three.js's yaw convention.
-      const angle = RING[index] ?? 0;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      copy.position.set(
-        pivot.x + dx * cos + dz * sin,
-        range.position[1],
-        pivot.z - dx * sin + dz * cos,
-      );
-      copy.scale.set(...range.scale);
-      copy.rotation.y = range.yaw + angle;
-    });
+    mountains.position.set(...range.position);
+    mountains.scale.set(...range.scale);
+    mountains.rotation.y = range.yaw;
 
     key.position.set(...config.key.position);
-    keyBehind.position.set(
-      2 * pivot.x - config.key.position[0],
-      config.key.position[1],
-      2 * pivot.z - config.key.position[2],
-    );
+    keyTarget.position.copy(stones[0]?.pivot ?? new Vector3());
   }
   applyPlacement();
 
   // -------------------------------------------------------------- per frame
   const applyVisibility = () => {
-    root.visible = stoneReady && visibility > 0.002;
+    stones.forEach((stone) => {
+      const { visibility } = stone;
+      stone.root.visible = stonesReady && visibility > 0.002;
+      const solid = visibility >= 0.999;
+      stone.stoneMaterials.forEach((material) => {
+        material.opacity = visibility;
+        // Fully present, the stone is drawn opaque so the screen sorts cleanly.
+        material.transparent = !solid;
+        // While fading it must not hide what is behind it, or it reads as a
+        // black silhouette rather than a stone emerging from the haze.
+        material.depthWrite = solid;
+      });
+      // The screen comes in after the rock does, so no bright screen ever
+      // hangs in the haze on a stone that is barely there.
+      const presence = visibility ** 3 * stone.facing;
+      stone.group.visible = presence > 0.002;
+      stone.housing.depthWrite = solid;
+      stone.housing.opacity = presence;
+      stone.uniforms.uVisibility.value = presence;
+      stone.light.intensity = screen.glowIntensity * presence;
+    });
     mountains.visible = mountainsReady;
-    ranges.slice(1).forEach((range) => {
-      range.visible = mountainsReady && ringPresence > 0.002;
-    });
-    const solid = visibility >= 0.999;
-    stoneMaterials.forEach((material) => {
-      material.opacity = visibility;
-      // Fully present, the stone is drawn opaque so the screens sort cleanly.
-      material.transparent = !solid;
-      // While fading it must not hide what is behind it, or it reads as a
-      // black silhouette rather than a stone going.
-      material.depthWrite = solid;
-    });
-    // The range is landscape: always there, always solid.
-    mountainMaterials.forEach((material) => {
-      material.opacity = 1;
-      material.transparent = false;
-      material.depthWrite = true;
-    });
-    const ringSolid = ringPresence >= 0.999;
-    ringMaterials.forEach((material) => {
-      material.opacity = ringPresence;
-      material.transparent = !ringSolid;
-      material.depthWrite = ringSolid;
-    });
-    // The displays go well before the rock does, so no bright screen is left
-    // hanging on a stone that is half gone.
-    const displayPresence = visibility ** 3;
-    faces.forEach((face) => {
-      face.housing.depthWrite = solid;
-      const presence = displayPresence * face.facing;
-      // Hidden means not drawn: no backing, rim, edge or glow left behind.
-      face.group.visible = presence > 0.002 && face.display > 0.001;
-      face.housing.opacity = presence * face.display;
-      face.uniforms.uVisibility.value = presence;
-      face.uniforms.uDisplay.value = face.display;
-      face.light.intensity = screen.glowIntensity * face.display * presence;
-    });
-    key.intensity = config.key.intensity * visibility;
-    keyBehind.intensity = key.intensity;
   };
 
   return {
-    update: (_delta, now) => {
-      /*
-       * The stone stands in the world; how much of it the viewer sees depends
-       * only on how far away they are. It emerges from the fog on the way in
-       * and its screens never glow through haze that hides the rock.
-       */
-      const distance = Math.hypot(viewer.x - pivot.x, viewer.z - pivot.z);
-      visibility = presenceAt(distance, STONE_PRESENT, STONE_GONE);
-      ringPresence = presenceAt(distance, RING_PRESENT, RING_GONE);
-
-      const timeline = getMonolithTimeline();
-      const pose = timeline
-        ? evaluateMonolith(timeline, now)
-        : { orbit: 0, front: 1, back: 0, sweep: -1, settled: true };
-      orbit = pose.orbit;
-
-      applyVisibility();
-      if (!root.visible) return;
-
-      faces[0].display = pose.front;
-      faces[1].display = pose.back;
-      const dissolve = timeline?.reduced ? 0 : 1;
-      faces.forEach((face) => {
-        face.uniforms.uDissolve.value = dissolve;
-      });
-
-      /*
-       * Dust runs only for a walk between faces, on the face being left and
-       * the face being reached, and only for as long as it takes: the
-       * dissolve's specks are gone early in the walk, and the arrival's do
-       * not start until the viewer is nearly round.
-       */
-      faces.forEach((face) => face.dust.set(-1, -10, 0, 0, 0));
-      if (timeline && !timeline.reduced && timeline.fromView !== timeline.toView) {
-        const { fadeOutMs, orbitMs, fadeInMs } = timeline.timing;
-        const elapsed = (now - timeline.startedAt) / 1000;
-        const outTime = elapsed < fadeOutMs / 1000 + DUST_LIFE ? elapsed : -1;
-        const inTime = elapsed - (fadeOutMs + orbitMs) / 1000;
-        const arriving = inTime > -DUST_LEAD && inTime < fadeInMs / 1000 ? inTime : -10;
-        const leaving = faces[timeline.fromView === 0 ? 0 : 1];
-        const reaching = faces[timeline.toView === 0 ? 0 : 1];
-        leaving.dust.set(outTime, -10, fadeOutMs / 1000, fadeInMs / 1000, visibility ** 3);
-        reaching.dust.set(-1, arriving, fadeOutMs / 1000, fadeInMs / 1000, visibility ** 3);
-      }
-      applyVisibility();
-    },
-
-    orbit: () => orbit,
-
     setViewer: (position) => {
-      viewer.copy(position);
-      if (!root.visible) return;
-      root.updateMatrixWorld();
-      faces.forEach((face) => {
-        face.group.getWorldPosition(faceCentre);
-        faceNormal.set(0, 0, 1).transformDirection(face.group.matrixWorld);
+      stones.forEach((stone) => {
+        const distance = Math.hypot(position.x - stone.pivot.x, position.z - stone.pivot.z);
+        stone.visibility = presenceAt(distance, STONE_PRESENT, STONE_GONE);
+        if (stone.visibility <= 0.002) return;
+        stone.group.getWorldPosition(faceCentre);
+        faceNormal.set(0, 0, 1).transformDirection(stone.group.matrixWorld);
         const alignment = toViewer.copy(position).sub(faceCentre).normalize().dot(faceNormal);
         // Full within about 60° of the face, gone by about 78°.
         const t = Math.min(1, Math.max(0, (alignment - 0.2) / 0.3));
-        face.facing = t * t * (3 - 2 * t);
+        stone.facing = t * t * (3 - 2 * t);
       });
       applyVisibility();
-    },
-
-    pivot: () => pivot,
-
-    animating: (now) => {
-      const timeline = getMonolithTimeline();
-      return Boolean(timeline && !evaluateMonolith(timeline, now).settled);
     },
 
     resize: (width) => {
@@ -652,21 +503,19 @@ export function createMonolith(
     destroy: () => {
       destroyed = true;
       unsubscribe();
-      disposeModel(root);
-      disposeModel(mountains);
-      ringMaterials.forEach((material) => material.dispose());
-      ranges.forEach((range) => range.clear());
-      geometries.forEach((geometry) => geometry.dispose());
-      faces.forEach((face) => {
-        face.dust.dispose();
-        face.material.dispose();
-        face.housing.dispose();
-        face.texture?.dispose();
-        face.light.dispose();
+      stones.forEach((stone) => {
+        disposeModel(stone.aligned);
+        stone.material.dispose();
+        stone.housing.dispose();
+        stone.texture?.dispose();
+        stone.light.dispose();
+        scene.remove(stone.root);
       });
+      disposeModel(mountains);
+      plane.dispose();
+      box.dispose();
       key.dispose();
-      keyBehind.dispose();
-      scene.remove(root, ...ranges, key, keyBehind);
+      scene.remove(mountains, key, keyTarget);
     },
   };
 }

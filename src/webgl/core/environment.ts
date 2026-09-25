@@ -26,7 +26,6 @@ import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflecti
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
 import { createMonolith, type Monolith } from "../modules/monolith";
 import { createRocks, type Rocks } from "../modules/rocks";
-import { subscribeMonolith } from "../monolithChannel";
 import {
   chapterFrames,
   chapterRest,
@@ -36,6 +35,7 @@ import {
   journeyWaypoints,
   monolithConfig,
   resolveCamera,
+  workStations,
 } from "../sceneConfig";
 import type { EnvironmentLightingConfig, Vector3Tuple } from "../sceneTypes";
 import {
@@ -200,12 +200,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   });
   worldScene.add(floor.mesh);
   /*
-   * The water beyond the far side of the Selected Work stone. The floor is one
-   * quad running from just behind the camera to the horizon; walking round
-   * the stone turns the view toward where that quad ends. This tile is the
-   * same mesh, geometry and material, laid edge to edge behind it, so the
-   * surface is one continuous world-space field. It is behind the camera in
-   * every other view.
+   * The water behind the viewer. The floor is one quad running from just
+   * behind the camera to the horizon; turning away from the last Selected
+   * Work stone toward How I Work swings the view toward where that quad ends.
+   * This tile is the same mesh, geometry and material, laid edge to edge
+   * behind it, so the surface is one continuous world-space field.
    */
   const floorBeyond = new Mesh(floor.mesh.geometry, floor.mesh.material);
   floorBeyond.rotation.copy(floor.mesh.rotation);
@@ -228,7 +227,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   );
   /*
    * Low mist lies on the water in world space, so unlike the horizon sheets it
-   * stays where it is while the viewer walks round the stone.
+   * stays where it is while the viewer travels between the stones.
    */
   const mist: LowMist = createLowMist(
     worldScene,
@@ -282,8 +281,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
    * The rendered camera.
    *
    * `view` is placed by the camera journey and nothing else: the scroll offset
-   * picks a pose, the gallery's timeline adds the walk round the stone, and
-   * that pose is applied here once per frame. The world does not move to
+   * picks a pose, including every step of the Selected Work travel from stone
+   * to stone, and that pose is applied here once per frame. The world does not move to
    * imitate travel; the viewer does.
    *
    * The horizon glow and atmosphere are sky, not ground: they ride on
@@ -322,11 +321,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const buildRests = (): JourneyRests => ({
     hero: chapterRest("hero", viewport),
     intro: viewport === "desktop" ? poseInFrame(chapterFrames.hero, introPose) : null,
-    work: chapterRest("selected-work", viewport),
     about: chapterRest("about", viewport),
     contact: chapterRest("footer", viewport),
   });
   let rests = buildRests();
+  let stations = workStations(viewport);
   const waypoints = {
     ...journeyWaypoints,
     approach: poseInFrame(chapterFrames.hero, journeyWaypoints.approach),
@@ -395,7 +394,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const applyJourney = (deltaSeconds: number) => {
     if (options.reducedMotion) {
       // Cut between compositions: no flight, no scroll-linked motion.
-      shownScroll = stopsKnown ? nearestRest(targetScroll, stops, rests.intro !== null) : 0;
+      shownScroll = stopsKnown
+        ? nearestRest(targetScroll, stops, rests.intro !== null, stations.length)
+        : 0;
     } else if (deltaSeconds === 0) {
       shownScroll = targetScroll;
     } else {
@@ -409,8 +410,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         stops,
         rests,
         waypoints,
-        orbit: monolith.orbit(),
-        pivot: monolith.pivot(),
+        stations,
       },
       pose,
     );
@@ -509,7 +509,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   };
 
   const renderOnce = (deltaSeconds: number) => {
-    monolith.update(deltaSeconds, performance.now());
     applyJourney(deltaSeconds);
 
     atmosphere.update(elapsed);
@@ -609,25 +608,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     start();
   };
 
-  /*
-   * Reduced motion renders single frames only. A gallery change still has to
-   * be drawn, so it gets frames for exactly as long as its fade lasts.
-   */
-  let transitionFrame = 0;
-  const drawTransition = () => {
-    transitionFrame = 0;
-    if (contextLost) return;
-    renderOnce(0);
-    if (monolith.animating(performance.now())) {
-      transitionFrame = requestAnimationFrame(drawTransition);
-    }
-  };
-  const unsubscribeMonolith = subscribeMonolith(() => {
-    if (options.reducedMotion && transitionFrame === 0) {
-      transitionFrame = requestAnimationFrame(drawTransition);
-    }
-  });
-
   options.canvas.addEventListener("webglcontextlost", handleContextLost);
   options.canvas.addEventListener("webglcontextrestored", handleContextRestored);
 
@@ -672,6 +652,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       applyCamera();
       viewport = sceneViewportForWidth(width);
       rests = buildRests();
+      stations = workStations(viewport);
       lights.resize(camera);
       atmosphere.resize(camera);
       mist.resize(width, camera);
@@ -763,8 +744,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     destroy: () => {
       stop();
-      unsubscribeMonolith();
-      if (transitionFrame !== 0) cancelAnimationFrame(transitionFrame);
       options.canvas.removeEventListener("webglcontextlost", handleContextLost);
       options.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
 
