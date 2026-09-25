@@ -194,6 +194,15 @@ export function MonolithGallery({
         </header>
 
         {/*
+         * The chapter's title as the camera crosses the water toward the first
+         * stone: set on the water, in the hero's display type, gone before
+         * the camera arrives. The heading above stays the section's name.
+         */}
+        <p className={styles.chapterTitle} aria-hidden="true">
+          {heading}
+        </p>
+
+        {/*
          * The stones are drawn by the scene. Without WebGL, or if the stone
          * fails to load, the same screen images stand in their place.
          */}

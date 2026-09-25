@@ -29,16 +29,17 @@ import {
   workScreens,
 } from "../src/webgl/workJourney";
 import {
+  arrivalEnd,
   evaluateJourney,
   nearestRest,
   type CameraPose,
   type JourneyStops,
 } from "../src/webgl/core/cameraJourney";
-import { poseInFrame, toWorld } from "../src/webgl/core/chapterFrame";
+import { toWorld } from "../src/webgl/core/chapterFrame";
 import {
+  arrivalKeyframes,
   chapterFrames,
   chapterRest,
-  introPose,
   journeyWaypoints,
   floorConfig,
   heroLandscapeConfig,
@@ -545,8 +546,8 @@ console.log("\ncamera journey");
 {
   // Scroll offsets as the page measures them; the work stage pins for its journey.
   const layouts = {
-    desktop: { introEnd: 720, workStart: 1620, workEnd: 7200, about: 8070, contact: 8763 },
-    mobile: { introEnd: 0, workStart: 844, workEnd: 6077, about: 7000, contact: 7700 },
+    desktop: { workStart: 2070, workEnd: 8010, about: 8880, contact: 9570 },
+    mobile: { workStart: 844, workEnd: 6415, about: 7340, contact: 8040 },
   } as const satisfies Record<string, JourneyStops>;
 
   for (const [viewport, stops] of Object.entries(layouts) as [
@@ -554,15 +555,11 @@ console.log("\ncamera journey");
     JourneyStops,
   ][]) {
     const rests = {
-      hero: chapterRest("hero", viewport),
-      intro: viewport === "desktop" ? poseInFrame(chapterFrames.hero, introPose) : null,
       about: chapterRest("about", viewport),
       contact: chapterRest("footer", viewport),
     };
-    const waypoints = {
-      ...journeyWaypoints,
-      approach: poseInFrame(chapterFrames.hero, journeyWaypoints.approach),
-    };
+    const waypoints = { departure: journeyWaypoints.departure };
+    const arrival = arrivalKeyframes(viewport);
     const stations = workStations(viewport);
     const pivots = monolithConfig.stones.map((stone) => {
       const { position } = resolveResponsiveValue(stone, viewport);
@@ -573,16 +570,17 @@ console.log("\ncamera journey");
       const world = toWorld(chapterFrames[rockInstances[instanceId].sectionId], transform.position);
       return { world: new Vector3(...world), half: transform.scale[0] / 2 };
     });
-    // The hero's perch is a rock the journey passes too.
+    // The hero's perch is a rock the journey passes too, while it is drawn:
+    // it is gone once the camera has arrived at the first stone.
     const perch = resolveResponsiveValue(heroLandscapeConfig.placement, viewport).perch;
-    rocks.push({
+    const perchRock = {
       world: new Vector3(...toWorld(chapterFrames.hero, perch.position)),
       half: Math.max(perch.width, perch.depth) / 2,
-    });
+    };
 
     const at = (scroll: number) => {
       const pose: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
-      evaluateJourney({ scroll, stops, rests, waypoints, stations }, pose);
+      evaluateJourney({ scroll, stops, arrival, rests, waypoints, stations }, pose);
       return pose;
     };
     const same = (a: CameraPose, eye: readonly number[]) =>
@@ -591,17 +589,26 @@ console.log("\ncamera journey");
     const workScroll = (screens: number) =>
       stops.workStart + (screens / total) * (stops.workEnd - stops.workStart);
 
-    check(`${viewport}: the journey starts at the hero composition`, same(at(0), rests.hero.eye));
-    if (rests.intro) {
+    const arrived = arrivalEnd(stops, stations.length);
+    check(`${viewport}: the journey starts at the hero composition`, same(at(0), arrival[0]!.eye));
+    arrival.forEach((key, index) => {
       check(
-        `${viewport}: the hero holds still for the intro`,
-        same(at(stops.introEnd - 1), rests.intro.eye),
+        `${viewport}: the arrival passes keyframe ${index + 1}`,
+        same(at(key.at * arrived), key.eye),
       );
-    }
+    });
     check(
-      `${viewport}: Selected Work opens on the far view of the first stone`,
-      same(at(stops.workStart), stations[0]!.approach[0]!.eye),
+      `${viewport}: the arrival ends settled at the first stone`,
+      same(at(arrived), stations[0]!.settle.eye) &&
+        at(arrived - 1).eye.distanceTo(new Vector3(...stations[0]!.settle.eye)) < 1e-3,
     );
+    // Only the authored stops are still: the camera never halts mid-arrival.
+    let stalls = 0;
+    // From the first move on; leaving the hero it gathers pace from rest.
+    for (let scroll = Math.ceil(arrival[1]!.at * arrived); scroll < arrived - 2; scroll += 1) {
+      if (at(scroll).eye.distanceTo(at(scroll - 1).eye) < 1e-7) stalls += 1;
+    }
+    check(`${viewport}: the camera does not stop during the arrival`, stalls === 0, `${stalls}`);
     stations.forEach((station, index) => {
       check(
         `${viewport}: the camera settles at stone ${index + 1} while its details show`,
@@ -638,10 +645,12 @@ console.log("\ncamera journey");
           Math.hypot(pose.eye.x - pivot.x, pose.eye.z - pivot.z),
         );
       });
-      rocks.forEach((rock) => {
-        const gap = Math.hypot(pose.eye.x - rock.world.x, pose.eye.z - rock.world.z) - rock.half;
-        nearestRock = Math.min(nearestRock, gap);
-      });
+      [...rocks, ...(scroll < arrivalEnd(stops, stations.length) ? [perchRock] : [])].forEach(
+        (rock) => {
+          const gap = Math.hypot(pose.eye.x - rock.world.x, pose.eye.z - rock.world.z) - rock.half;
+          nearestRock = Math.min(nearestRock, gap);
+        },
+      );
       previous = pose;
     }
     check(`${viewport}: no jump between scroll pixels`, largestStep < 0.6, largestStep.toFixed(3));
@@ -667,17 +676,17 @@ console.log("\ncamera journey");
       `${viewport}: scrolling back returns the same pose`,
       reversed.eye.distanceTo(at(4200).eye) < 1e-9,
     );
-    const hasIntro = rests.intro !== null;
     check(
-      `${viewport}: reduced motion cuts to a rest`,
-      nearestRest(stops.workStart - 50, stops, hasIntro, stations.length) === stops.workStart,
+      `${viewport}: reduced motion near the top cuts to the hero`,
+      nearestRest(arrived * 0.2, stops, stations.length) === 0,
+    );
+    check(
+      `${viewport}: reduced motion on the way in cuts to the first stone`,
+      same(at(nearestRest(arrived * 0.8, stops, stations.length)), stations[0]!.settle.eye),
     );
     check(
       `${viewport}: reduced motion inside the stage cuts to a settled project`,
-      same(
-        at(nearestRest(workScroll(3.9), stops, hasIntro, stations.length)),
-        stations[1]!.settle.eye,
-      ),
+      same(at(nearestRest(workScroll(5.2), stops, stations.length)), stations[1]!.settle.eye),
     );
   }
 }

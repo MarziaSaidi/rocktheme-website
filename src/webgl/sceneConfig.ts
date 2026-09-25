@@ -4,18 +4,25 @@
  * WebGL modules render these records. They do not own chapter names, rock
  * paths, portfolio facts, or responsive placement values.
  */
-import type { SceneViewport } from "@/config/responsive";
+import type { ResponsiveOverrides, SceneViewport } from "@/config/responsive";
 import { resolveResponsiveValue } from "@/config/responsive";
 import { SECTION_IDS, type SectionId } from "@/config/sections";
 
-import { poseInFrame, type ChapterFrame, type PosePoint } from "./core/chapterFrame";
+import {
+  poseInFrame,
+  type ArrivalKeyframe,
+  type ChapterFrame,
+  type PosePoint,
+} from "./core/chapterFrame";
 import type {
   CameraComposition,
   DistanceFogConfig,
   EnvironmentLightingConfig,
   FogConfig,
   HeroLandscapeConfig,
+  HeroLandscapePlacement,
   HorizonLightConfig,
+  LandscapeModelPlacement,
   LowMistConfig,
   MonolithConfig,
   ParticleConfig,
@@ -23,6 +30,7 @@ import type {
   RockInstanceDefinition,
   RockTransform,
   SceneSectionConfig,
+  Vector3Tuple,
   WaterConfig,
   WorkStation,
 } from "./sceneTypes";
@@ -390,7 +398,8 @@ export const cameraConfig: CameraComposition = {
   offset: [0, -1.6654139392793946, 9.860344639557681],
   fov: 42,
   near: 0.1,
-  far: 220,
+  // The receded hero range and moon stand up to about 380 units out.
+  far: 420,
 };
 
 export const ROCK_ASSET_IDS = ["intro-rock", "footer-rock"] as const;
@@ -539,6 +548,16 @@ const stoneStacked = {
   screenCenterY: 0.53,
 } as const;
 
+/*
+ * Frame 05, and the first stone's settled view, where its details show. Low
+ * and a little left of the stone, 28 units out, looking up about 7°: the
+ * crown runs out of the top of the frame, the waterline and the rubble at its
+ * foot stay in, and the face is seen slightly from the side so the screen
+ * reads as set into the rock. The camera looks past the stone's right side,
+ * so the stone holds the left third and the details the open right.
+ */
+const quillSettle: PosePoint = { eye: [-4.5, 3.6, 20.5], target: [4.8, 6.7, -1.6], fov: 34 };
+
 export const monolithConfig: MonolithConfig = {
   sectionId: "selected-work",
   stone: {
@@ -605,10 +624,8 @@ export const monolithConfig: MonolithConfig = {
    */
   stations: {
     desktop: [
-      {
-        approach: [{ eye: [3.6, 5.0, 29], target: [4.2, 7.8, -4], fov: 42 }],
-        settle: { eye: [6.0, 7.6, 15.5], target: [6.55, 8.4, -2.3], fov: 40 },
-      },
+      // The way in is the arrival (arrivalKeyframes); only the settle is used.
+      { approach: [], settle: quillSettle },
       {
         approach: [
           { eye: [-3.5, 6.4, 11], target: [-8, 7.6, -20], fov: 41 },
@@ -646,6 +663,64 @@ export const monolithConfig: MonolithConfig = {
  * On a phone the view is a third as wide, so the rock and robot move in toward
  * the centre line and back, and the range is narrower so its peaks still read.
  */
+/*
+ * How much further out the range, its flank and the moon stand than where the
+ * hero was composed. Each is pushed back along the line from the hero eye and
+ * scaled by the same factor, so from the hero it looks exactly as approved;
+ * but it now stands behind the Selected Work range instead of among the
+ * stones, stays in view for the whole journey and barely moves while the
+ * camera crosses the water. The range's aerial perspective is stretched by the
+ * same factor so it hazes as it did.
+ */
+const RANGE_RECESSION = 2.1;
+/** The hero eye each viewport's range was composed from, in the hero frame. */
+const heroEyes: Record<SceneViewport, Vector3Tuple> = {
+  desktop: [0.4, 0.8, 11],
+  tablet: [2.2, 1.55, 8.5],
+  mobile: [2.2, 1.55, 8.5],
+};
+
+function recede(point: Vector3Tuple, eye: Vector3Tuple, keepHeight = false): Vector3Tuple {
+  const k = RANGE_RECESSION;
+  return [
+    eye[0] + (point[0] - eye[0]) * k,
+    keepHeight ? point[1] : eye[1] + (point[1] - eye[1]) * k,
+    eye[2] + (point[2] - eye[2]) * k,
+  ];
+}
+
+function recedeModel(model: LandscapeModelPlacement, eye: Vector3Tuple): LandscapeModelPlacement {
+  const k = RANGE_RECESSION;
+  return {
+    ...model,
+    // Its feet stay in the water.
+    position: recede(model.position, eye, true),
+    width: model.width * k,
+    height: model.height * k,
+    depth: model.depth * k,
+  };
+}
+
+function recedeRange(
+  placement: ResponsiveOverrides<HeroLandscapePlacement>,
+): ResponsiveOverrides<HeroLandscapePlacement> {
+  const viewports = ["desktop", "tablet", "mobile"] as const;
+  const out: Record<string, Partial<HeroLandscapePlacement>> = {};
+  viewports.forEach((viewport) => {
+    const own = viewport === "desktop" ? placement.desktop : placement[viewport];
+    if (!own) return;
+    const eye = heroEyes[viewport];
+    out[viewport] = {
+      ...own,
+      ...(own.mountains ? { mountains: recedeModel(own.mountains, eye) } : {}),
+      ...(own.flank ? { flank: recedeModel(own.flank, eye) } : {}),
+      ...(own.moon ? { moon: recede(own.moon, eye) } : {}),
+    };
+  });
+  // A viewport that inherits the desktop flank inherits it receded from the desktop eye.
+  return out as unknown as ResponsiveOverrides<HeroLandscapePlacement>;
+}
+
 export const heroLandscapeConfig: HeroLandscapeConfig = {
   sectionId: "hero",
   sources: {
@@ -653,7 +728,7 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
     perch: "/assets/hero/perch-rock.glb",
     robot: "/assets/hero/robot.glb",
   },
-  placement: {
+  placement: recedeRange({
     desktop: {
       mountains: { position: [16, -0.3, -66], width: 135, height: 30, depth: 34, yaw: 0 },
       flank: {
@@ -685,7 +760,7 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
       robot: { x: 3.45, z: -0.3, height: 1.2, yaw: 0.5 },
       moon: [12, 30, -150],
     },
-  },
+  }),
   /*
    * The base haze is the night air, not a lit band. In pale lavender
    * (0x6f5e8e) and this thick it glowed along the foot of the range, brighter
@@ -694,9 +769,9 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
    */
   mountainFog: {
     color: sceneColors.aubergine,
-    distance: 44,
-    density: 0.011,
-    height: 13,
+    distance: 44 * RANGE_RECESSION,
+    density: 0.011 / RANGE_RECESSION,
+    height: 13 * RANGE_RECESSION,
     heightDensity: 0.35,
     maxAmount: 0.85,
   },
@@ -706,7 +781,7 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
   // Cool, not violet: the moon's own disc keeps the lavender.
   moonlight: { color: 0x9ea2c6, intensity: 1.1, position: [40, 45, -140] },
   moon: {
-    size: 80,
+    size: 80 * RANGE_RECESSION,
     color: 0xf6f0ff,
     haloColor: 0xb89ce6,
     intensity: 1,
@@ -855,39 +930,68 @@ export const sceneSections = {
  * range rather than walking into it.
  */
 export const chapterFrames = {
-  hero: { origin: [0, 0, 40], yaw: 0 },
+  hero: { origin: [-12, 0, 32], yaw: 0 },
   "selected-work": { origin: [0, 0, 0], yaw: 0 },
   about: { origin: [-12, 0, 22.5], yaw: Math.PI },
   footer: { origin: [-12, 0, 46.5], yaw: Math.PI },
 } as const satisfies Readonly<Record<SectionId, ChapterFrame>>;
 
 /*
- * The hero's second composed view, in the hero frame. The camera has come
- * 5 units forward across the water and 3.5 to the left, passing beside the
- * perch rather than over it, so the rock and the robot have slid out past the
- * right edge; the view holds on open water and the range while the lead line
- * is read. It stays more than 3 units clear of the rock's footprint.
+ * The arrival: from the hero to the first stone, one continuous shot.
+ *
+ * Each keyframe is a composition meant to hold up as a still. `at` is the
+ * share of the arrival's scroll (top of the page to the first settle);
+ * `speed` is how fast the camera is still travelling as it passes, in world
+ * units per whole arrival. Zero means it stands still there.
+ *
+ *   01 establishing  low on the shore behind the perch; the first stone
+ *                    stands out on the water behind the robot, not yet
+ *                    drawn (see STONE_GONE in monolith.ts)
+ *   02 first move    a slow truck left: the perch and robot slide right
+ *                    across the frame, the range does not move
+ *   03 discovery     a step forward and a turn toward it: the stone is
+ *                    there now, behind the perch, its lit face rising over
+ *                    the rock. The camera lingers here but never stops
+ *   —  pass          beside the perch, more than 3 units clear of it
+ *   04 approach      the fastest stretch, rising toward the stone
+ *   05 arrival       low and to the right of the stone, looking up at it;
+ *                    a long deceleration ends in a settle
+ *
+ * The first three are authored in the hero frame, so they stay with the perch.
  */
-export const introPose: PosePoint = {
-  eye: [-3.5, 1.4, 3.4],
-  target: [-3.3, 2.6, -6.5],
-  fov: 42,
-};
+const heroArrival = (
+  at: number,
+  speed: number,
+  eye: Vector3Tuple,
+  target: Vector3Tuple,
+): ArrivalKeyframe => ({ at, speed, ...poseInFrame(chapterFrames.hero, { eye, target, fov: 34 }) });
+
+const desktopArrival: readonly ArrivalKeyframe[] = [
+  heroArrival(0, 0, [0.4, 0.8, 11], [0.4, 2.05, -2]),
+  heroArrival(0.26, 6, [-1.1, 0.9, 10.8], [-0.9, 2.15, -2.2]),
+  heroArrival(0.5, 10, [-1, 0.65, 8.3], [1.4, 1.95, -4.4]),
+  { at: 0.63, speed: 90, eye: [-17, 2.4, 34], target: [-4, 4.8, 0], fov: 34 },
+  { at: 0.72, speed: 90, eye: [-13, 2.8, 27], target: [0.6, 6.2, -4], fov: 34 },
+  { at: 1, speed: 0, ...quillSettle },
+];
 
 /*
  * Pass-through points; the camera does not stop at these.
  *
  * approach    hero frame. Early in the move forward, already easing left of
  *             the perch so the rock and robot slide out of the right edge.
- * arrival     world. Crossing the open water toward the far view of the first
- *             stone, left of the line to it so the perch is left well behind.
+ * arrival     hero frame. Crossing the open water toward the far view of the
+ *             first stone, left of the perch so it is left well behind.
  * departure   world. From the last stone the camera turns left, away from
  *             both stones, until it faces back across the water toward How I
  *             Work.
+ *
+ * Below the desktop breakpoint the arrival still runs hero → approach →
+ * arrival → far view → settle, now without stopping at the far view.
  */
 export const journeyWaypoints = {
   approach: { eye: [-3.3, 1.5, 6.0], target: [-3.0, 2.65, -3.9], fov: 42 },
-  arrival: { eye: [-3, 3.2, 35], target: [1.8, 5.2, 0], fov: 43 },
+  arrival: { eye: [-3, 3.2, -5], target: [1.8, 5.2, -40], fov: 43 },
   departure: [
     { eye: [-10, 4.5, -2], target: [-32, 4, 2], fov: 42 },
     { eye: [-13, 2.6, 5], target: [-12, 3, 25], fov: 42 },
@@ -897,6 +1001,22 @@ export const journeyWaypoints = {
   arrival: PosePoint;
   departure: readonly PosePoint[];
 }>;
+
+/** The arrival keyframes for a viewport. */
+export function arrivalKeyframes(viewport: SceneViewport): readonly ArrivalKeyframe[] {
+  if (viewport === "desktop") return desktopArrival;
+  const stacked = monolithConfig.stations.stacked[0]!;
+  const far = stacked.approach[0]!;
+  // Speeds are left to the timeline: it carries the pace through each point.
+  return [
+    { at: 0, ...chapterRest("hero", viewport) },
+    { at: 0.14, ...poseInFrame(chapterFrames.hero, journeyWaypoints.approach) },
+    { at: 0.34, ...poseInFrame(chapterFrames.hero, journeyWaypoints.arrival) },
+    // The far view, moved out past the perch, which now stands where it was.
+    { at: 0.6, eye: [-6, 3.2, 20], target: far.target, fov: far.fov },
+    { at: 1, speed: 0, ...stacked.settle },
+  ];
+}
 
 /** The Selected Work stations for a viewport: desktop, or stacked below it. */
 export function workStations(viewport: SceneViewport): readonly WorkStation[] {

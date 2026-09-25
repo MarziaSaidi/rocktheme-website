@@ -40,6 +40,71 @@
   color: var(--color-text-secondary);
 }
 
+/*
+ * The chapter title. It exists only on desktop while the scene drives the
+ * journey: it rises onto the water as the approach gathers pace (`--arrival`
+ * 0.64 to 0.72), holds through the fastest stretch, and drifts left and fades
+ * as the camera swings right into its settle (0.88 to 0.96). It stands on
+ * the hero headline's left edge, in its type, lower in the frame.
+ */
+.chapterTitle {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  :global(:root[data-journey]) .chapterTitle {
+    --in: clamp(0, (var(--arrival, 1) - 0.64) / 0.08, 1);
+    --out: clamp(0, (var(--arrival, 1) - 0.88) / 0.08, 1);
+    position: absolute;
+    z-index: var(--layer-content);
+    inset-inline-start: 6vw;
+    inset-block-end: 16vh;
+    display: block;
+    margin: 0;
+    padding-inline-end: 0.04em;
+    font-family: var(--font-hero-display);
+    font-weight: 860;
+    font-stretch: 62%;
+    font-variation-settings: "wdth" 62;
+    font-size: min(9vh, 5vw);
+    line-height: 0.86;
+    letter-spacing: -0.012em;
+    text-transform: uppercase;
+    color: transparent;
+    background-image: linear-gradient(
+      90deg,
+      var(--color-text-primary) 0,
+      var(--color-text-primary) 45%,
+      var(--color-text-moonlit) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    opacity: calc(var(--in) * (1 - var(--out)));
+    translate: calc(var(--out) * -2.5vw) calc((1 - var(--in)) * 0.4em);
+    pointer-events: none;
+  }
+
+  /*
+   * Until the camera has arrived at the first stone, the stage keeps its
+   * interface out of the shot; it comes in as the camera settles.
+   */
+  .intro,
+  .controls {
+    transition:
+      opacity 640ms var(--ease-interface),
+      visibility 0s;
+  }
+
+  :global(:root[data-journey]:not([data-arrived])) .intro,
+  :global(:root[data-journey]:not([data-arrived])) .controls {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 320ms var(--ease-interface),
+      visibility 0s 320ms;
+  }
+}
+
 /* ---------------------------------------------------------------- project */
 
 /*

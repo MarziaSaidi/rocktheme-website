@@ -82,24 +82,20 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
      */
     const measureStops = (): JourneyStops | null => {
       const byAnchor = (id: SectionId) => document.getElementById(sectionAnchors[id]);
-      const hero = byAnchor("hero");
       const work = byAnchor("selected-work");
       const about = byAnchor("about");
-      if (!hero || !work || !about) return null;
+      if (!work || !about) return null;
 
       const viewport = window.innerHeight;
       const top = (node: HTMLElement) => node.getBoundingClientRect().top + window.scrollY;
       const end = Math.max(0, document.documentElement.scrollHeight - viewport);
-      const pinned = top(hero) + hero.offsetHeight - viewport;
-      // A hero that is not pinned has no scroll of its own to spend.
-      const introEnd = pinned > viewport * 0.2 ? pinned : 0;
-      const workStart = Math.max(introEnd, top(work));
+      const workStart = top(work);
       const workEnd = Math.max(workStart, workStart + work.offsetHeight - viewport);
       const aboutRest = Math.min(
         end,
         Math.max(workEnd, top(about) + about.offsetHeight / 2 - viewport / 2),
       );
-      return { introEnd, workStart, workEnd, about: aboutRest, contact: Math.max(aboutRest, end) };
+      return { workStart, workEnd, about: aboutRest, contact: Math.max(aboutRest, end) };
     };
 
     const syncJourney = () => {
@@ -172,6 +168,16 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
           // The beacons light the DOM project edges through this one variable.
           root.style.setProperty("--scene-beacon-glow", intensity.toFixed(3));
         },
+        onArrival: (progress) => {
+          /*
+           * The titles leave and arrive with the camera, not with the page:
+           * `--arrival` runs 0 to 1 from the hero to the first stone, and
+           * `data-arrived` marks the camera standing at its first project.
+           */
+          root.dataset.journey = "";
+          root.style.setProperty("--arrival", (progress ?? 1).toFixed(4));
+          root.toggleAttribute("data-arrived", progress === null || progress >= 0.97);
+        },
         onMonolithFailure: () => {
           // The gallery shows its HTML screen images instead.
           root.dataset.monolithFailed = "";
@@ -181,6 +187,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
         },
         onContextLost: () => {
           delete root.dataset.sceneActive;
+          delete root.dataset.journey;
           setActive(false);
         },
         onContextRestored: () => {
@@ -267,7 +274,10 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       delete root.dataset.sceneActive;
       delete root.dataset.sceneTier;
       delete root.dataset.monolithFailed;
+      delete root.dataset.journey;
+      delete root.dataset.arrived;
       root.style.removeProperty("--scene-beacon-glow");
+      root.style.removeProperty("--arrival");
     };
   }, [onStats]);
 

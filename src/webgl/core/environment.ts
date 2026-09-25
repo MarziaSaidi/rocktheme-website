@@ -27,11 +27,11 @@ import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscap
 import { createMonolith, type Monolith } from "../modules/monolith";
 import { createRocks, type Rocks } from "../modules/rocks";
 import {
+  arrivalKeyframes,
   chapterFrames,
   chapterRest,
   getSceneSection,
   heroLandscapeConfig,
-  introPose,
   journeyWaypoints,
   monolithConfig,
   resolveCamera,
@@ -46,7 +46,7 @@ import {
   type JourneyRests,
   type JourneyStops,
 } from "./cameraJourney";
-import { poseInFrame, toWorld } from "./chapterFrame";
+import { toWorld } from "./chapterFrame";
 import { detectCapability } from "./capability";
 import {
   createQualityManager,
@@ -88,6 +88,12 @@ export type EnvironmentOptions = Readonly<{
   onQualityChange?: (settings: QualitySettings) => void;
   /** Called with the beacon intensity so the DOM can rim-light its own edges. */
   onBeaconIntensity?: (intensity: number) => void;
+  /**
+   * Called when the camera's progress through the arrival changes: 0 to 1
+   * from the hero to the first stone's settle, null once it has arrived. The
+   * DOM paces its titles by this, so they move with the camera, not the page.
+   */
+  onArrival?: (progress: number | null) => void;
   /** Called if the Selected Work stone or its mountains cannot be loaded. */
   onMonolithFailure?: () => void;
   onContextLost?: () => void;
@@ -305,31 +311,30 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const pose: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: initialCamera.fov };
   const direction = new Vector3();
   let viewport: SceneViewport = sceneViewportForWidth(width);
-  let stops: JourneyStops = { introEnd: 0, workStart: 0, workEnd: 0, about: 0, contact: 0 };
+  let stops: JourneyStops = { workStart: 0, workEnd: 0, about: 0, contact: 0 };
   let stopsKnown = false;
   let targetScroll = 0;
   let shownScroll = 0;
-  /** How quickly the camera catches up with the page, per second. */
-  const SCROLL_RATE = 14;
+  let scrollVelocity = 0;
+  /*
+   * The camera does not follow the page; it is pulled toward it by a
+   * critically damped spring. A flick of the trackpad starts it moving and it
+   * glides on and settles about 0.7 s later, never overshooting. Where the
+   * journey holds still, it holds still whatever the spring is doing.
+   */
+  const SCROLL_SPRING = 6.5;
   /** World units the resting hero camera drifts by, at most. */
   const IDLE_DRIFT = 0.035;
+  let shownArrival: number | null | undefined;
 
-  /*
-   * The hero is pinned long enough for a second composition only on desktop;
-   * below that its layout is unchanged, so the journey goes straight on.
-   */
   const buildRests = (): JourneyRests => ({
-    hero: chapterRest("hero", viewport),
-    intro: viewport === "desktop" ? poseInFrame(chapterFrames.hero, introPose) : null,
     about: chapterRest("about", viewport),
     contact: chapterRest("footer", viewport),
   });
   let rests = buildRests();
   let stations = workStations(viewport);
-  const waypoints = {
-    ...journeyWaypoints,
-    approach: poseInFrame(chapterFrames.hero, journeyWaypoints.approach),
-  };
+  let arrival = arrivalKeyframes(viewport);
+  const waypoints = { departure: journeyWaypoints.departure };
 
   // ------------------------------------------------ lighting that travels
   /*
@@ -394,20 +399,31 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const applyJourney = (deltaSeconds: number) => {
     if (options.reducedMotion) {
       // Cut between compositions: no flight, no scroll-linked motion.
-      shownScroll = stopsKnown
-        ? nearestRest(targetScroll, stops, rests.intro !== null, stations.length)
-        : 0;
+      shownScroll = stopsKnown ? nearestRest(targetScroll, stops, stations.length) : 0;
     } else if (deltaSeconds === 0) {
       shownScroll = targetScroll;
+      scrollVelocity = 0;
     } else {
-      shownScroll += (targetScroll - shownScroll) * (1 - Math.exp(-deltaSeconds * SCROLL_RATE));
-      if (Math.abs(targetScroll - shownScroll) < 0.25) shownScroll = targetScroll;
+      // Small fixed steps keep the spring stable through a dropped frame.
+      let remaining = deltaSeconds;
+      while (remaining > 0) {
+        const step = Math.min(remaining, 1 / 120);
+        const pull = SCROLL_SPRING * SCROLL_SPRING * (targetScroll - shownScroll);
+        scrollVelocity += (pull - 2 * SCROLL_SPRING * scrollVelocity) * step;
+        shownScroll += scrollVelocity * step;
+        remaining -= step;
+      }
+      if (Math.abs(targetScroll - shownScroll) < 0.25 && Math.abs(scrollVelocity) < 4) {
+        shownScroll = targetScroll;
+        scrollVelocity = 0;
+      }
     }
 
     const state = evaluateJourney(
       {
         scroll: stopsKnown ? shownScroll : 0,
         stops,
+        arrival,
         rests,
         waypoints,
         stations,
@@ -415,12 +431,17 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       pose,
     );
 
+    if (state.arrival !== shownArrival) {
+      shownArrival = state.arrival;
+      options.onArrival?.(state.arrival);
+    }
+
     /*
      * Idle drift at the hero viewpoint: a few centimetres of eye and aim on
      * periods of a minute or so, like a held camera breathing. It is gone by
      * the first 160 px of scroll, so it never touches the journey itself.
      */
-    if (!options.reducedMotion && state.from === "hero" && state.to === "hero") {
+    if (!options.reducedMotion && state.arrival !== null) {
       const idle = Math.max(0, 1 - shownScroll / 160) * IDLE_DRIFT;
       pose.eye.x += Math.sin(elapsed * 0.11) * idle;
       pose.eye.y += Math.sin(elapsed * 0.083 + 1.3) * idle * 0.6;
@@ -459,20 +480,18 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     rocks.setLighting(blendLighting(state.from, state.to, state.blend));
 
     /*
-     * The hero landscape is there for the hero only. The perch and the robot
-     * leave the frame as the camera moves on past them, and only once they
-     * are behind it do they go, so the later chapters facing back across the
-     * water never see them. The range and the moon sink into the haze over
-     * the first stretch of the flight, before the Selected Work range would
-     * show behind them.
+     * The range and the moon stand far beyond everything else and stay for
+     * the whole journey. The perch and the robot go only once the camera has
+     * passed them, so the later chapters facing back across the water never
+     * see them. The moonlight dies away over the crossing, so the stones
+     * keep their own light.
      */
-    const leaving = (start: number, span: number) =>
-      state.from === "hero"
-        ? state.to === "hero"
-          ? 1
-          : 1 - smootherstep(Math.min(1, Math.max(0, (state.blend - start) / span)))
-        : 0;
-    heroLandscape.setPresence(leaving(0.1, 0.45), leaving(0.3, 0.3));
+    const along = state.arrival;
+    heroLandscape.setPresence(
+      1,
+      along === null ? 0 : 1 - smootherstep((along - 0.74) / 0.2),
+      along === null ? 0 : 1 - smootherstep((along - 0.45) / 0.4),
+    );
   };
 
   // -------------------------------------------------------- orthographic pass
@@ -600,6 +619,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   const handleContextRestored = () => {
     contextLost = false;
+    // Republish the arrival, so the titles pick up where the camera is.
+    shownArrival = undefined;
     applySettings(settings);
     options.onContextRestored?.();
     if (running) {
@@ -653,6 +674,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       viewport = sceneViewportForWidth(width);
       rests = buildRests();
       stations = workStations(viewport);
+      arrival = arrivalKeyframes(viewport);
       lights.resize(camera);
       atmosphere.resize(camera);
       mist.resize(width, camera);

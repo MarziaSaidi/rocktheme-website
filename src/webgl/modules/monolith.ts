@@ -162,12 +162,21 @@ function disposeModel(root: Object3D) {
 }
 
 /*
- * Distances from a stone's axis. Settled, the camera stands about 16 units
- * out; the far view where the stage pins is 34 out. From the hero, 50 or
- * more away, no stone is drawn at all.
+ * Distances from a stone's axis at which it is fully there, and gone.
+ *
+ * Desktop: settled, the camera stands about 28 units out. The first stone
+ * must not be seen from the hero (51.4 out, and 51.7 at the second keyframe)
+ * but is solid by the discovery (49.4), where it stands behind the perch; the
+ * step between is taken while the camera moves. A stone only partly there is
+ * drawn translucent, so the window is kept narrow.
+ *
+ * Stacked: the hero stands about 48.5 out and the camera passes the far view
+ * about 28 out, so the stone emerges from the haze on the way.
  */
-const STONE_PRESENT = 36;
-const STONE_GONE = 48;
+const STONE_EMERGENCE: Record<"desktop" | "stacked", readonly [number, number]> = {
+  desktop: [49.8, 51.3],
+  stacked: [36, 48],
+};
 
 export function createMonolith(
   scene: Scene,
@@ -467,9 +476,9 @@ export function createMonolith(
         // black silhouette rather than a stone emerging from the haze.
         material.depthWrite = solid;
       });
-      // The screen comes in after the rock does, so no bright screen ever
-      // hangs in the haze on a stone that is barely there.
-      const presence = visibility ** 3 * stone.facing;
+      // The screen comes in after the rock does, so a stone still deep in
+      // the haze carries only a dim light, never a bright plate.
+      const presence = visibility ** 2 * stone.facing;
       stone.group.visible = presence > 0.002;
       stone.housing.depthWrite = solid;
       stone.housing.opacity = presence;
@@ -483,7 +492,8 @@ export function createMonolith(
     setViewer: (position) => {
       stones.forEach((stone) => {
         const distance = Math.hypot(position.x - stone.pivot.x, position.z - stone.pivot.z);
-        stone.visibility = presenceAt(distance, STONE_PRESENT, STONE_GONE);
+        const [present, gone] = STONE_EMERGENCE[viewport === "desktop" ? "desktop" : "stacked"];
+        stone.visibility = presenceAt(distance, present, gone);
         if (stone.visibility <= 0.002) return;
         stone.group.getWorldPosition(faceCentre);
         faceNormal.set(0, 0, 1).transformDirection(stone.group.matrixWorld);

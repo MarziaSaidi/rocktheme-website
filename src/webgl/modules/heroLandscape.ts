@@ -53,7 +53,7 @@ export type HeroLandscape = Readonly<{
    * How present the landscape is, 0 to 1, set by the journey each frame:
    * `far` for the range and the moon, `near` for the perch and the robot.
    */
-  setPresence: (far: number, near: number) => void;
+  setPresence: (far: number, near: number, moonlight?: number) => void;
   resize: (width: number) => void;
   /** Objects that should not be drawn into the water's reflection. */
   reflectionExclusions: () => readonly Object3D[];
@@ -164,6 +164,7 @@ export function createHeroLandscape(
   let viewport: SceneViewport = "desktop";
   let presence = 1;
   let nearPresence = 1;
+  let moonlightPresence = 1;
   let destroyed = false;
 
   /*
@@ -276,7 +277,7 @@ export function createHeroLandscape(
     perch.visible = ready.perch && nearPresence > 0.002;
     robot.visible = ready.robot && ready.perch && nearPresence > 0.002;
     robotLight.intensity = config.robotLight.intensity * nearPresence;
-    moon.intensity = config.moonlight.intensity * presence;
+    moon.intensity = config.moonlight.intensity * moonlightPresence;
     moonMaterial.opacity = presence;
     moonDisc.visible = presence > 0.002;
   };
@@ -354,14 +355,20 @@ export function createHeroLandscape(
   applyPresence();
 
   return {
-    setPresence: (far, near) => {
+    setPresence: (far, near, moonlight = far) => {
       const nextFar = Math.min(1, Math.max(0, far));
       const nextNear = Math.min(1, Math.max(0, near));
-      if (Math.abs(nextFar - presence) < 0.0005 && Math.abs(nextNear - nearPresence) < 0.0005) {
+      const nextLight = Math.min(1, Math.max(0, moonlight));
+      if (
+        Math.abs(nextFar - presence) < 0.0005 &&
+        Math.abs(nextNear - nearPresence) < 0.0005 &&
+        Math.abs(nextLight - moonlightPresence) < 0.0005
+      ) {
         return;
       }
       presence = nextFar;
       nearPresence = nextNear;
+      moonlightPresence = nextLight;
       applyPresence();
     },
     resize: (width) => {

@@ -18,12 +18,13 @@
 }
 
 /*
- * Desktop only: the runway's extra length is the camera's travel from the
- * arrival view to the second, closer view. Smaller layouts are unchanged.
+ * Desktop only: the runway holds the copy still while the camera starts its
+ * arrival, until the copy has left with it (`--arrival` 0.32). Smaller layouts
+ * are unchanged.
  */
 @media (min-width: 64rem) {
   .hero {
-    height: calc(100dvh + 80svh);
+    height: calc(100dvh + 130svh);
   }
 
   .stage {
@@ -155,6 +156,18 @@
 
   .headline {
     font-size: min(14.3vh, 7.75vw);
+  }
+
+  /*
+   * The copy leaves with the camera rather than with the page: it lifts and
+   * fades over the first stretch of the arrival, slower than the rock
+   * crossing the foreground and faster than the range, so it sits between
+   * them. Only while the scene is driving the journey.
+   */
+  :global(:root[data-journey]) .statement {
+    --leave: clamp(0, (var(--arrival, 0) - 0.05) / 0.27, 1);
+    opacity: calc(1 - var(--leave));
+    translate: 0 calc(var(--leave) * -7vh);
   }
 
   .lead {

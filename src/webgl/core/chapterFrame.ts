@@ -13,6 +13,13 @@ export type ChapterFrame = Readonly<{ origin: Vector3Tuple; yaw: number }>;
 
 export type PosePoint = Readonly<{ eye: Vector3Tuple; target: Vector3Tuple; fov: number }>;
 
+/**
+ * A composed moment of the arrival. `at` is its share of the arrival's scroll;
+ * `speed` how fast the camera passes it, in world units per whole arrival
+ * (0 holds still; left out, the timeline carries the pace through).
+ */
+export type ArrivalKeyframe = PosePoint & Readonly<{ at: number; speed?: number }>;
+
 /** Places a point authored in a chapter's frame into the world (yaw about +y). */
 export function toWorld(frame: ChapterFrame, local: Vector3Tuple): Vector3Tuple {
   const cos = Math.cos(frame.yaw);

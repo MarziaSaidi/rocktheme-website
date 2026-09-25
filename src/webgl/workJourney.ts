@@ -17,7 +17,13 @@
 
 /** Scroll lengths of each stretch, in screen heights. */
 export const WORK_STRETCHES = {
-  approach: 1.3,
+  /*
+   * The last part of the arrival (cameraJourney.ts): from the stage pinning to
+   * the camera settling at the first stone. On desktop the hero's own pinned
+   * runway comes before it, and the two together make the arrival's four
+   * screens.
+   */
+  approach: 1.7,
   hold: 1.25,
   travel: 2.4,
 } as const;
