@@ -133,6 +133,61 @@ export type FogConfig = Readonly<{
   }>[];
 }>;
 
+/**
+ * Aerial perspective for geometry past the scene fog's far distance, which
+ * linear fog would erase outright. Distances are world units from the viewer.
+ */
+export type DistanceFogConfig = Readonly<{
+  /** The DOM background the canvas composites over, so ridges sink into it. */
+  color: number;
+  /** Nothing nearer than this is fogged at all. */
+  distance: number;
+  /** Exponential-squared density beyond `distance`. */
+  density: number;
+  /** World height over which the extra haze at the base thins out. */
+  height: number;
+  /** Extra haze at the waterline, 0 to 1, on top of the distance term. */
+  heightDensity: number;
+  /** Ceiling, so the furthest silhouette never disappears entirely. */
+  maxAmount: number;
+  /**
+   * Colour of the haze at the waterline, where mist lit from the horizon sits
+   * between the ridges. Defaults to `color`.
+   */
+  lowColor?: number;
+}>;
+
+/**
+ * Low mist lying on the water: a stack of horizontal noise slices fixed in the
+ * world. Perspective does the depth work: the slices converge into a dense
+ * band at the horizon and separate into soft banks nearer the viewer.
+ */
+export type LowMistConfig = Readonly<{
+  /** Output (sRGB) colour of lit mist. Kept near the background, never white. */
+  color: number;
+  /** Peak opacity where every slice overlaps. 0 hides the mist. */
+  opacity: number;
+  /** 0 to 1. Higher fills more of the surface; lower leaves open water. */
+  density: number;
+  /** Ceiling far out, where the mist banks up round the mountain bases. */
+  height: number;
+  /** Ceiling near the viewer. Capped under the camera's eye line. */
+  nearHeight: number;
+  /** World units per second the banks drift. */
+  speed: number;
+  /** Drift heading on the water, radians from +x. */
+  direction: number;
+  /** Feature size of the two noise fields, as world frequencies. */
+  noiseScale: Readonly<{ large: number; small: number }>;
+  /**
+   * Clear water near the viewer, the span over which the ceiling rises from
+   * `nearHeight` to `height`, and a soft end before the mist's far edge.
+   */
+  distance: Readonly<{ near: Vector2Tuple; rise: Vector2Tuple; far: Vector2Tuple }>;
+  /** Slices and noise octaves per viewport; mobile gets fewer of each. */
+  detail: ResponsiveOverrides<Readonly<{ slices: number; octaves: number }>>;
+}>;
+
 export type WaterConfig = Readonly<{
   horizon: number;
   /** Reflection lookup displacement, in UV units per unit of surface slope. */
@@ -204,6 +259,7 @@ export type SceneSectionConfig = Readonly<{
   lighting: EnvironmentLightingConfig;
   horizonLights: HorizonLightConfig;
   fog: FogConfig;
+  mist: LowMistConfig;
   water: WaterConfig;
   particles: ParticleConfig;
   rockInstanceIds: readonly string[];
@@ -262,6 +318,9 @@ export type MonolithConfig = Readonly<{
   mountains: Readonly<{
     source: `/assets/selected-work/${string}.glb`;
     placement: ResponsiveOverrides<MountainPlacement>;
+    fog: DistanceFogConfig;
+    /** Multiplies the range's albedo after it is matched to the footer stone. */
+    shade: number;
   }>;
   screen: Readonly<{
     /** Width over height of the screen images, kept after the girth scale. */
@@ -288,5 +347,84 @@ export type MonolithConfig = Readonly<{
     fadeInMs: number;
     reducedFadeOutMs: number;
     reducedFadeInMs: number;
+  }>;
+}>;
+
+/**
+ * A model scaled to a world footprint. `width` is the span across x, `depth`
+ * along z and `height` up y, each after the model is turned by `yaw`.
+ */
+export type LandscapeModelPlacement = Readonly<{
+  position: Vector3Tuple;
+  width: number;
+  height: number;
+  depth: number;
+  yaw: number;
+  /** Mirrored across its own x axis, so a second copy reads as new ground. */
+  mirror?: boolean;
+}>;
+
+export type HeroRobotPlacement = Readonly<{
+  /** Where the robot sits, in the hero frame. Its height is found on the rock. */
+  x: number;
+  z: number;
+  /** World height of the seated figure. */
+  height: number;
+  /** Turn about +y; 0 faces the viewer. */
+  yaw: number;
+}>;
+
+export type HeroLandscapePlacement = Readonly<{
+  mountains: LandscapeModelPlacement;
+  /** A second copy of the range, nearer and to the left. */
+  flank: LandscapeModelPlacement;
+  perch: LandscapeModelPlacement;
+  robot: HeroRobotPlacement;
+  /** Where the moon hangs; it moves in with the rest on narrow views. */
+  moon: Vector3Tuple;
+}>;
+
+/**
+ * The hero landscape: the mountain range across the back of the view, the rock
+ * in the right foreground and the robot seated on it. Positions are in the
+ * hero chapter frame.
+ */
+export type HeroLandscapeConfig = Readonly<{
+  sectionId: SectionId;
+  sources: Readonly<{
+    mountains: `/assets/hero/${string}.glb`;
+    perch: `/assets/hero/${string}.glb`;
+    robot: `/assets/hero/${string}.glb`;
+  }>;
+  placement: ResponsiveOverrides<HeroLandscapePlacement>;
+  /** Aerial perspective on the range, which stands past the scene fog. */
+  mountainFog: DistanceFogConfig;
+  /** Multiplies the range's albedo after it is matched to the footer stone. */
+  mountainShade: number;
+  /** Multiplies the perch rock's albedo after it is matched to the footer stone. */
+  perchShade: number;
+  /**
+   * Moonlight from behind the range, toward the viewer. It rims every ridge,
+   * the crown of the perch and the robot's head from the same direction the
+   * glow in the sky comes from. `position` is the direction it comes from.
+   */
+  moonlight: Readonly<{ color: number; intensity: number; position: Vector3Tuple }>;
+  /**
+   * The moon itself, behind the range: a small bright disc in a wide soft
+   * halo. It stands in the world, so the peaks in front of it cut into it.
+   */
+  moon: Readonly<{
+    /** World diameter of the halo; the disc is a small share of it. */
+    size: number;
+    color: number;
+    haloColor: number;
+    intensity: number;
+  }>;
+  /** A dim local light that separates the robot from the rock behind it. */
+  robotLight: Readonly<{
+    color: number;
+    intensity: number;
+    /** Offset from the robot, in multiples of its height. */
+    offset: Vector3Tuple;
   }>;
 }>;

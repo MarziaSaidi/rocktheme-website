@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { isSectionId, type SectionId } from "@/config/sections";
+import { isSectionId, sectionAnchors, type SectionId } from "@/config/sections";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
 import { subscribeSceneFocus } from "./sceneFocus";
+import type { JourneyStops } from "./core/cameraJourney";
 import type { Environment, EnvironmentStats } from "./core/environment";
 import type { ObstacleRect } from "./modules/particleField";
 
@@ -48,6 +49,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     let pointerSource: ReturnType<typeof createPointerSource> | null = null;
     let unsubscribePointer: (() => void) | null = null;
     let resizeObserver: ResizeObserver | null = null;
+    let pageObserver: ResizeObserver | null = null;
     let unsubscribeFocus: (() => void) | null = null;
     let statsTimer = 0;
     let obstacleFrame = 0;
@@ -72,6 +74,43 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       });
 
       return rects;
+    };
+
+    /*
+     * The camera journey's scroll ranges, read from the sections themselves so
+     * a change of copy, layout or breakpoint moves the rests with it.
+     */
+    const measureStops = (): JourneyStops | null => {
+      const byAnchor = (id: SectionId) => document.getElementById(sectionAnchors[id]);
+      const hero = byAnchor("hero");
+      const work = byAnchor("selected-work");
+      const about = byAnchor("about");
+      if (!hero || !work || !about) return null;
+
+      const viewport = window.innerHeight;
+      const top = (node: HTMLElement) => node.getBoundingClientRect().top + window.scrollY;
+      const end = Math.max(0, document.documentElement.scrollHeight - viewport);
+      const pinned = top(hero) + hero.offsetHeight - viewport;
+      // A hero that is not pinned has no scroll of its own to spend.
+      const introEnd = pinned > viewport * 0.2 ? pinned : 0;
+      const workStart = Math.max(introEnd, top(work));
+      const workEnd = Math.max(workStart, workStart + work.offsetHeight - viewport);
+      const aboutRest = Math.min(
+        end,
+        Math.max(workEnd, top(about) + about.offsetHeight / 2 - viewport / 2),
+      );
+      return { introEnd, workStart, workEnd, about: aboutRest, contact: Math.max(aboutRest, end) };
+    };
+
+    const syncJourney = () => {
+      const stops = measureStops();
+      if (stops) environment?.setJourneyStops(stops);
+      environment?.setScroll(window.scrollY);
+    };
+
+    const handleScroll = () => {
+      environment?.setScroll(window.scrollY);
+      scheduleObstacleSync();
     };
 
     const scheduleObstacleSync = () => {
@@ -160,6 +199,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       setActive(true);
 
       environment.resize(canvas.clientWidth, canvas.clientHeight);
+      syncJourney();
       environment.setObstacles(measureObstacles());
       syncChapter();
 
@@ -179,11 +219,15 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
           return;
         }
         environment?.resize(entry.contentRect.width, entry.contentRect.height);
+        syncJourney();
         scheduleObstacleSync();
       });
       resizeObserver.observe(canvas);
+      // Sections change height as fonts and media settle.
+      pageObserver = new ResizeObserver(syncJourney);
+      pageObserver.observe(document.body);
 
-      window.addEventListener("scroll", scheduleObstacleSync, { passive: true });
+      window.addEventListener("scroll", handleScroll, { passive: true });
       document.addEventListener("visibilitychange", handleVisibility);
       reducedMotionQuery.addEventListener("change", scheduleObstacleSync);
 
@@ -209,11 +253,12 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
         cancelAnimationFrame(obstacleFrame);
       }
 
-      window.removeEventListener("scroll", scheduleObstacleSync);
+      window.removeEventListener("scroll", handleScroll);
       document.removeEventListener("visibilitychange", handleVisibility);
       reducedMotionQuery.removeEventListener("change", scheduleObstacleSync);
 
       resizeObserver?.disconnect();
+      pageObserver?.disconnect();
       unsubscribeFocus?.();
       unsubscribePointer?.();
       pointerSource?.destroy();

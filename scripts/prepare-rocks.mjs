@@ -5,8 +5,13 @@ import sharp from "sharp";
 import { MeshoptSimplifier } from "meshoptimizer";
 
 const selectedWork = process.argv.includes("--selected-work");
+const hero = process.argv.includes("--hero");
 const root = new URL(
-  selectedWork ? "../public/assets/selected-work/" : "../public/assets/rocks/",
+  selectedWork
+    ? "../public/assets/selected-work/"
+    : hero
+      ? "../public/assets/hero/"
+      : "../public/assets/rocks/",
   import.meta.url,
 );
 const standardSources = [
@@ -22,11 +27,24 @@ const selectedWorkSources = [
   ["monolith.glb", "monolith.glb", 240000, 2048],
   ["mountains.glb", "mountains.glb", 180000, 1024],
 ];
-const sources = process.argv.includes("--intro")
-  ? [["rock formation 3d model.glb", "intro-rock.glb"]]
-  : selectedWork
-    ? selectedWorkSources
-    : standardSources;
+/*
+ * Hero sources: the mountain range across the back of the landscape, the rock
+ * the robot sits on, and the robot. The robot is small on screen but its face
+ * and sprout are the detail the eye goes to, so it keeps the most triangles
+ * per unit of size.
+ */
+const heroSources = [
+  ["new hero bg mountain.glb", "mountains.glb", 420000, 2048],
+  ["front rock taht the robot sets on it hero .glb", "perch-rock.glb", 360000, 2048],
+  ["correct robot 3d model.glb", "robot.glb", 300000, 2048],
+];
+const sources = hero
+  ? heroSources
+  : process.argv.includes("--intro")
+    ? [["rock formation 3d model.glb", "intro-rock.glb"]]
+    : selectedWork
+      ? selectedWorkSources
+      : standardSources;
 const desktop = process.argv.slice(2).find((arg) => !arg.startsWith("--"));
 if (!desktop) throw new Error("Usage: node scripts/prepare-rocks.mjs /path/to/source-folder");
 

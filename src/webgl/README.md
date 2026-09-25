@@ -33,13 +33,17 @@ reordering a project changes nothing in this directory.
 | `core/quality.ts`             | Tiers, particle density, pixel-ratio caps, adaptive downgrade. |
 | `core/noise.ts`               | Divergence-free curl field for the particle flow.              |
 | `core/environment.ts`         | Renderer, both passes, the frame loop, and disposal.           |
+| `core/cameraJourney.ts`       | Scroll offset to camera pose: the only thing that moves it.    |
+| `core/chapterFrame.ts`        | Places each chapter's composition in the shared world.         |
 | `modules/particleField.ts`    | Screen-space simulation and point rendering.                   |
 | `modules/pointerInfluence.ts` | The three pointer zones, as pure force maths.                  |
 | `modules/reflectiveFloor.ts`  | Planar reflection pass, surface drift, ripples.                |
 | `modules/horizonLights.ts`    | Beacons and the intensity the floor and DOM read.              |
 | `modules/rocks.ts`            | Faceted anchors and their parallax.                            |
+| `modules/heroLandscape.ts`    | Hero range, moon, the perch rock and the seated robot.         |
+| `modules/stoneMaterial.ts`    | Brings every rock's colour map to the footer stone's.          |
 | `modules/monolith.ts`         | Selected Work stone, its two screens, and the mountain range.  |
-| `monolithChannel.ts`          | The gallery timeline the camera walk and screens follow.       |
+| `monolithChannel.ts`          | The gallery timeline the walk round the stone and screens use. |
 | `SceneCanvas.tsx`             | The only React leaf: measures, mounts, tears down.             |
 
 ## Two passes, one renderer

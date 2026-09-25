@@ -15,6 +15,7 @@
     "validate:scene": "node --import tsx scripts/check-scene.ts",
     "prepare:rocks": "node scripts/prepare-rocks.mjs",
     "prepare:selected-work": "node scripts/prepare-rocks.mjs --selected-work assets-src/selected-work",
+    "prepare:hero": "node scripts/prepare-rocks.mjs --hero assets-src/hero",
     "prepare:monolith-screens": "node scripts/prepare-monolith-screens.mjs"
   },
   "dependencies": {

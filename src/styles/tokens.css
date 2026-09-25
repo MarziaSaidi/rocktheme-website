@@ -27,6 +27,8 @@
   --color-text-primary: #f3f3f5;
   --color-text-secondary: #d1d1d6;
   --color-text-muted: #aaaab3;
+  /* Moonlit lavender the hero headline fades into toward its right edge. */
+  --color-text-moonlit: #c4aaf0;
 
   /* -------------------------------------------- Layer 2: accents and states */
   /* Green stays under 8% of the screen and gold under 1%. Use sparingly. */
@@ -46,6 +48,8 @@
   /* ---------------------------------------------------------- Typography */
   --font-display: var(--font-anton), "Barlow Condensed", "Arial Narrow", sans-serif;
   --font-body: var(--font-geist-sans), system-ui, sans-serif;
+  /* The hero headline only: heavier and wider than the condensed display. */
+  --font-hero-display: var(--font-hero), var(--font-display);
   --font-technical: var(--font-geist-mono), ui-monospace, monospace;
 
   /* Monumental condensed display sizes. */

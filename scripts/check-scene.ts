@@ -9,7 +9,7 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { PerspectiveCamera, Points, Scene, ShaderMaterial, Vector3 } from "three";
-import { sceneViewportForWidth } from "../src/config/responsive";
+import { resolveResponsiveValue, sceneViewportForWidth } from "../src/config/responsive";
 import { SECTION_IDS } from "../src/config/sections";
 import { applyPointerInfluence } from "../src/webgl/modules/pointerInfluence";
 import { createParticleField } from "../src/webgl/modules/particleField";
@@ -28,7 +28,19 @@ import {
   type MonolithTimeline,
 } from "../src/webgl/monolithChannel";
 import {
+  evaluateJourney,
+  nearestRest,
+  type CameraPose,
+  type JourneyStops,
+} from "../src/webgl/core/cameraJourney";
+import { poseInFrame, toWorld } from "../src/webgl/core/chapterFrame";
+import {
+  chapterFrames,
+  chapterRest,
+  introPose,
+  journeyWaypoints,
   floorConfig,
+  heroLandscapeConfig,
   monolithConfig,
   horizonLightConfig,
   particleConfig,
@@ -527,6 +539,128 @@ console.log("\nselected work monolith");
     "reduced motion cuts to the other side while the screens are dark",
     evaluateMonolith(reduced, 199).orbit === 0 && evaluateMonolith(reduced, 201).orbit === 1,
   );
+}
+
+// ------------------------------------------------------------ camera journey
+console.log("\ncamera journey");
+{
+  const layouts = {
+    desktop: { introEnd: 720, workStart: 1620, workEnd: 2025, about: 2838, contact: 3533 },
+    mobile: { introEnd: 0, workStart: 844, workEnd: 1350, about: 2300, contact: 3100 },
+  } as const satisfies Record<string, JourneyStops>;
+
+  for (const [viewport, stops] of Object.entries(layouts) as [
+    keyof typeof layouts,
+    JourneyStops,
+  ][]) {
+    const rests = {
+      hero: chapterRest("hero", viewport),
+      intro: viewport === "desktop" ? poseInFrame(chapterFrames.hero, introPose) : null,
+      work: chapterRest("selected-work", viewport),
+      about: chapterRest("about", viewport),
+      contact: chapterRest("footer", viewport),
+    };
+    const waypoints = {
+      ...journeyWaypoints,
+      approach: poseInFrame(chapterFrames.hero, journeyWaypoints.approach),
+    };
+    const stone = resolveResponsiveValue(monolithConfig.stone.placement, viewport);
+    const pivot = new Vector3(stone.position[0], 0, stone.position[2]);
+    const rocks = ROCK_INSTANCE_IDS.map((instanceId) => {
+      const transform = resolveRockTransform(instanceId, viewport);
+      const world = toWorld(chapterFrames[rockInstances[instanceId].sectionId], transform.position);
+      return { world: new Vector3(...world), half: transform.scale[0] / 2 };
+    });
+    // The hero's perch is a rock the journey passes too.
+    const perch = resolveResponsiveValue(heroLandscapeConfig.placement, viewport).perch;
+    rocks.push({
+      world: new Vector3(...toWorld(chapterFrames.hero, perch.position)),
+      half: Math.max(perch.width, perch.depth) / 2,
+    });
+
+    const at = (scroll: number, orbit: number) => {
+      const pose: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
+      evaluateJourney({ scroll, stops, rests, waypoints, orbit, pivot }, pose);
+      return pose;
+    };
+    const same = (a: CameraPose, eye: readonly number[]) =>
+      a.eye.distanceTo(new Vector3(eye[0], eye[1], eye[2])) < 1e-6;
+
+    check(
+      `${viewport}: the journey starts at the hero composition`,
+      same(at(0, 0), rests.hero.eye),
+    );
+    if (rests.intro) {
+      check(
+        `${viewport}: the hero holds still for the intro`,
+        same(at(stops.introEnd - 1, 0), rests.intro.eye),
+      );
+    }
+    check(
+      `${viewport}: Selected Work rests at its composition`,
+      same(at(stops.workStart, 0), rests.work.eye),
+    );
+    check(
+      `${viewport}: How I Work rests at its composition`,
+      same(at(stops.about, 1), rests.about.eye),
+    );
+    check(
+      `${viewport}: Contact rests at its composition`,
+      same(at(stops.contact, 1), rests.contact.eye),
+    );
+
+    for (const orbit of [0, 1]) {
+      let previous = at(0, orbit);
+      let largestStep = 0;
+      let largestTurn = 0;
+      let nearestStone = Number.POSITIVE_INFINITY;
+      let nearestRock = Number.POSITIVE_INFINITY;
+      for (let scroll = 1; scroll <= stops.contact; scroll += 1) {
+        const pose = at(scroll, orbit);
+        const direction = pose.target.clone().sub(pose.eye).normalize();
+        const before = previous.target.clone().sub(previous.eye).normalize();
+        largestStep = Math.max(largestStep, pose.eye.distanceTo(previous.eye));
+        largestTurn = Math.max(largestTurn, Math.acos(Math.min(1, direction.dot(before))));
+        nearestStone = Math.min(
+          nearestStone,
+          Math.hypot(pose.eye.x - pivot.x, pose.eye.z - pivot.z),
+        );
+        rocks.forEach((rock) => {
+          const gap = Math.hypot(pose.eye.x - rock.world.x, pose.eye.z - rock.world.z) - rock.half;
+          nearestRock = Math.min(nearestRock, gap);
+        });
+        previous = pose;
+      }
+      const label = `${viewport}, ${orbit ? "behind" : "in front of"} the stone`;
+      check(`${label}: no jump between scroll pixels`, largestStep < 0.6, largestStep.toFixed(3));
+      check(
+        `${label}: no sudden turn between scroll pixels`,
+        (largestTurn * 180) / Math.PI < 2,
+        `${((largestTurn * 180) / Math.PI).toFixed(2)}°`,
+      );
+      check(
+        `${label}: the camera keeps clear of the stone`,
+        nearestStone > 8,
+        nearestStone.toFixed(2),
+      );
+      check(
+        `${label}: the camera keeps clear of every rock`,
+        nearestRock > 3,
+        nearestRock.toFixed(2),
+      );
+    }
+
+    const reversed = at(1200, 0);
+    at(3000, 1);
+    check(
+      `${viewport}: scrolling back returns the same pose`,
+      reversed.eye.distanceTo(at(1200, 0).eye) < 1e-9,
+    );
+    check(
+      `${viewport}: reduced motion cuts to a rest`,
+      nearestRest(stops.workStart - 50, stops, rests.intro !== null) === stops.workStart,
+    );
+  }
 }
 
 console.log(

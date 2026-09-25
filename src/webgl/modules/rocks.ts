@@ -13,10 +13,10 @@ import {
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import { sceneViewportForWidth, type SceneViewport } from "@/config/responsive";
-import type { SectionId } from "@/config/sections";
-
+import { toWorld } from "../core/chapterFrame";
 import { loadRockAsset } from "../loaders/rockAssetLoader";
 import {
+  chapterFrames,
   ROCK_INSTANCE_IDS,
   rockAssets,
   rockInstances,
@@ -35,11 +35,20 @@ type RockInstance = {
   waterline: { value: number };
   opacity: number;
   ready: boolean;
+  /** Resting world position; pointer parallax is added to this. */
+  base: Vector3;
+  /** The chapter frame's turn, for parallax along the viewer's right. */
+  yaw: number;
 };
 
 export type Rocks = Readonly<{
-  update: (pointerX: number, pointerY: number, beaconIntensity: number, delta: number) => void;
-  setSection: (sectionId: SectionId | null) => void;
+  update: (
+    pointerX: number,
+    pointerY: number,
+    beaconIntensity: number,
+    delta: number,
+    viewer: Vector3,
+  ) => void;
   setLighting: (config: EnvironmentLightingConfig) => void;
   resize: (width: number) => void;
   reflectionExclusions: () => readonly Object3D[];
@@ -115,6 +124,21 @@ export function applyWaterlineContact(
 /** Chapter crossfade speed, per second. About 0.35 s to settle. */
 export const FADE_RATE = 6;
 
+/*
+ * A rock stands in the world wherever the viewer is. Past the scene fog's far
+ * distance (58) it would still draw, as a fog-coloured silhouette cutting into
+ * the horizon glow behind it, so it thins out over the last stretch before
+ * the fog would have taken it anyway.
+ */
+const ROCK_PRESENT = 40;
+const ROCK_GONE = 52;
+
+/** 1 at `near` or closer, 0 at `far` or beyond, smooth between. */
+export function presenceAt(distance: number, near: number, far: number): number {
+  const t = Math.min(1, Math.max(0, (far - distance) / (far - near)));
+  return t * t * (3 - 2 * t);
+}
+
 /** Renders typed rock instances; asset paths and transforms live in configuration. */
 export function createRocks(
   scene: Scene,
@@ -125,7 +149,6 @@ export function createRocks(
   const group = new Group();
   const loader = new GLTFLoader();
   const entries = {} as Record<RockInstanceId, RockInstance>;
-  let sectionId: SectionId | null = "hero";
   let viewport: SceneViewport = "desktop";
   let destroyed = false;
   let activeLighting = lighting;
@@ -152,8 +175,15 @@ export function createRocks(
     const entry = entries[instanceId];
     const config = rockInstances[instanceId];
     const transform = resolveRockTransform(instanceId, viewport);
-    entry.root.position.set(...transform.position);
-    entry.root.rotation.set(...transform.rotation);
+    const frame = chapterFrames[config.sectionId];
+    entry.base.set(...toWorld(frame, transform.position));
+    entry.yaw = frame.yaw;
+    entry.root.position.copy(entry.base);
+    entry.root.rotation.set(
+      transform.rotation[0],
+      transform.rotation[1] + frame.yaw,
+      transform.rotation[2],
+    );
     entry.root.scale.set(...transform.scale);
     entry.waterline.value = Math.min(
       WATERLINE_HEIGHT,
@@ -178,6 +208,8 @@ export function createRocks(
       waterline: { value: WATERLINE_HEIGHT },
       opacity: 0,
       ready: false,
+      base: new Vector3(),
+      yaw: 0,
     };
 
     loadRockAsset(
@@ -238,9 +270,6 @@ export function createRocks(
   });
 
   return {
-    setSection: (next) => {
-      sectionId = next;
-    },
     setLighting: (config) => {
       activeLighting = config;
       hemisphere.color.setHex(config.hemisphereSky);
@@ -266,7 +295,7 @@ export function createRocks(
       ROCK_INSTANCE_IDS.filter((instanceId) => !rockInstances[instanceId].reflection).map(
         (instanceId) => entries[instanceId].root,
       ),
-    update: (pointerX, pointerY, beaconIntensity, delta) => {
+    update: (pointerX, pointerY, beaconIntensity, delta, viewer) => {
       points.forEach((light, index) => {
         const source = activeLighting.points[index];
         if (!source) return;
@@ -276,15 +305,18 @@ export function createRocks(
         const entry = entries[instanceId];
         if (!entry.ready) return;
         const config = rockInstances[instanceId];
-        const target = config.sectionId === sectionId ? 1 : 0;
+        const target = presenceAt(entry.base.distanceTo(viewer), ROCK_PRESENT, ROCK_GONE);
         entry.opacity +=
           (target - entry.opacity) * (delta === 0 ? 1 : Math.min(1, delta * FADE_RATE));
         if (Math.abs(target - entry.opacity) < 0.002) entry.opacity = target;
 
-        const transform = resolveRockTransform(instanceId, viewport);
-        entry.root.position.x = transform.position[0] + pointerX * rockParallax;
-        entry.root.position.y = transform.position[1] + pointerY * rockParallax * 0.2;
-        entry.root.position.z = transform.position[2];
+        // Parallax runs along the chapter's own sideways axis.
+        const sideways = pointerX * rockParallax;
+        entry.root.position.set(
+          entry.base.x + sideways * Math.cos(entry.yaw),
+          entry.base.y + pointerY * rockParallax * 0.2,
+          entry.base.z - sideways * Math.sin(entry.yaw),
+        );
         entry.root.visible =
           entry.opacity > 0.002 &&
           (config.visibility.viewports as readonly string[]).includes(viewport);

@@ -1,12 +1,36 @@
+/*
+ * No overflow clipping on the section: it would become the scroll container
+ * for the pinned stage and stop it sticking. The stage clips itself.
+ */
 .hero {
   position: relative;
   z-index: var(--layer-content);
+}
+
+.stage {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
   padding-block-start: calc(var(--header-height) + var(--space-8));
   overflow: hidden;
   isolation: isolate;
+}
+
+/*
+ * Desktop only: the runway's extra length is the camera's travel from the
+ * arrival view to the second, closer view. Smaller layouts are unchanged.
+ */
+@media (min-width: 64rem) {
+  .hero {
+    height: calc(100dvh + 80svh);
+  }
+
+  .stage {
+    position: sticky;
+    inset-block-start: 0;
+    height: 100dvh;
+  }
 }
 
 .inner {
@@ -17,7 +41,7 @@
   max-width: var(--layout-max-width);
   margin-inline: auto;
   padding-inline: var(--layout-gutter);
-  padding-block-end: clamp(7rem, 14vh, 11rem);
+  padding-block-end: clamp(3rem, 8vh, 6rem);
 }
 
 /* ---------------------------------------------------------------- statement */
@@ -34,94 +58,146 @@
   padding-block-start: clamp(1rem, 5vh, 4rem);
 }
 
+/*
+ * Three stacked lines in a heavy grotesque. The fill is porcelain on the left
+ * and turns moonlit lavender toward the right, measured in ems from each
+ * line's own left edge; every line starts on the same edge, so the lavender
+ * gathers on the right of the block, strongest on the ampersand.
+ */
+.headline {
+  font-family: var(--font-hero-display);
+  font-weight: 860;
+  font-stretch: 62%;
+  font-variation-settings: "wdth" 62;
+  font-size: clamp(3.25rem, 1.6rem + 9.5vw, 5.5rem);
+  line-height: 0.86;
+  letter-spacing: -0.012em;
+}
+
+.headline [data-line-inner] {
+  padding-inline-end: 0.04em;
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--color-text-primary) 0,
+    var(--color-text-primary) 1.55em,
+    var(--color-text-moonlit) 3.25em
+  );
+  background-repeat: no-repeat;
+  background-size: 4em 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
 .lead {
   composes: lead from "../../styles/type.module.css";
-  margin-block-start: clamp(1.5rem, 3vh, 2.5rem);
-  max-width: 28ch;
+  margin-block-start: clamp(1.25rem, 3.4vh, 2.25rem);
+  max-width: 15.6em;
+  color: color-mix(in srgb, var(--color-text-primary) 92%, var(--color-text-moonlit));
 }
 
 .scroll {
-  composes: micro from "../../styles/type.module.css";
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin-block-start: clamp(2.5rem, 10vh, 7rem);
-}
-
-.scrollRule {
-  display: block;
-  width: 1px;
-  height: clamp(2rem, 5vh, 3.5rem);
-  background: linear-gradient(to bottom, transparent, var(--color-line-strong));
-}
-
-.baseline {
-  position: relative;
-  z-index: var(--layer-content);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
-  width: 100%;
-  max-width: var(--layout-max-width);
-  margin-inline: auto;
-  padding-inline: var(--layout-gutter);
-  padding-block: var(--space-6);
-}
-
-.baselineLink {
-  composes: micro from "../../styles/type.module.css";
+  composes: microStrong from "../../styles/type.module.css";
   display: inline-flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: 1.6em;
   min-height: 2.75rem;
-  color: var(--color-text-secondary);
-  text-decoration: none;
-  transition: color var(--duration-interface) var(--ease-interface);
-}
-
-.baselineLink:hover {
+  margin-block-start: clamp(1.5rem, 5vh, 3.5rem);
   color: var(--color-text-primary);
+  text-decoration: none;
+  letter-spacing: 0.18em;
 }
 
-.baselineRule {
+/* A ring with a point at its centre: where the viewer is about to go in. */
+.scrollMark {
+  position: relative;
   display: block;
-  width: clamp(3rem, 10vw, 9rem);
-  height: 1px;
-  background: var(--color-line-strong);
+  flex: none;
+  width: 1.55em;
+  height: 1.55em;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
 }
 
-.baselineIndex {
-  composes: micro from "../../styles/type.module.css";
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
+.scrollMark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 0.55em;
+  height: 0.55em;
+  margin: auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.scroll:hover .scrollMark::after {
+  background: var(--color-text-moonlit);
+}
+
+/* ------------------------------------------------------------- desktop */
+
+/*
+ * The approved composition is set against the viewport, not the content
+ * column: the headline stands 6% in from the left edge, its cap line 23% of
+ * the way down, and the whole statement scales with the view so it keeps its
+ * place against the landscape behind it.
+ */
+@media (min-width: 64rem) {
+  .inner {
+    max-width: none;
+    padding-inline: 6vw var(--layout-gutter);
+  }
+
+  .statement {
+    max-width: none;
+    padding-block-start: calc(21.2vh - var(--header-height) - var(--space-8));
+  }
+
+  .headline {
+    font-size: min(14.3vh, 7.75vw);
+  }
+
+  .lead {
+    margin-block-start: 2.6vh;
+    font-size: min(2.62vh, 1.42vw);
+  }
+
+  .scroll {
+    margin-block-start: 3.4vh;
+    font-size: min(1.6vh, 0.88vw);
+  }
 }
 
 /* ------------------------------------------------------------- tablet */
 
 @media (max-width: 63.99rem) {
-  .inner {
-    padding-block-end: clamp(3rem, 6vh, 5rem);
-  }
-
   .statement {
     max-width: none;
   }
 
   .lead {
-    max-width: 38ch;
-  }
-
-  .scroll {
-    margin-block-start: clamp(2rem, 5vh, 3.5rem);
+    max-width: 30ch;
   }
 }
 
 /* ------------------------------------------------------------- handheld */
 
 @media (max-width: 47.99rem) {
-  .hero {
-    padding-block-start: calc(var(--header-height) + var(--space-12));
+  .stage {
+    padding-block-start: calc(var(--header-height) + var(--space-6));
+  }
+
+  /* The header wraps to two rows on a phone; the headline clears both. */
+  .statement {
+    padding-block-start: 3.25rem;
+  }
+
+  .headline {
+    font-size: clamp(3.25rem, 17.5vw, 4.75rem);
+  }
+
+  .lead {
+    max-width: 17em;
   }
 }
 
@@ -134,8 +210,8 @@
  * the scene's independent pointer response.
  */
 
-/* Steps 2 and 3: each display line rises from below its mask, the second
-   following one stagger later. */
+/* Steps 2 and 3: each display line rises from below its mask, each following
+   the one above it by one stagger. */
 .headline [data-line-inner] {
   animation-name: var(--motion-keyframes-display);
   animation-duration: var(--motion-display-duration);
@@ -151,7 +227,11 @@
   animation-delay: calc(var(--motion-display-delay) + var(--motion-display-stagger));
 }
 
-/* Step 4: supporting copy, the scroll cue, then the section baseline. */
+.headline [data-line-index="2"] [data-line-inner] {
+  animation-delay: calc(var(--motion-display-delay) + 2 * var(--motion-display-stagger));
+}
+
+/* Step 4: supporting copy, then the scroll cue. */
 .lead {
   animation-name: var(--motion-keyframes-copy);
   animation-duration: var(--motion-lead-duration);
@@ -166,12 +246,4 @@
   animation-timing-function: var(--motion-ease-interface);
   animation-fill-mode: both;
   animation-delay: var(--motion-cue-delay);
-}
-
-.baseline {
-  animation-name: var(--motion-keyframes-copy);
-  animation-duration: var(--motion-baseline-duration);
-  animation-timing-function: var(--motion-ease-interface);
-  animation-fill-mode: both;
-  animation-delay: var(--motion-baseline-delay);
 }

@@ -36,7 +36,7 @@ export const siteContent = {
   ] satisfies readonly NavigationItem[],
   skipLinkLabel: "Skip to main content",
   hero: {
-    displayLines: ["Craft, taste", "& code."],
+    displayLines: ["Craft,", "Taste &", "Code."],
     accessibleHeading: "Craft, taste and code.",
     lead: "I design interfaces and ship the production code behind them.",
     scrollLabel: "Scroll to enter",

@@ -1,6 +1,7 @@
 import {
   Color,
   LinearFilter,
+  LinearSRGBColorSpace,
   Mesh,
   PerspectiveCamera,
   PlaneGeometry,
@@ -16,7 +17,7 @@ import {
 
 import { emitSoundEvent } from "@/sound/soundEvents";
 
-import { floorConfig, sceneColors } from "../sceneConfig";
+import { floorConfig, waterTones } from "../sceneConfig";
 import type { WaterConfig } from "../sceneTypes";
 import type { BeaconSource } from "./horizonLights";
 
@@ -70,6 +71,7 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 uFar;
   uniform vec3 uMist;
   uniform vec3 uSheen;
+  uniform vec2 uReflectance;
   /** xyz world position, w intensity. */
   uniform vec4 uBeacon[${MAX_BEACONS}];
   uniform vec3 uBeaconColor[${MAX_BEACONS}];
@@ -178,9 +180,13 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec3 colour = mix(uNear, uFar, far);
 
     if (uHasReflection > 0.5) {
+      /*
+       * Looked up exactly where the mirror puts it. The lookup used to be
+       * squeezed toward the middle of the texture, which slid every reflected
+       * base away from the real one and left a strip of mirrored sky between
+       * the rock and the water: the reflection must meet what it reflects.
+       */
       vec2 reflectUv = vReflectUv.xy / max(vReflectUv.w, 0.0001);
-      // Stretch vertically so the mirror reads as wet floor, not as glass.
-      reflectUv.y = reflectUv.y * 0.84 + 0.08;
       // The same slope that shades the surface displaces the lookup, so a
       // reflected edge breaks exactly where a ripple crosses it.
       vec2 offset = vec2(-slope.x, -slope.y) * uDistortion * mix(1.0, 0.22, far);
@@ -190,7 +196,7 @@ const FRAGMENT_SHADER = /* glsl */ `
        * erased the foreground, which is what left rocks sitting on top of the
        * water instead of standing in it.
        */
-      colour += mirrored * uSheen * (0.30 + fresnel * 0.95);
+      colour += mirrored * uSheen * mix(uReflectance.x, uReflectance.y, fresnel);
     }
 
     /*
@@ -217,18 +223,22 @@ const FRAGMENT_SHADER = /* glsl */ `
       vec3 mirrored = vec3(beacon.x, -beacon.y, beacon.z);
       float lobe = max(dot(bounce, normalize(mirrored - vWorld)), 0.0);
       float sharp = mix(1500.0, 90.0, smoothstep(6.0, 58.0, vDepth));
-      // A wide dim shoulder under the glint keeps the path continuous rather
-      // than leaving disconnected specks between crests.
-      float path = pow(lobe, sharp) + pow(lobe, 9.0) * 0.22;
-      colour += uBeaconColor[i] * path * beacon.w * (0.35 + fresnel);
+      // A dim shoulder under the glint keeps the path continuous rather than
+      // leaving disconnected specks between crests. It is kept narrow: a
+      // broad one washed lavender over most of the water in front of a source.
+      float path = pow(lobe, sharp) + pow(lobe, 26.0) * 0.08;
+      colour += uBeaconColor[i] * path * beacon.w * (0.2 + fresnel * 0.8);
     }
 
     /*
      * The water dissolves into the same mist the atmosphere draws above it.
      * Matching the colour before the alpha falls away is what removes the hard
      * water-to-horizon boundary; a fade alone would just reveal a dark strip.
+     * It starts late and stops short of full: the ranges stand 50 to 90 out,
+     * and the water at their feet has to keep enough of their reflection to
+     * join them to the surface, or they sit on a plain band of haze.
      */
-    float haze = smoothstep(16.0, 88.0, vDepth);
+    float haze = smoothstep(24.0, 110.0, vDepth) * 0.85;
     colour = mix(colour, uMist, haze);
 
     /*
@@ -237,7 +247,7 @@ const FRAGMENT_SHADER = /* glsl */ `
      * cuts a hard line across the frame where the surface simply stops. Fading
      * it out first lets the mist carry the last stretch instead.
      */
-    gl_FragColor = vec4(colour, 1.0 - smoothstep(55.0, 100.0, vDepth));
+    gl_FragColor = vec4(colour, 1.0 - smoothstep(62.0, 100.0, vDepth));
   }
 `;
 
@@ -301,10 +311,12 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
       uDistortion: { value: config.distortion },
       uSwell: { value: options.reducedMotion ? 0.55 : config.swell },
       uRipple: { value: options.reducedMotion ? 0.55 : config.ripple },
-      uNear: { value: new Color(sceneColors.waterNear).multiplyScalar(1.15) },
-      uFar: { value: new Color(sceneColors.midnight).multiplyScalar(1.7) },
-      uMist: { value: new Color(sceneColors.lavender).multiplyScalar(0.22) },
-      uSheen: { value: new Color(sceneColors.reflection) },
+      // Display values: the shader writes them to the canvas unconverted.
+      uNear: { value: new Color().setHex(waterTones.near, LinearSRGBColorSpace) },
+      uFar: { value: new Color().setHex(waterTones.far, LinearSRGBColorSpace) },
+      uMist: { value: new Color().setHex(waterTones.haze, LinearSRGBColorSpace) },
+      uSheen: { value: new Color().setHex(waterTones.sheen, LinearSRGBColorSpace) },
+      uReflectance: { value: [...waterTones.reflectance] },
       uBeacon: { value: beaconData },
       uBeaconColor: { value: beaconColor },
       uRipples: { value: rippleData },

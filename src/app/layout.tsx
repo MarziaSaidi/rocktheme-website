@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, Geist, Geist_Mono } from "next/font/google";
+import { Anton, Archivo, Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { SiteEntry } from "@/components/entry/SiteEntry";
@@ -30,6 +30,17 @@ const displayCondensed = Anton({
   display: "swap",
 });
 
+/*
+ * The hero headline's face: a heavy grotesque at a slightly condensed width,
+ * wider and rounder than the monumental condensed display used elsewhere.
+ */
+const heroDisplay = Archivo({
+  variable: "--font-hero",
+  subsets: ["latin"],
+  axes: ["wdth"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "Marzia Saidi",
@@ -42,7 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${displayCondensed.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${displayCondensed.variable} ${heroDisplay.variable}`}
     >
       <body id={pageLandmarkIds.top}>
         {/* Owns the audio context. Nothing else may create one. */}

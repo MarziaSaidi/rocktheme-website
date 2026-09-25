@@ -24,18 +24,18 @@ import {
   resolveResponsiveValue,
   type SceneViewport,
 } from "@/config/responsive";
-import type { SectionId } from "@/config/sections";
 
 import {
   evaluateMonolith,
   getMonolithFaces,
-  getMonolithPresent,
   getMonolithTimeline,
   subscribeMonolith,
 } from "../monolithChannel";
 import type { MonolithConfig, MonolithFace } from "../sceneTypes";
+import { applyDistanceFog, createDistanceFogUniforms } from "./distanceFog";
 import { createDisplayDust, DISSOLVE_GLSL, type DisplayDust } from "./displayDust";
-import { applyWaterlineContact, FADE_RATE } from "./rocks";
+import { applyWaterlineContact, presenceAt } from "./rocks";
+import { matchStone } from "./stoneMaterial";
 
 /**
  * The Selected Work monolith.
@@ -60,11 +60,7 @@ import { applyWaterlineContact, FADE_RATE } from "./rocks";
 
 export type Monolith = Readonly<{
   update: (delta: number, now: number) => void;
-  /**
-   * Progress round the stone from the latest update, 0 in front and 1
-   * behind. Reads 0 once the stone has faded out, so other chapters are
-   * always seen from the front.
-   */
+  /** Progress round the stone from the latest update, 0 in front and 1 behind. */
   orbit: () => number;
   /** World position of the pillar's axis, the centre of the walk round it. */
   pivot: () => Vector3;
@@ -76,7 +72,6 @@ export type Monolith = Readonly<{
   setViewer: (position: Vector3) => void;
   /** True while a walk or fade is still in progress. */
   animating: (now: number) => boolean;
-  setSection: (sectionId: SectionId | null) => void;
   resize: (width: number) => void;
   destroy: () => void;
 }>;
@@ -183,6 +178,16 @@ function disposeModel(root: Object3D) {
   });
 }
 
+/*
+ * Distances from the stone's axis. The Selected Work view stands 15 units
+ * out and the arrival 26; the hero is 55 out, deep in the scene fog. The
+ * walk-round copies are only for the views round the back of the stone.
+ */
+const STONE_PRESENT = 30;
+const STONE_GONE = 44;
+const RING_PRESENT = 17;
+const RING_GONE = 22;
+
 /** Specks per display. Enough to read as dust, few enough to stay delicate. */
 export const DUST_COUNT = 260;
 /** Seconds a dissolving speck may outlive the dissolve itself. */
@@ -199,8 +204,11 @@ export function createMonolith(
   const textureLoader = new TextureLoader();
   let destroyed = false;
   let viewport: SceneViewport = "desktop";
-  let sectionId: SectionId | null = null;
   let visibility = 0;
+  /** How much of the walk-round backdrop (the three copies) is present. */
+  let ringPresence = 0;
+  /** Where the viewer stood at the last `setViewer`; far away until told. */
+  const viewer = new Vector3(0, 0, Number.POSITIVE_INFINITY);
   let stoneReady = false;
   let mountainsReady = false;
 
@@ -240,6 +248,8 @@ export function createMonolith(
 
   const stoneMaterials: MeshStandardMaterial[] = [];
   const mountainMaterials: MeshStandardMaterial[] = [];
+  const ringMaterials: MeshStandardMaterial[] = [];
+  const mountainFog = createDistanceFogUniforms(config.mountains.fog);
   const waterline = { value: 0.05 };
 
   // ------------------------------------------------------------------ faces
@@ -400,7 +410,7 @@ export function createMonolith(
           material.opacity = 0;
           material.depthWrite = true;
           applyWaterlineContact(material, waterline);
-          material.needsUpdate = true;
+          matchStone(material);
           stoneMaterials.push(material);
         });
       });
@@ -424,18 +434,48 @@ export function createMonolith(
         const materials = Array.isArray(item.material) ? item.material : [item.material];
         materials.forEach((material) => {
           if (!(material instanceof MeshStandardMaterial)) return;
+          /*
+           * The same stone as the hero range, treated the same way: matte,
+           * with the metal/roughness map dropped, since at this distance a
+           * glossy texel reads as a pale scratch rather than as wet rock.
+           */
+          material.metalness = 0;
+          material.metalnessMap = null;
+          material.roughness = 1;
+          material.roughnessMap = null;
+          material.normalScale.setScalar(0.6);
           material.transparent = true;
           material.opacity = 0;
-          // The range stands beyond the fog's far distance; it is drawn as
-          // supplied rather than sinking into the fog colour.
-          material.fog = false;
-          material.needsUpdate = true;
+          // The range stands beyond the scene fog's far distance, which would
+          // flatten it to the fog colour; it takes its own aerial perspective.
+          applyDistanceFog(material, mountainFog);
+          matchStone(material, config.mountains.shade);
           mountainMaterials.push(material);
         });
       });
       mountains.add(model);
-      // The copies share geometry and materials: one asset, one fade.
-      ranges.slice(1).forEach((range) => range.add(model.clone()));
+      /*
+       * The copies share geometry but carry their own materials: the range in
+       * front is part of the landscape from every chapter, while the copies
+       * only fill the views round the back of the stone and fade with it.
+       */
+      ranges.slice(1).forEach((range) => {
+        const copy = model.clone();
+        copy.traverse((item) => {
+          if (!(item instanceof Mesh)) return;
+          const source = Array.isArray(item.material) ? item.material : [item.material];
+          const cloned = source.map((material) => {
+            if (!(material instanceof MeshStandardMaterial)) return material;
+            const next = material.clone();
+            applyDistanceFog(next, mountainFog);
+            matchStone(next, config.mountains.shade);
+            ringMaterials.push(next);
+            return next;
+          });
+          item.material = Array.isArray(item.material) ? cloned : cloned[0]!;
+        });
+        range.add(copy);
+      });
       mountainsReady = true;
       applyPlacement();
       handlers.onLoaded?.();
@@ -490,8 +530,9 @@ export function createMonolith(
   // -------------------------------------------------------------- per frame
   const applyVisibility = () => {
     root.visible = stoneReady && visibility > 0.002;
-    ranges.forEach((range) => {
-      range.visible = mountainsReady && visibility > 0.002;
+    mountains.visible = mountainsReady;
+    ranges.slice(1).forEach((range) => {
+      range.visible = mountainsReady && ringPresence > 0.002;
     });
     const solid = visibility >= 0.999;
     stoneMaterials.forEach((material) => {
@@ -502,9 +543,17 @@ export function createMonolith(
       // black silhouette rather than a stone going.
       material.depthWrite = solid;
     });
+    // The range is landscape: always there, always solid.
     mountainMaterials.forEach((material) => {
-      material.opacity = visibility;
-      material.depthWrite = solid;
+      material.opacity = 1;
+      material.transparent = false;
+      material.depthWrite = true;
+    });
+    const ringSolid = ringPresence >= 0.999;
+    ringMaterials.forEach((material) => {
+      material.opacity = ringPresence;
+      material.transparent = !ringSolid;
+      material.depthWrite = ringSolid;
     });
     // The displays go well before the rock does, so no bright screen is left
     // hanging on a stone that is half gone.
@@ -524,22 +573,24 @@ export function createMonolith(
   };
 
   return {
-    update: (delta, now) => {
-      const target = sectionId === config.sectionId && getMonolithPresent() ? 1 : 0;
-      visibility += (target - visibility) * (delta === 0 ? 1 : Math.min(1, delta * FADE_RATE));
-      if (Math.abs(target - visibility) < 0.002) visibility = target;
-      applyVisibility();
-      if (!root.visible) {
-        orbit = 0;
-        return;
-      }
+    update: (_delta, now) => {
+      /*
+       * The stone stands in the world; how much of it the viewer sees depends
+       * only on how far away they are. It emerges from the fog on the way in
+       * and its screens never glow through haze that hides the rock.
+       */
+      const distance = Math.hypot(viewer.x - pivot.x, viewer.z - pivot.z);
+      visibility = presenceAt(distance, STONE_PRESENT, STONE_GONE);
+      ringPresence = presenceAt(distance, RING_PRESENT, RING_GONE);
 
       const timeline = getMonolithTimeline();
       const pose = timeline
         ? evaluateMonolith(timeline, now)
         : { orbit: 0, front: 1, back: 0, sweep: -1, settled: true };
-
       orbit = pose.orbit;
+
+      applyVisibility();
+      if (!root.visible) return;
 
       faces[0].display = pose.front;
       faces[1].display = pose.back;
@@ -572,6 +623,7 @@ export function createMonolith(
     orbit: () => orbit,
 
     setViewer: (position) => {
+      viewer.copy(position);
       if (!root.visible) return;
       root.updateMatrixWorld();
       faces.forEach((face) => {
@@ -592,10 +644,6 @@ export function createMonolith(
       return Boolean(timeline && !evaluateMonolith(timeline, now).settled);
     },
 
-    setSection: (next) => {
-      sectionId = next;
-    },
-
     resize: (width) => {
       viewport = sceneViewportForWidth(width);
       applyPlacement();
@@ -606,6 +654,7 @@ export function createMonolith(
       unsubscribe();
       disposeModel(root);
       disposeModel(mountains);
+      ringMaterials.forEach((material) => material.dispose());
       ranges.forEach((range) => range.clear());
       geometries.forEach((geometry) => geometry.dispose());
       faces.forEach((face) => {
