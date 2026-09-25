@@ -443,9 +443,14 @@ export const rockInstances = {
     materialPreset: "wet-black-violet",
     reflection: true,
     particleInteraction: false,
+    /*
+     * The footer rock's base tucks in by about 6% over its lowest 8%, and on a
+     * phone it stood 0.05 above the water. Each placement sinks it by that 8%
+     * of its own height: 0.2 on desktop, 0.15 on a phone.
+     */
     transform: {
-      desktop: { position: [10, -0.08, -10], rotation: [0, -0.3, 0], scale: [8, 5.2, 8] },
-      mobile: { position: [3.8, 0.05, -10], rotation: [0, -0.3, 0], scale: [5.5, 3.85, 5.5] },
+      desktop: { position: [10, -0.2, -10], rotation: [0, -0.3, 0], scale: [8, 5.2, 8] },
+      mobile: { position: [3.8, -0.15, -10], rotation: [0, -0.3, 0], scale: [5.5, 3.85, 5.5] },
     },
   },
 } as const satisfies Readonly<Record<RockInstanceId, RockInstanceDefinition>>;
@@ -549,6 +554,14 @@ const stoneStacked = {
 } as const;
 
 /*
+ * How far each stone stands in the water. The model is widest at its flat
+ * underside, which stood exactly on the surface: the rubble's whole lower edge
+ * was a line drawn on the water. 0.3 is 1.8% of the desktop stone's height
+ * and 3% of the stacked one's, enough that the surface cuts across the rubble.
+ */
+const STONE_SINK = -0.3;
+
+/*
  * Frame 05, and the first stone's settled view, where its details show. Low
  * and a little left of the stone, 28 units out, looking up about 7°: the
  * crown runs out of the top of the frame, the waterline and the rubble at its
@@ -568,13 +581,13 @@ export const monolithConfig: MonolithConfig = {
   stones: [
     // Quill & Pigeon
     {
-      desktop: { ...stoneOnDesktop, position: [2.7, 0, -6.4], yaw: -0.1 },
+      desktop: { ...stoneOnDesktop, position: [2.7, STONE_SINK, -6.4], yaw: -0.1 },
       tablet: stoneStacked,
       mobile: stoneStacked,
     },
     // Survue: turned a little further toward the viewer's side of its approach.
     {
-      desktop: { ...stoneOnDesktop, height: 17, position: [-18, 0, -24], yaw: 0.25 },
+      desktop: { ...stoneOnDesktop, height: 17, position: [-18, STONE_SINK, -24], yaw: 0.25 },
       tablet: stoneStacked,
       mobile: stoneStacked,
     },
@@ -729,6 +742,15 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
     robot: "/assets/hero/robot.glb",
   },
   placement: recedeRange({
+    /*
+     * The perch stands 14% of its own height into the water. Its lowest 3% is
+     * an underside cap that curls back under the rock, and at 6% the front row
+     * of boulders still showed their whole rounded bottoms resting on the
+     * surface. This deep, the lower boulders are partly under water, each cut
+     * at its own height, so there is no single edge where the rock ends. It
+     * stood 0.1 to 0.65 above the surface before. The robot is seated on the
+     * rock's surface, so it comes down with it.
+     */
     desktop: {
       mountains: { position: [16, -0.3, -66], width: 135, height: 30, depth: 34, yaw: 0 },
       flank: {
@@ -738,13 +760,13 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
         depth: 26,
         yaw: 2.6,
       },
-      perch: { position: [4.4, 0.65, 1.2], width: 9, height: 3.77, depth: 9, yaw: -0.3 },
+      perch: { position: [4.4, -0.53, 1.2], width: 9, height: 3.77, depth: 9, yaw: -0.3 },
       robot: { x: 2.6, z: 2.8, height: 1.45, yaw: 0.5 },
       moon: [54, 37, -150],
     },
     tablet: {
       mountains: { position: [-4, -0.3, -66], width: 120, height: 30, depth: 34, yaw: 0 },
-      perch: { position: [4.8, 0.3, -0.6], width: 7.5, height: 3.14, depth: 7.5, yaw: -0.3 },
+      perch: { position: [4.8, -0.44, -0.6], width: 7.5, height: 3.14, depth: 7.5, yaw: -0.3 },
       robot: { x: 3.6, z: 1.0, height: 1.35, yaw: 0.5 },
       moon: [20, 34, -150],
     },
@@ -756,7 +778,7 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
     mobile: {
       mountains: { position: [-10, -0.3, -66], width: 120, height: 30, depth: 34, yaw: 0 },
       flank: { position: [-36, -0.3, -58], width: 90, height: 24, depth: 26, yaw: 2.6 },
-      perch: { position: [4.3, 0.1, -1.5], width: 6.4, height: 2.68, depth: 6.4, yaw: -0.3 },
+      perch: { position: [4.3, -0.38, -1.5], width: 6.4, height: 2.68, depth: 6.4, yaw: -0.3 },
       robot: { x: 3.45, z: -0.3, height: 1.2, yaw: 0.5 },
       moon: [12, 30, -150],
     },

@@ -1,5 +1,6 @@
 import {
   Box3,
+  DoubleSide,
   Group,
   HemisphereLight,
   Mesh,
@@ -75,10 +76,11 @@ function disposeRock(root: Object3D) {
 /** World height over which a rock reads as wet from standing in the water. */
 const WATERLINE_HEIGHT = 1.4;
 /**
- * The wet band never climbs past this share of a rock's own height. A fixed
- * 1.4 units covered the whole of the low hero rock and turned it black.
+ * The wet band never climbs past this share of a rock's own height. Broader,
+ * the darkened stone reads as a black underside above the water rather than
+ * as rock running into it.
  */
-const WATERLINE_MAX_FRACTION = 0.25;
+const WATERLINE_MAX_FRACTION = 0.06;
 
 /**
  * Anchors a rock to the water it stands in.
@@ -107,6 +109,20 @@ export function applyWaterlineContact(
         "#include <common>",
         "#include <common>\nvarying float vRockHeight;\nuniform float uWaterline;",
       )
+      /*
+       * Only the rock above the surface exists, for the viewer and for the
+       * water's mirror alike. The rocks stand well into the water, and their
+       * widest boulders bulge out below the surface; the mirror camera, which
+       * stands below the water, drew those as a pale flat lip reflected just
+       * in front of the waterline, and the rock read as sitting on a plate.
+       * The water is also drawn transparent, so a fading rock would otherwise
+       * show its submerged base through it.
+       */
+      .replace(
+        "#include <clipping_planes_fragment>",
+        `#include <clipping_planes_fragment>
+         if (vRockHeight < 0.0) discard;`,
+      )
       .replace(
         "#include <roughnessmap_fragment>",
         `#include <roughnessmap_fragment>
@@ -116,9 +132,17 @@ export function applyWaterlineContact(
       .replace(
         "#include <dithering_fragment>",
         `#include <dithering_fragment>
-         gl_FragColor.rgb *= mix(1.0, 0.34, wetness);`,
+         gl_FragColor.rgb *= mix(1.0, 0.34, wetness);
+         if (!gl_FrontFacing) gl_FragColor.rgb *= 0.34;`,
       );
   };
+  /*
+   * Cut at the surface, the rock is open underneath. A ripple displaces the
+   * reflection lookup a few pixels, sometimes into that opening; its inside,
+   * drawn as dark wet stone, keeps the mirror closed instead of showing sky
+   * through the base.
+   */
+  material.side = DoubleSide;
 }
 
 /** Chapter crossfade speed, per second. About 0.35 s to settle. */

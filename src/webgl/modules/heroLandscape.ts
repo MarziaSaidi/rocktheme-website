@@ -255,7 +255,13 @@ export function createHeroLandscape(
     place(flank, placement.flank);
     moonDisc.position.set(...placement.moon);
     place(perch, placement.perch);
-    waterline.value = placement.perch.height * 0.18;
+    /*
+     * A thin wet line only. At 18% of the rock's height the darkened, glossy
+     * band covered the whole front row of boulders from this low eye; it read
+     * as a black underside with the water's dark mirror of it below, and the
+     * rock looked like it stopped above the surface.
+     */
+    waterline.value = placement.perch.height * 0.03;
     seatRobot();
   };
 

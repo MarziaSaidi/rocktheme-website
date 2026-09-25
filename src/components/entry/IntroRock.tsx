@@ -180,9 +180,8 @@ export function IntroRock() {
         if (!Number.isFinite(tallest) || tallest <= 0) return;
 
         /*
-         * Normalised so the model's base sits exactly on y = 0. That is the
-         * water plane, so the rock emerges from the surface instead of hovering
-         * over it or being sliced by it.
+         * Normalised so the model's base sits on y = 0, the water plane; the
+         * rock is then stood a little into the water (see its position below).
          */
         const unit = 1 / Math.max(size.y, 0.0001);
         model.scale.setScalar(unit * 8.1);
@@ -209,8 +208,13 @@ export function IntroRock() {
         });
 
         rock.add(model);
-        // Slightly right of centre, standing in the shallows.
-        rock.position.set(2.2, 0, -12.6);
+        /*
+         * Slightly right of centre, standing in the shallows. The model is
+         * widest at its flat base, so on the surface its whole lower edge read
+         * as a line drawn on the water; 0.2 under (2.5% of its height), the
+         * water cuts across the stone instead.
+         */
+        rock.position.set(2.2, -0.2, -12.6);
         rock.rotation.y = -0.42;
         loaded = model;
         element.dataset.rockReady = "";
