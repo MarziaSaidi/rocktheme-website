@@ -13,6 +13,8 @@ type DisplayHeadingProps = Readonly<{
   className?: string;
   /** Marks the heading so the particle field flows around it. */
   sceneObstacle?: boolean;
+  /** Names the heading as a rectangle the particle field can compose against. */
+  sceneAnchor?: string;
   children?: ReactNode;
 }>;
 
@@ -32,6 +34,7 @@ export function DisplayHeading({
   id,
   className,
   sceneObstacle = false,
+  sceneAnchor,
   children,
 }: DisplayHeadingProps) {
   return (
@@ -40,6 +43,7 @@ export function DisplayHeading({
       aria-label={accessibleText}
       className={[styles.heading, styles[size], className].filter(Boolean).join(" ")}
       data-scene-obstacle={sceneObstacle ? "" : undefined}
+      data-scene-anchor={sceneAnchor}
     >
       {lines.map((line, index) => (
         <span

@@ -33,6 +33,7 @@ export function SiteFooter() {
             className={styles.headline}
             lines={contact.displayLines}
             accessibleText={contact.accessibleHeading}
+            sceneAnchor="heading"
           />
           <p className={styles.lead}>{contact.lead}</p>
           <a className={styles.primary} href={email.href}>
@@ -42,7 +43,12 @@ export function SiteFooter() {
         </div>
 
         <div className={styles.conversation}>
-          <a className={styles.plane} href={email.href} data-contact-plane="">
+          <a
+            className={styles.plane}
+            href={email.href}
+            data-contact-plane=""
+            data-scene-anchor="plane"
+          >
             <span className={styles.planeLabel}>
               {contact.planeLabel}
               <span aria-hidden="true">↗</span>
@@ -59,6 +65,9 @@ export function SiteFooter() {
           </a>
         </div>
       </div>
+
+      {/* The few particles that drift in front of the type and the plane. */}
+      <canvas className={styles.frontParticles} data-scene-front-layer="" aria-hidden="true" />
 
       <div className={styles.baseline}>
         <p className={styles.copyright}>{footer.copyright}</p>

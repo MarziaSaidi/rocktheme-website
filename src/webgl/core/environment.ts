@@ -19,6 +19,7 @@ import { createHorizonAtmosphere, type HorizonAtmosphere } from "../modules/hori
 import { createLowMist, type LowMist } from "../modules/lowMist";
 import {
   createParticleField,
+  type AnchorRects,
   type ObstacleRect,
   type ParticleField,
 } from "../modules/particleField";
@@ -112,6 +113,13 @@ export type Environment = Readonly<{
   stop: () => void;
   resize: (width: number, height: number) => void;
   setObstacles: (obstacles: readonly ObstacleRect[]) => void;
+  /** Named rectangles a particle trail is composed against. */
+  setAnchors: (anchors: AnchorRects) => void;
+  /**
+   * A 2D canvas the page stacks above its content, for the few particles that
+   * pass in front of it. Pass null to release it.
+   */
+  setFrontLayer: (canvas: HTMLCanvasElement | null) => void;
   /**
    * The rectangle the environment should respond to: particles gather around
    * it and the nearest horizon beacon brightens. Pass null to release.
@@ -579,6 +587,28 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     config: activeScene.particles,
   });
 
+  /*
+   * The front layer lives in the page, above the content. It is only measured
+   * and painted while the field has front particles, and cleared once after.
+   */
+  let frontLayer: { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D } | null = null;
+  let frontDirty = false;
+
+  const drawFrontLayer = () => {
+    if (!frontLayer || (!particles.frontVisible() && !frontDirty)) return;
+    const { canvas: layer, context } = frontLayer;
+    const rect = layer.getBoundingClientRect();
+    const ratio = cappedRatio();
+    const backingWidth = Math.max(1, Math.round(rect.width * ratio));
+    const backingHeight = Math.max(1, Math.round(rect.height * ratio));
+    if (layer.width !== backingWidth || layer.height !== backingHeight) {
+      layer.width = backingWidth;
+      layer.height = backingHeight;
+    }
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    frontDirty = particles.drawFront(context, rect.left, rect.top, rect.width, rect.height);
+  };
+
   // ------------------------------------------------------------- frame state
   let frame = 0;
   let running = false;
@@ -657,6 +687,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     renderer.render(worldScene, view);
     renderer.clearDepth();
     renderer.render(particles.scene, particles.camera);
+    drawFrontLayer();
   };
 
   const loop = (time: number) => {
@@ -682,6 +713,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const handleContextLost = (event: Event) => {
     event.preventDefault();
     contextLost = true;
+    frontLayer?.context.clearRect(0, 0, frontLayer.canvas.width, frontLayer.canvas.height);
     options.onContextLost?.();
     running = false;
     if (frame !== 0) {
@@ -770,6 +802,19 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       particles.setObstacles(obstacles);
     },
 
+    setAnchors: (anchors) => {
+      particles.setAnchors(anchors);
+    },
+
+    setFrontLayer: (layer) => {
+      if (frontLayer && frontLayer.canvas !== layer) {
+        frontLayer.context.clearRect(0, 0, frontLayer.canvas.width, frontLayer.canvas.height);
+      }
+      const context = layer?.getContext("2d") ?? null;
+      frontLayer = layer && context ? { canvas: layer, context } : null;
+      frontDirty = true;
+    },
+
     setFocus: (rect) => {
       particles.setFocus(rect);
       lights.setFocus(rect && width > 0 ? (rect.x + rect.width / 2) / width : null);
@@ -849,6 +894,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       options.canvas.removeEventListener("webglcontextlost", handleContextLost);
       options.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
 
+      frontLayer?.context.clearRect(0, 0, frontLayer.canvas.width, frontLayer.canvas.height);
+      frontLayer = null;
       particles.destroy();
       rocks.destroy();
       heroLandscape.destroy();
