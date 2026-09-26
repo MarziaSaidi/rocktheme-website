@@ -55,6 +55,12 @@ export type Monolith = Readonly<{
    * that lip would read as a plate fixed to the stone.
    */
   setViewer: (position: Vector3) => void;
+  /**
+   * How many stones, in project order, may be drawn. The journey holds a
+   * stone back until it sets off toward it, at a moment the stone is out of
+   * frame, so it is never seen to appear.
+   */
+  setRevealed: (count: number) => void;
   resize: (width: number) => void;
   destroy: () => void;
 }>;
@@ -102,6 +108,21 @@ const SCREEN_FRAGMENT = /* glsl */ `
     float spill = exp(-max(dist, 0.0) / 0.0025) * step(0.0, dist);
     // A hairline of lit edge, not a coloured frame.
     colour += uRim * (line * 0.7 + spill * 0.06) * 0.28;
+
+    /*
+     * Seen by the water's mirror camera, which stands below the surface. Drawn
+     * sharp, the screen came back as a second pale panel lying in the water.
+     * The water should return its light, not a copy of it: the image is taken
+     * from a small mip level so no interface survives, held far darker, and
+     * feathered out from the middle, most of all top and bottom, so the
+     * surface's own ripples break it into a smear of light.
+     */
+    if (cameraPosition.y < 0.0) {
+      vec3 glow = uHasMap > 0.5 ? texture2D(uMap, clamp(suv, 0.0, 1.0), 6.0).rgb : uOff;
+      vec2 q = abs(suv - 0.5) * 2.0;
+      float feather = (1.0 - smoothstep(0.3, 1.05, q.x)) * (1.0 - smoothstep(0.2, 1.1, q.y));
+      colour = mix(uOff * 0.7, glow * 0.95, feather);
+    }
 
     gl_FragColor = vec4(colour, uVisibility);
     #include <tonemapping_fragment>
@@ -162,20 +183,26 @@ function disposeModel(root: Object3D) {
 }
 
 /*
- * Distances from a stone's axis at which it is fully there, and gone.
+ * Distances from a stone's axis at which it is fully there, and gone, per
+ * stone in project order.
  *
- * Desktop: settled, the camera stands about 28 units out. The first stone
- * must not be seen from the hero (51.4 out, and 51.7 at the second keyframe)
- * but is solid by the discovery (49.4), where it stands behind the perch; the
- * step between is taken while the camera moves. A stone only partly there is
- * drawn translucent, so the window is kept narrow.
+ * Desktop: the first stone is never faded in. From the hero it stands about
+ * 53 out, out of frame and behind the perch's crest, and it is revealed by
+ * the camera moving past the rock, so it is solid the whole way. A stone only
+ * partly there is drawn translucent and reads as a hologram. The second stone
+ * is likewise solid whenever it is drawn: it is held back (setRevealed) until
+ * the departure from the first stone begins, and it first comes into view
+ * about 60 out, far past where the scene fog has taken its detail.
  *
- * Stacked: the hero stands about 48.5 out and the camera passes the far view
- * about 28 out, so the stone emerges from the haze on the way.
+ * Stacked: the hero stands about 50 out and the camera passes the far view
+ * about 28 out, so both stones emerge from the haze on the way.
  */
-const STONE_EMERGENCE: Record<"desktop" | "stacked", readonly [number, number]> = {
-  desktop: [49.8, 51.3],
-  stacked: [36, 48],
+const STONE_EMERGENCE: Record<"desktop" | "stacked", readonly (readonly [number, number])[]> = {
+  desktop: [
+    [58, 60],
+    [90, 95],
+  ],
+  stacked: [[36, 48]],
 };
 
 export function createMonolith(
@@ -187,6 +214,7 @@ export function createMonolith(
   const textureLoader = new TextureLoader();
   let destroyed = false;
   let viewport: SceneViewport = "desktop";
+  let revealed = Number.POSITIVE_INFINITY;
   let stonesReady = false;
   let mountainsReady = false;
 
@@ -490,10 +518,11 @@ export function createMonolith(
 
   return {
     setViewer: (position) => {
-      stones.forEach((stone) => {
+      stones.forEach((stone, index) => {
         const distance = Math.hypot(position.x - stone.pivot.x, position.z - stone.pivot.z);
-        const [present, gone] = STONE_EMERGENCE[viewport === "desktop" ? "desktop" : "stacked"];
-        stone.visibility = presenceAt(distance, present, gone);
+        const table = STONE_EMERGENCE[viewport === "desktop" ? "desktop" : "stacked"];
+        const [present, gone] = table[Math.min(index, table.length - 1)]!;
+        stone.visibility = index < revealed ? presenceAt(distance, present, gone) : 0;
         if (stone.visibility <= 0.002) return;
         stone.group.getWorldPosition(faceCentre);
         faceNormal.set(0, 0, 1).transformDirection(stone.group.matrixWorld);
@@ -503,6 +532,10 @@ export function createMonolith(
         stone.facing = t * t * (3 - 2 * t);
       });
       applyVisibility();
+    },
+
+    setRevealed: (count) => {
+      revealed = count;
     },
 
     resize: (width) => {

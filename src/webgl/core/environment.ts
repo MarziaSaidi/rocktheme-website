@@ -28,6 +28,7 @@ import { createMonolith, type Monolith } from "../modules/monolith";
 import { createRocks, type Rocks } from "../modules/rocks";
 import {
   arrivalKeyframes,
+  departureKeyframes,
   chapterFrames,
   chapterRest,
   getSceneSection,
@@ -94,6 +95,12 @@ export type EnvironmentOptions = Readonly<{
    * DOM paces its titles by this, so they move with the camera, not the page.
    */
   onArrival?: (progress: number | null) => void;
+  /**
+   * Called when the camera comes to rest or sets off again. Measured on the
+   * journey's pose, not on the scroll spring: during a hold the pose stands
+   * still even while the page scrolls within it. Project details wait for it.
+   */
+  onCameraSettled?: (settled: boolean) => void;
   /** Called if the Selected Work stone or its mountains cannot be loaded. */
   onMonolithFailure?: () => void;
   onContextLost?: () => void;
@@ -332,6 +339,19 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const IDLE_DRIFT = 0.035;
   let shownArrival: number | null | undefined;
   /*
+   * Rest detection on the pose itself. It counts as at rest once it has moved
+   * less than a hair (world units per frame) for a short while, so the long
+   * settle curve has genuinely finished before the details begin.
+   */
+  const REST_MOTION = 0.0008;
+  const REST_SECONDS = 0.15;
+  const lastEye = new Vector3();
+  const lastTarget = new Vector3();
+  let stillFor = 0;
+  let shownSettled: boolean | undefined;
+  /** Where the scroll is taking the camera: if that is elsewhere, it is not at rest. */
+  const destination: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
+  /*
    * The entry arrival: the camera carries on forward out of the doorway and
    * decelerates into the hero rest. Offsets are where it starts relative to
    * that rest; -1 means no arrival is running.
@@ -348,6 +368,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   let rests = buildRests();
   let stations = workStations(viewport);
   let arrival = arrivalKeyframes(viewport);
+  let departures = departureKeyframes(viewport);
   const waypoints = { departure: journeyWaypoints.departure };
 
   // ------------------------------------------------ lighting that travels
@@ -441,6 +462,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         rests,
         waypoints,
         stations,
+        departures,
       },
       pose,
     );
@@ -448,6 +470,34 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     if (state.arrival !== shownArrival) {
       shownArrival = state.arrival;
       options.onArrival?.(state.arrival);
+    }
+
+    const moved = pose.eye.distanceTo(lastEye) + pose.target.distanceTo(lastTarget);
+    lastEye.copy(pose.eye);
+    lastTarget.copy(pose.target);
+    // A scroll that will carry the camera elsewhere unsettles it at once, before
+    // the spring has built up any visible motion; one within a hold does not.
+    evaluateJourney(
+      {
+        scroll: stopsKnown ? targetScroll : 0,
+        stops,
+        arrival,
+        rests,
+        waypoints,
+        stations,
+        departures,
+      },
+      destination,
+    );
+    const leaving =
+      destination.eye.distanceTo(pose.eye) + destination.target.distanceTo(pose.target) > 0.01;
+    // Reduced motion cuts between rests: every drawn frame is a rest.
+    stillFor =
+      options.reducedMotion || (moved < REST_MOTION && !leaving) ? stillFor + deltaSeconds : 0;
+    const settled = options.reducedMotion || stillFor >= REST_SECONDS;
+    if (settled !== shownSettled) {
+      shownSettled = settled;
+      options.onCameraSettled?.(settled);
     }
 
     /*
@@ -479,6 +529,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     view.lookAt(pose.target);
     view.updateProjectionMatrix();
     view.updateMatrixWorld();
+    monolith.setRevealed(state.revealed);
     monolith.setViewer(view.position);
 
     // Sky: the same turn and the same distance across the water as the viewer.
@@ -643,6 +694,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     contextLost = false;
     // Republish the arrival, so the titles pick up where the camera is.
     shownArrival = undefined;
+    shownSettled = undefined;
     applySettings(settings);
     options.onContextRestored?.();
     if (running) {
@@ -697,6 +749,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       rests = buildRests();
       stations = workStations(viewport);
       arrival = arrivalKeyframes(viewport);
+      departures = departureKeyframes(viewport);
       lights.resize(camera);
       atmosphere.resize(camera);
       mist.resize(width, camera);

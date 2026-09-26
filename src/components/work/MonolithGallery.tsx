@@ -17,6 +17,28 @@ import { detailsPoint, workMoment, workScreens } from "@/webgl/workJourney";
 
 import styles from "./MonolithGallery.module.css";
 
+/**
+ * Whether the scene's camera stands still. The scene publishes it on the root
+ * element as `data-camera-settled` while it drives the journey
+ * (`data-journey`); without the scene there is no camera to wait for.
+ */
+function useCameraSettled(): boolean {
+  const [settled, setSettled] = useState(true);
+  useEffect(() => {
+    const root = document.documentElement;
+    const read = () =>
+      setSettled(!root.hasAttribute("data-journey") || root.hasAttribute("data-camera-settled"));
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-journey", "data-camera-settled"],
+    });
+    return () => observer.disconnect();
+  }, []);
+  return settled;
+}
+
 export type GalleryProject = Readonly<{
   slug: string;
   title: string;
@@ -82,7 +104,15 @@ export function MonolithGallery({
   const runwayRef = useRef<HTMLDivElement>(null);
   const screensRef = useRef(0);
   const [active, setActive] = useState(0);
-  const [shown, setShown] = useState(false);
+  /** Whether the scroll stands in a project's details window. */
+  const [inWindow, setInWindow] = useState(false);
+  const settled = useCameraSettled();
+  /*
+   * The details belong on screen only when both hold: the scroll is in the
+   * project's window and the camera has actually come to rest there. A scroll
+   * position alone does not mean the spring has finished carrying the camera.
+   */
+  const shown = inWindow && settled;
   /** Whether there is a project to step back to, or on to. */
   const [canPrevious, setCanPrevious] = useState(false);
   const [canNext, setCanNext] = useState(true);
@@ -113,7 +143,7 @@ export function MonolithGallery({
       screensRef.current = screens;
       const moment = workMoment(screens, count);
       setActive(moment.project);
-      setShown(moment.details);
+      setInWindow(moment.details);
       setCanPrevious(screens > detailsPoint(0) + AT_PROJECT);
       setCanNext(screens < detailsPoint(count - 1) - AT_PROJECT);
     };
@@ -134,7 +164,7 @@ export function MonolithGallery({
         window.removeEventListener("resize", schedule);
         if (frame !== 0) cancelAnimationFrame(frame);
         frame = 0;
-        setShown(false);
+        setInWindow(false);
       }
     };
 
@@ -196,10 +226,16 @@ export function MonolithGallery({
         {/*
          * The chapter's title as the camera crosses the water toward the first
          * stone: set on the water, in the hero's display type, gone before
-         * the camera arrives. The heading above stays the section's name.
+         * the camera arrives. Each word rises out of its own mask and drops
+         * back into it, paced by the camera; the words never travel sideways.
+         * The heading above stays the section's name for assistive technology.
          */}
         <p className={styles.chapterTitle} aria-hidden="true">
-          {heading}
+          {heading.split(" ").map((word, index) => (
+            <span key={`${word}-${index}`} className={styles.chapterWord} data-word={index}>
+              <span className={styles.chapterWordInner}>{word}</span>
+            </span>
+          ))}
         </p>
 
         {/*
@@ -221,20 +257,40 @@ export function MonolithGallery({
           ))}
         </div>
 
+        {/*
+         * The stones are composed on alternate sides of the frame, so the
+         * details alternate too: right of the first, left of the second. The
+         * side only changes while the card is away.
+         */}
         <div
           className={styles.project}
           role="group"
           aria-roledescription="carousel"
           aria-label={galleryLabel}
+          data-side={active % 2 === 1 ? "start" : "end"}
+          // The second stone's arrival is the calmer shot; its details take a beat longer.
+          data-pace={active % 2 === 1 ? "calm" : undefined}
         >
-          {/* The whole card comes and goes as one: glass, text and action. */}
+          {/*
+           * One composed reveal: the glass forms slowly while the content
+           * arrives in hierarchy, and leaves in reverse (motion.css).
+           */}
           <div className={styles.card} data-shown={shown ? "" : undefined} inert={!shown}>
             {current ? (
               <article key={current.slug} aria-label={`${pad(active + 1)} of ${pad(count)}`}>
+                {active === 0 ? (
+                  // Reduced motion never passes through the chapter title's
+                  // window, so the first card carries the chapter name instead.
+                  <p className={styles.chapterLine} aria-hidden="true">
+                    {heading}
+                  </p>
+                ) : null}
                 <p className={styles.index} aria-hidden="true">
                   <span>{pad(active + 1)}</span> / {pad(count)}
                 </p>
-                <h3 className={styles.title}>{current.title}</h3>
+                <h3 className={styles.title}>
+                  <span className={styles.titleInner}>{current.title}</span>
+                </h3>
                 <p className={styles.role}>{current.role}</p>
                 <p className={styles.description}>{current.description}</p>
                 {current.meta.length > 0 ? (

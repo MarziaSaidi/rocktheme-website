@@ -42,10 +42,14 @@
 
 /*
  * The chapter title. It exists only on desktop while the scene drives the
- * journey: it rises onto the water as the approach gathers pace (`--arrival`
- * 0.64 to 0.72), holds through the fastest stretch, and drifts left and fades
- * as the camera swings right into its settle (0.88 to 0.96). It stands on
- * the hero headline's left edge, in its type, lower in the frame.
+ * journey, and it is paced by the camera (`--arrival`, the spring-smoothed
+ * progress), not by a clock. Each word rises out of its own mask as the
+ * approach gathers pace, the title then holds still on the water through the
+ * fastest stretch, and drops back into its masks, "WORK" first, before the
+ * stone fills the frame. It never moves sideways: the camera owns space.
+ *
+ *   SELECTED  in 0.62 -> 0.70   out 0.87 -> 0.93
+ *   WORK      in 0.64 -> 0.72   out 0.86 -> 0.92
  */
 .chapterTitle {
   display: none;
@@ -53,15 +57,13 @@
 
 @media (min-width: 64rem) {
   :global(:root[data-journey]) .chapterTitle {
-    --in: clamp(0, (var(--arrival, 1) - 0.64) / 0.08, 1);
-    --out: clamp(0, (var(--arrival, 1) - 0.88) / 0.08, 1);
     position: absolute;
     z-index: var(--layer-content);
     inset-inline-start: 6vw;
     inset-block-end: 16vh;
-    display: block;
+    display: flex;
+    gap: 0.22em;
     margin: 0;
-    padding-inline-end: 0.04em;
     font-family: var(--font-hero-display);
     font-weight: 860;
     font-stretch: 62%;
@@ -70,32 +72,59 @@
     line-height: 0.86;
     letter-spacing: -0.012em;
     text-transform: uppercase;
-    color: transparent;
-    background-image: linear-gradient(
-      90deg,
-      var(--color-text-primary) 0,
-      var(--color-text-primary) 45%,
-      var(--color-text-moonlit) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    opacity: calc(var(--in) * (1 - var(--out)));
-    translate: calc(var(--out) * -2.5vw) calc((1 - var(--in)) * 0.4em);
     pointer-events: none;
+  }
+
+  .chapterWord {
+    display: block;
+    overflow: hidden;
+    /* Room for the glyphs inside the mask; the margin keeps the rhythm. */
+    padding-block: 0.08em 0.14em;
+    margin-block: -0.08em -0.14em;
+  }
+
+  .chapterWord[data-word="0"] {
+    --in: clamp(0, (var(--arrival, 1) - 0.62) / 0.08, 1);
+    --out: clamp(0, (var(--arrival, 1) - 0.87) / 0.06, 1);
+    color: var(--color-text-primary);
+  }
+
+  .chapterWord[data-word="1"] {
+    --in: clamp(0, (var(--arrival, 1) - 0.64) / 0.08, 1);
+    --out: clamp(0, (var(--arrival, 1) - 0.86) / 0.06, 1);
+    color: var(--color-text-moonlit);
+  }
+
+  .chapterWordInner {
+    display: block;
+    padding-inline-end: 0.04em;
+    /* Below the mask on the way in, and back below it on the way out. */
+    transform: translateY(calc((1 - var(--in) + var(--out)) * var(--motion-mask-travel)));
+    opacity: calc(var(--in) * (1 - var(--out)));
+  }
+
+  /*
+   * Once the camera is on the water the stage label is not pinned to a corner:
+   * the chapter title has named the place. It stays for assistive technology.
+   */
+  :global(:root[data-journey]) .intro {
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   /*
    * Until the camera has arrived at the first stone, the stage keeps its
    * interface out of the shot; it comes in as the camera settles.
    */
-  .intro,
   .controls {
     transition:
       opacity 640ms var(--ease-interface),
       visibility 0s;
   }
 
-  :global(:root[data-journey]:not([data-arrived])) .intro,
   :global(:root[data-journey]:not([data-arrived])) .controls {
     opacity: 0;
     visibility: hidden;
@@ -121,12 +150,37 @@
 }
 
 /*
- * Interface glass over the night: dark, barely tinted, a hairline edge and
- * the faintest lit rim along the top. No glow and no drop shadow, so it sits
- * quietly on the landscape instead of lifting off it.
+ * The details: one composed reveal, then a reverse-hierarchy exit.
+ *
+ * They are on screen only while the camera stands at the project
+ * (`data-shown`, set once the camera has really settled). Arriving, the glass
+ * forms slowly from the first moment while index, title, role, description,
+ * meta and action follow it in; so the panel is never seen empty and stays
+ * secondary to the title. Leaving, the order reverses: the action goes first,
+ * the title near the end, the glass last. Every duration, delay and distance
+ * is a token in motion.css; the second stone's calmer pace only changes the
+ * pause and the spacing (`data-pace="calm"`).
  */
 .card {
+  position: relative;
+  isolation: isolate;
   padding: clamp(1.75rem, 1rem + 1.6vw, 2.5rem);
+  visibility: hidden;
+  transition: visibility 0s linear
+    calc(var(--motion-details-exit-panel-at) + var(--motion-exit-panel-duration));
+}
+
+/*
+ * Interface glass over the night: dark, barely tinted, a hairline edge and
+ * the faintest lit rim along the top. No glow and no drop shadow, so it sits
+ * quietly on the landscape instead of lifting off it. It is its own layer so
+ * it can form while the content arrives over it.
+ */
+.card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
   border: 1px solid color-mix(in srgb, var(--brand-porcelain) 9%, transparent);
   background:
     linear-gradient(
@@ -138,30 +192,144 @@
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--brand-porcelain) 7%, transparent);
   backdrop-filter: blur(18px) saturate(1.15);
   -webkit-backdrop-filter: blur(18px) saturate(1.15);
-
-  /* Leaving: fades as one, then stops being there at all. */
   opacity: 0;
-  translate: 1.5rem 0;
-  filter: blur(4px);
-  visibility: hidden;
-  transition:
-    opacity 280ms var(--ease-interface),
-    translate 280ms var(--ease-interface),
-    filter 280ms var(--ease-interface),
-    visibility 0s linear 280ms;
+  transition: opacity var(--motion-exit-panel-duration) var(--motion-ease-exit)
+    var(--motion-details-exit-panel-at);
 }
 
-/* Arriving: a short, settled move in from the right as the camera stops. */
 .card[data-shown] {
-  opacity: 1;
-  translate: 0 0;
-  filter: none;
   visibility: visible;
+  transition: visibility 0s;
+}
+
+.card[data-shown]::before {
+  opacity: 1;
+  transition: opacity var(--motion-details-panel-duration) var(--motion-ease-reveal)
+    var(--motion-details-pause);
+}
+
+/* Small text: a short rise with its opacity; leaving drops back and fades. */
+.chapterLine,
+.index,
+.role,
+.description,
+.meta,
+.view,
+.titleInner {
+  /* Entrance delay of a step: the pause, then its time scaled by the pace. */
+  --enter: calc(var(--motion-details-pause) + var(--at, 0ms) * var(--motion-details-step));
+}
+
+.chapterLine,
+.index,
+.role,
+.description,
+.meta,
+.view {
+  opacity: 0;
+  transform: translateY(var(--travel, var(--motion-small-travel)));
   transition:
-    opacity 560ms var(--ease-interface),
-    translate 640ms var(--ease-interface),
-    filter 480ms var(--ease-interface),
-    visibility 0s;
+    opacity var(--motion-exit-duration) var(--motion-ease-exit) var(--exit-at, 0ms),
+    transform var(--motion-exit-duration) var(--motion-ease-exit) var(--exit-at, 0ms);
+}
+
+.card[data-shown] .chapterLine,
+.card[data-shown] .index,
+.card[data-shown] .role,
+.card[data-shown] .description,
+.card[data-shown] .meta {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--motion-small-duration) var(--motion-ease-reveal) var(--enter),
+    transform var(--motion-small-duration) var(--motion-ease-reveal) var(--enter);
+}
+
+.chapterLine,
+.index {
+  --at: var(--motion-details-index-at);
+  --exit-at: var(--motion-details-exit-index-at);
+}
+
+.role {
+  --at: var(--motion-details-role-at);
+  --exit-at: var(--motion-details-exit-role-at);
+}
+
+.description {
+  --at: var(--motion-details-body-at);
+  --exit-at: var(--motion-details-exit-body-at);
+  --travel: var(--motion-small-travel-body);
+}
+
+.meta {
+  --at: var(--motion-details-meta-at);
+  --exit-at: var(--motion-details-exit-meta-at);
+}
+
+.view {
+  --at: var(--motion-details-action-at);
+  --exit-at: 0ms;
+}
+
+/* The title rises out of its mask as one block and drops back into it. */
+.title {
+  --at: var(--motion-details-title-at);
+  overflow: hidden;
+  padding-block-end: 0.12em;
+  margin-block-end: -0.12em;
+}
+
+.titleInner {
+  display: block;
+  opacity: 0;
+  transform: translateY(var(--motion-mask-travel));
+  transition:
+    opacity var(--motion-exit-title-duration) var(--motion-ease-exit)
+      var(--motion-details-exit-title-at),
+    transform var(--motion-exit-title-duration) var(--motion-ease-exit)
+      var(--motion-details-exit-title-at);
+}
+
+.card[data-shown] .titleInner {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity calc(var(--motion-details-title-duration) * 0.5) var(--motion-ease-reveal) var(--enter),
+    transform var(--motion-details-title-duration) var(--motion-ease-reveal) var(--enter);
+}
+
+/* The second stone's arrival is the calmer shot: a beat of stillness, wider spacing. */
+@media (prefers-reduced-motion: no-preference) {
+  .project[data-pace="calm"] {
+    --motion-details-pause: 120ms;
+    --motion-details-step: 1.15;
+    --motion-details-title-duration: 950ms;
+  }
+}
+
+/* Reduced motion never passes through the chapter title, so the first card names it. */
+.chapterLine {
+  composes: micro from "../../styles/type.module.css";
+  display: none;
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 64rem) {
+  :global(:root[data-journey]) .chapterLine {
+    display: block;
+  }
+}
+
+/*
+ * Desktop: where the stone stands on the right, the details take the open
+ * water on the left, on the hero headline's edge.
+ */
+@media (min-width: 64rem) {
+  .project[data-side="start"] {
+    inset-inline: 6vw auto;
+  }
 }
 
 .index {
@@ -220,6 +388,19 @@
   color: var(--color-text-primary);
   text-decoration: none;
   transition:
+    opacity var(--motion-exit-duration) var(--motion-ease-exit) var(--exit-at, 0ms),
+    transform var(--motion-exit-duration) var(--motion-ease-exit) var(--exit-at, 0ms),
+    color var(--duration-interface) var(--ease-interface),
+    border-color var(--duration-interface) var(--ease-interface),
+    background-color var(--duration-interface) var(--ease-interface);
+}
+
+.card[data-shown] .view {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--motion-small-duration) var(--motion-ease-reveal) var(--enter),
+    transform var(--motion-small-duration) var(--motion-ease-reveal) var(--enter),
     color var(--duration-interface) var(--ease-interface),
     border-color var(--duration-interface) var(--ease-interface),
     background-color var(--duration-interface) var(--ease-interface);
@@ -383,11 +564,6 @@
 
   .card {
     padding: var(--space-5);
-    translate: 0 1rem;
-  }
-
-  .card[data-shown] {
-    translate: 0 0;
   }
 
   .title {
@@ -431,14 +607,5 @@
     inset-inline: 0;
     height: 38svh;
     margin-inline: auto;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card,
-  .card[data-shown] {
-    translate: none;
-    filter: none;
-    transition-property: opacity, visibility;
   }
 }

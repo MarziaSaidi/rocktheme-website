@@ -25,7 +25,11 @@ export const WORK_STRETCHES = {
    */
   approach: 1.7,
   hold: 1.25,
-  travel: 2.4,
+  /*
+   * From one stone to the next: long enough to leave, pass the first stone,
+   * open onto the water and still come in to the second one calmly.
+   */
+  travel: 3,
 } as const;
 
 /**

@@ -39,6 +39,7 @@ import { toWorld } from "../src/webgl/core/chapterFrame";
 import {
   arrivalKeyframes,
   chapterFrames,
+  departureKeyframes,
   chapterRest,
   journeyWaypoints,
   floorConfig,
@@ -546,8 +547,8 @@ console.log("\ncamera journey");
 {
   // Scroll offsets as the page measures them; the work stage pins for its journey.
   const layouts = {
-    desktop: { workStart: 2070, workEnd: 8010, about: 8880, contact: 9570 },
-    mobile: { workStart: 844, workEnd: 6415, about: 7340, contact: 8040 },
+    desktop: { workStart: 2070, workEnd: 8550, about: 9420, contact: 10110 },
+    mobile: { workStart: 844, workEnd: 6921, about: 7846, contact: 8546 },
   } as const satisfies Record<string, JourneyStops>;
 
   for (const [viewport, stops] of Object.entries(layouts) as [
@@ -560,6 +561,7 @@ console.log("\ncamera journey");
     };
     const waypoints = { departure: journeyWaypoints.departure };
     const arrival = arrivalKeyframes(viewport);
+    const departures = departureKeyframes(viewport);
     const stations = workStations(viewport);
     const pivots = monolithConfig.stones.map((stone) => {
       const { position } = resolveResponsiveValue(stone, viewport);
@@ -580,7 +582,7 @@ console.log("\ncamera journey");
 
     const at = (scroll: number) => {
       const pose: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
-      evaluateJourney({ scroll, stops, arrival, rests, waypoints, stations }, pose);
+      evaluateJourney({ scroll, stops, arrival, rests, waypoints, stations, departures }, pose);
       return pose;
     };
     const same = (a: CameraPose, eye: readonly number[]) =>

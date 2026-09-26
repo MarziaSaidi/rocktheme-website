@@ -122,6 +122,48 @@
 
   /* Perspective strength for every plane stage. */
   --motion-perspective: 2200px;
+
+  /* ================================================ interface over the camera */
+  /*
+   * The camera owns space; typography owns hierarchy. Three kinds of movement
+   * only: display lines rise out of a mask, small text rises a few pixels
+   * with its opacity, and anything leaving reverses its entrance. Nothing
+   * blurs, nothing moves sideways, everything comes to rest.
+   */
+  --motion-ease-exit: cubic-bezier(0.5, 0, 0.75, 0);
+  /* How far a masked line travels to leave or enter its mask. */
+  --motion-mask-travel: 110%;
+  /* Small text: role, index, meta, labels. The description travels a little more. */
+  --motion-small-travel: 10px;
+  --motion-small-travel-body: 12px;
+  --motion-small-duration: 480ms;
+  --motion-exit-duration: 200ms;
+  --motion-exit-title-duration: 320ms;
+  --motion-exit-panel-duration: 260ms;
+
+  /* ------------------------------ project details: one composed reveal */
+  /*
+   * Counted from the camera coming to rest at the project. The glass begins
+   * at once but slowly, so the content is already arriving while it forms:
+   * it is never seen as an empty box, and it stays secondary to the title.
+   */
+  --motion-details-pause: 0ms;
+  --motion-details-step: 1;
+  --motion-details-panel-duration: 560ms;
+  --motion-details-index-at: 40ms;
+  --motion-details-title-at: 100ms;
+  --motion-details-role-at: 220ms;
+  --motion-details-body-at: 290ms;
+  --motion-details-meta-at: 360ms;
+  --motion-details-action-at: 430ms;
+  --motion-details-title-duration: 850ms;
+  /* Leaving, in reverse hierarchy: action first, the title near the end. */
+  --motion-details-exit-meta-at: 40ms;
+  --motion-details-exit-body-at: 80ms;
+  --motion-details-exit-role-at: 120ms;
+  --motion-details-exit-index-at: 160ms;
+  --motion-details-exit-title-at: 200ms;
+  --motion-details-exit-panel-at: 260ms;
 }
 
 /* ---------------------------------------------------------------- keyframes */
@@ -305,5 +347,20 @@
     --motion-pointer-weight-near: 0;
     --motion-pointer-weight-mid: 0;
     --motion-pointer-weight-far: 0;
+
+    /*
+     * Interface over the camera: opacity only, no masks, no travel. The order
+     * survives as short timing differences.
+     */
+    --motion-mask-travel: 0%;
+    --motion-small-travel: 0px;
+    --motion-small-travel-body: 0px;
+    --motion-small-duration: 200ms;
+    --motion-exit-duration: 150ms;
+    --motion-exit-title-duration: 150ms;
+    --motion-exit-panel-duration: 150ms;
+    --motion-details-panel-duration: 200ms;
+    --motion-details-title-duration: 200ms;
+    --motion-details-step: 0.5;
   }
 }

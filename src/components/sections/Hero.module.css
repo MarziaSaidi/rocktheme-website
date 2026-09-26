@@ -19,7 +19,7 @@
 
 /*
  * Desktop only: the runway holds the copy still while the camera starts its
- * arrival, until the copy has left with it (`--arrival` 0.32). Smaller layouts
+ * arrival, until the copy has left with it (`--arrival` 0.22). Smaller layouts
  * are unchanged.
  */
 @media (min-width: 64rem) {
@@ -159,15 +159,43 @@
   }
 
   /*
-   * The copy leaves with the camera rather than with the page: it lifts and
-   * fades over the first stretch of the arrival, slower than the rock
-   * crossing the foreground and faster than the range, so it sits between
-   * them. Only while the scene is driving the journey.
+   * The copy leaves with the camera rather than with the page (`--arrival`,
+   * the spring-smoothed progress of the arrival), in reverse hierarchy: the
+   * scroll cue first, then the lead, then the headline lines from the bottom
+   * up, each dropping back into its own mask. Transform and filter are used
+   * because the entrance keyframes still hold translate and opacity.
+   *
+   *   scroll cue  0.03 -> 0.09      CODE.   0.08 -> 0.17
+   *   lead        0.05 -> 0.13      TASTE&  0.11 -> 0.20
+   *                                 CRAFT,  0.14 -> 0.22
    */
-  :global(:root[data-journey]) .statement {
-    --leave: clamp(0, (var(--arrival, 0) - 0.05) / 0.27, 1);
-    opacity: calc(1 - var(--leave));
-    translate: 0 calc(var(--leave) * -7vh);
+  :global(:root[data-journey]) .scroll {
+    --gone: clamp(0, (var(--arrival, 0) - 0.03) / 0.06, 1);
+    transform: translateY(calc(var(--gone) * var(--motion-small-travel)));
+    filter: opacity(calc(1 - var(--gone)));
+  }
+
+  :global(:root[data-journey]) .lead {
+    --gone: clamp(0, (var(--arrival, 0) - 0.05) / 0.08, 1);
+    transform: translateY(calc(var(--gone) * var(--motion-small-travel)));
+    filter: opacity(calc(1 - var(--gone)));
+  }
+
+  :global(:root[data-journey]) .headline [data-line-inner] {
+    transform: translateY(calc(var(--gone, 0) * var(--motion-mask-travel)));
+    filter: opacity(calc(1 - var(--gone, 0)));
+  }
+
+  :global(:root[data-journey]) .headline [data-line-index="2"] {
+    --gone: clamp(0, (var(--arrival, 0) - 0.08) / 0.09, 1);
+  }
+
+  :global(:root[data-journey]) .headline [data-line-index="1"] {
+    --gone: clamp(0, (var(--arrival, 0) - 0.11) / 0.09, 1);
+  }
+
+  :global(:root[data-journey]) .headline [data-line-index="0"] {
+    --gone: clamp(0, (var(--arrival, 0) - 0.14) / 0.08, 1);
   }
 
   .lead {

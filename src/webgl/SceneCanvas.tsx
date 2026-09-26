@@ -180,6 +180,10 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
           root.style.setProperty("--arrival", (progress ?? 1).toFixed(4));
           root.toggleAttribute("data-arrived", progress === null || progress >= 0.97);
         },
+        onCameraSettled: (settled) => {
+          // Project details enter only once the camera is really at rest.
+          root.toggleAttribute("data-camera-settled", settled);
+        },
         onMonolithFailure: () => {
           // The gallery shows its HTML screen images instead.
           root.dataset.monolithFailed = "";
@@ -283,6 +287,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       delete root.dataset.monolithFailed;
       delete root.dataset.journey;
       delete root.dataset.arrived;
+      delete root.dataset.cameraSettled;
       root.style.removeProperty("--scene-beacon-glow");
       root.style.removeProperty("--arrival");
     };

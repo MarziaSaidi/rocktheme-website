@@ -598,7 +598,21 @@ const STONE_SINK = -0.3;
  * reads as set into the rock. The camera looks past the stone's right side,
  * so the stone holds the left third and the details the open right.
  */
-const quillSettle: PosePoint = { eye: [-4.5, 3.6, 20.5], target: [4.8, 6.7, -1.6], fov: 34 };
+const quillSettle: PosePoint = { eye: [-5.1, 3.6, 21.9], target: [4.8, 6.2, -1.6], fov: 34 };
+
+/*
+ * Frame 07, and the second stone's settled view. The release after Quill &
+ * Pigeon: higher (6.6 over the water), farther (36 out) and level, from the
+ * south-west, with the range some 70 units behind the stone as it is behind
+ * Quill & Pigeon, the horizon and sky back in the frame, and open water across
+ * the left half, where the details go. The stone holds the right third, crown
+ * and waterline both in frame, at about three quarters of the view's height.
+ */
+const survueSettle: PosePoint = {
+  eye: [-38.5, 6.6, 21],
+  target: [-35.89, 7.65, -8.87],
+  fov: 34,
+};
 
 export const monolithConfig: MonolithConfig = {
   sectionId: "selected-work",
@@ -616,7 +630,7 @@ export const monolithConfig: MonolithConfig = {
     },
     // Survue: turned a little further toward the viewer's side of its approach.
     {
-      desktop: { ...stoneOnDesktop, height: 17, position: [-18, STONE_SINK, -24], yaw: 0.25 },
+      desktop: { ...stoneOnDesktop, height: 17, position: [-30, STONE_SINK, -14], yaw: -0.2 },
       tablet: stoneStacked,
       mobile: stoneStacked,
     },
@@ -668,13 +682,8 @@ export const monolithConfig: MonolithConfig = {
     desktop: [
       // The way in is the arrival (arrivalKeyframes); only the settle is used.
       { approach: [], settle: quillSettle },
-      {
-        approach: [
-          { eye: [-3.5, 6.4, 11], target: [-8, 7.6, -20], fov: 41 },
-          { eye: [-8.5, 6.2, 3], target: [-14, 7.8, -24], fov: 41 },
-        ],
-        settle: { eye: [-6.45, 6.6, -4.6], target: [-12.5, 7.9, -22.1], fov: 40 },
-      },
+      // The way there is the departure (departureKeyframes); only the settle is used.
+      { approach: [], settle: survueSettle },
     ],
     stacked: [
       {
@@ -683,10 +692,10 @@ export const monolithConfig: MonolithConfig = {
       },
       {
         approach: [
-          { eye: [-3.5, 3, 10], target: [-7, 3.4, -20], fov: 46 },
-          { eye: [-9, 3, 4], target: [-16, 3.4, -20], fov: 46 },
+          { eye: [-6, 3, 10], target: [-24, 3.4, -14], fov: 46 },
+          { eye: [-24, 3.2, 8], target: [-30, 3.4, -14], fov: 46 },
         ],
-        settle: { eye: [-7.7, 3.2, -5.5], target: [-16.6, 2.8, -21.1], fov: 46 },
+        settle: { eye: [-34, 3.2, 2.5], target: [-30, 3.4, -14], fov: 46 },
       },
     ],
   },
@@ -981,7 +990,7 @@ export const sceneSections = {
  * range rather than walking into it.
  */
 export const chapterFrames = {
-  hero: { origin: [-12, 0, 32], yaw: 0 },
+  hero: { origin: [-24.7, 0, 28.2], yaw: 0 },
   "selected-work": { origin: [0, 0, 0], yaw: 0 },
   about: { origin: [-12, 0, 22.5], yaw: Math.PI },
   footer: { origin: [-12, 0, 46.5], yaw: Math.PI },
@@ -995,20 +1004,29 @@ export const chapterFrames = {
  * `speed` is how fast the camera is still travelling as it passes, in world
  * units per whole arrival. Zero means it stands still there.
  *
- *   01 establishing  low on the shore behind the perch; the first stone
- *                    stands out on the water behind the robot, not yet
- *                    drawn (see STONE_GONE in monolith.ts)
- *   02 first move    a slow truck left: the perch and robot slide right
- *                    across the frame, the range does not move
- *   03 discovery     a step forward and a turn toward it: the stone is
- *                    there now, behind the perch, its lit face rising over
- *                    the rock. The camera lingers here but never stops
- *   —  pass          beside the perch, more than 3 units clear of it
+ *   01 establishing  low on the shore behind the perch. The first stone
+ *                    stands out of frame to the right, directly behind the
+ *                    perch's crest, the one part of the grounded rock tall
+ *                    enough to hide it
+ *   02 first move    a truck right, turning with it: the perch and robot
+ *                    slide left across the frame and the crest comes in on
+ *                    the right with the stone behind it. Only the tip of
+ *                    the stone's crown clears the crest; the screen is hidden
+ *   03 discovery     the truck carries on: by parallax the stone slides out
+ *                    from behind the crest's right shoulder, first a glimpse
+ *                    of the screen, then about half of it. The camera
+ *                    lingers here but never stops
+ *   —  pass          still trucking right, behind and past the perch, which
+ *                    slides out of frame and leaves the stone whole
  *   04 approach      the fastest stretch, rising toward the stone
- *   05 arrival       low and to the right of the stone, looking up at it;
+ *   05 arrival       low and a little left of the stone, looking up at it;
  *                    a long deceleration ends in a settle
  *
- * The first three are authored in the hero frame, so they stay with the perch.
+ * The hero composition stands where the camera -> crest -> stone line runs
+ * through the second keyframe, so the stone is never faded in: it is solid
+ * the whole way and only ever hidden by the rock or the frame. Every keyframe
+ * up to the approach is authored in the hero frame, so it stays with the
+ * perch.
  */
 const heroArrival = (
   at: number,
@@ -1017,12 +1035,14 @@ const heroArrival = (
   target: Vector3Tuple,
 ): ArrivalKeyframe => ({ at, speed, ...poseInFrame(chapterFrames.hero, { eye, target, fov: 34 }) });
 
+// Frozen (2026-09-25): see docs/camera-system.md before changing any value.
 const desktopArrival: readonly ArrivalKeyframe[] = [
   heroArrival(0, 0, [0.4, 0.8, 11], [0.4, 2.05, -2]),
-  heroArrival(0.26, 6, [-1.1, 0.9, 10.8], [-0.9, 2.15, -2.2]),
-  heroArrival(0.5, 10, [-1, 0.65, 8.3], [1.4, 1.95, -4.4]),
-  { at: 0.63, speed: 90, eye: [-17, 2.4, 34], target: [-4, 4.8, 0], fov: 34 },
-  { at: 0.72, speed: 90, eye: [-13, 2.8, 27], target: [0.6, 6.2, -4], fov: 34 },
+  heroArrival(0.26, 10, [2, 0.6, 8.5], [4.7, 1.85, -4.2]),
+  heroArrival(0.5, 8, [3.2, 0.65, 8.7], [8.7, 1.9, -3.1]),
+  heroArrival(0.62, 70, [9.8, 1.2, 7.9], [14.2, 2.6, -4.3]),
+  heroArrival(0.67, 90, [12.5, 1.8, 3.5], [16.7, 3.2, -8.8]),
+  heroArrival(0.72, 90, [14.5, 2.8, -1], [25, 6.2, -35.4]),
   { at: 1, speed: 0, ...quillSettle },
 ];
 
@@ -1042,10 +1062,10 @@ const desktopArrival: readonly ArrivalKeyframe[] = [
  */
 export const journeyWaypoints = {
   approach: { eye: [-3.3, 1.5, 6.0], target: [-3.0, 2.65, -3.9], fov: 42 },
-  arrival: { eye: [-3, 3.2, -5], target: [1.8, 5.2, -40], fov: 43 },
+  arrival: { eye: [-3, 3.2, -8], target: [1.8, 5.2, -43], fov: 43 },
   departure: [
-    { eye: [-10, 4.5, -2], target: [-32, 4, 2], fov: 42 },
-    { eye: [-13, 2.6, 5], target: [-12, 3, 25], fov: 42 },
+    { eye: [-36, 4.5, 26], target: [-62, 4, 32], fov: 38 },
+    { eye: [-18, 2.6, 10], target: [-12, 3, 34], fov: 42 },
   ],
 } as const satisfies Readonly<{
   approach: PosePoint;
@@ -1064,9 +1084,61 @@ export function arrivalKeyframes(viewport: SceneViewport): readonly ArrivalKeyfr
     { at: 0.14, ...poseInFrame(chapterFrames.hero, journeyWaypoints.approach) },
     { at: 0.34, ...poseInFrame(chapterFrames.hero, journeyWaypoints.arrival) },
     // The far view, moved out past the perch, which now stands where it was.
-    { at: 0.6, eye: [-6, 3.2, 20], target: far.target, fov: far.fov },
+    { at: 0.6, eye: [-12, 3.2, 17], target: far.target, fov: far.fov },
     { at: 1, speed: 0, ...stacked.settle },
   ];
+}
+
+/*
+ * The departure, from the first stone to the second: compression, passage,
+ * release. `at` is the share of the travel between the two holds; the details
+ * have already left while the camera stood still.
+ *
+ *   0     Quill & Pigeon, settled
+ *   —     first move: a truck left, rising and turning a little with it; the
+ *         stone slides to the middle and fills it
+ *   —     passage: drawing back as it trucks, the stone's edge crosses the
+ *         right of the frame and goes
+ *   —     release: rising and drawing back as it goes; Survue comes in from
+ *         the left as the first stone clears the right. From out here the two
+ *         stand only 35 to 45 degrees apart, so one of them is always in a
+ *         52-degree frame: the hand-over is as late as the geometry allows
+ *   —     discovery: about 60 out, looking a little down, so the distant
+ *         stone stands dark against the pale haze on the water, just right
+ *         of centre and under half the view's height
+ *   —     halfway: nearer, still high, Survue centred, the water wide
+ *   —     three quarters: lower, Survue easing right
+ *   1     settled: down at the settle's height, Survue on the right third,
+ *         the left of the frame left open for its details
+ *
+ *   From the discovery on the path is a diagonal, not a straight push: it
+ *   comes forward, trucks left and descends at once, and the aim eases from
+ *   centre to the right third, while the speed falls steadily to the settle.
+ *
+ * The second stone is kept back until the departure begins, when it stands
+ * out of frame to the left (see the reveal in monolith.ts); it is only ever
+ * brought into view by the camera turning and moving, never faded in.
+ */
+// Frozen (2026-09-25): see docs/camera-system.md before changing any value.
+const desktopDeparture: readonly ArrivalKeyframe[] = [
+  { at: 0, speed: 0, ...quillSettle },
+  { at: 0.1, speed: 20, eye: [-8, 3.9, 22.2], target: [2.21, 6.51, -5.88], fov: 34 },
+  { at: 0.26, speed: 70, eye: [-17, 6.5, 29], target: [-9.24, 7.02, 0.03], fov: 34 },
+  { at: 0.45, speed: 95, eye: [-22, 10.5, 47], target: [-23.57, 9.45, 17.06], fov: 34 },
+  { at: 0.52, speed: 80, eye: [-26.86, 12.5, 45.9], target: [-29.99, 10.67, 16.12], fov: 34 },
+  { at: 0.7, speed: 60, eye: [-31.64, 10, 32.97], target: [-30.59, 9.21, 3], fov: 34 },
+  { at: 0.85, speed: 40, eye: [-35.57, 8, 25.61], target: [-34, 8.26, -4.35], fov: 34 },
+  { at: 1, speed: 0, ...survueSettle },
+];
+
+/**
+ * The way from each stone to the next, by the index of the stone arrived at.
+ * Null where the travel is the stations' own approach points instead.
+ */
+export function departureKeyframes(
+  viewport: SceneViewport,
+): readonly (readonly ArrivalKeyframe[] | null)[] {
+  return viewport === "desktop" ? [null, desktopDeparture] : [];
 }
 
 /** The Selected Work stations for a viewport: desktop, or stacked below it. */

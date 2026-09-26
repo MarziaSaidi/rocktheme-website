@@ -65,6 +65,12 @@ export type JourneyInput = Readonly<{
   waypoints: JourneyWaypoints;
   /** Selected Work: one station per stone, in project order. */
   stations: readonly WorkStation[];
+  /**
+   * The way to each stone after the first, by that stone's index, as a
+   * keyframed shot. Where there is none, the station's approach points are
+   * eased through instead.
+   */
+  departures?: readonly (readonly ArrivalKeyframe[] | null)[];
 }>;
 
 export type JourneyState = Readonly<{
@@ -74,6 +80,12 @@ export type JourneyState = Readonly<{
   blend: number;
   /** Progress through the arrival, 0 to 1; null once the camera has arrived. */
   arrival: number | null;
+  /**
+   * How many stones, in project order, may be drawn. A stone is held back
+   * until the camera sets off toward it, which the departures time for a
+   * moment it stands out of frame: it is found by moving, never faded in.
+   */
+  revealed: number;
 }>;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -292,7 +304,7 @@ export function nearestRest(scroll: number, stops: JourneyStops, stations: numbe
  * chapters it lies between, for the lighting that travels with it.
  */
 export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneyState {
-  const { scroll, stops, arrival, rests, waypoints, stations } = input;
+  const { scroll, stops, arrival, rests, waypoints, stations, departures } = input;
   const arrived = arrivalEnd(stops, stations.length);
   const last = stations[stations.length - 1]?.settle ?? arrival[arrival.length - 1] ?? rests.about;
 
@@ -305,6 +317,7 @@ export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneySt
       to: "selected-work",
       blend: smootherstep((u - 0.25) / 0.6),
       arrival: u,
+      revealed: 1,
     };
   }
 
@@ -313,26 +326,36 @@ export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneySt
     const { leg } = workMoment(workProgress(scroll, stops, stations.length), stations.length);
     const station = stations[leg.station];
     const previous = stations[leg.station - 1];
+    const keys = departures?.[leg.station];
     if (!station) {
       setPose(last, out);
     } else if (leg.kind === "hold" || !previous) {
       setPose(station.settle, out);
+    } else if (keys && keys.length > 1) {
+      sampleArrival(keys, leg.progress, out);
     } else {
       const points = [previous.settle, ...station.approach, station.settle];
       sampleLeg(makeLeg(points), smootherstep(leg.progress), out);
     }
-    return { from: "selected-work", to: "selected-work", blend: 0, arrival: null };
+    const revealed = leg.kind === "move" && leg.progress <= 0 ? leg.station : leg.station + 1;
+    return { from: "selected-work", to: "selected-work", blend: 0, arrival: null, revealed };
   }
 
   // ------------------------------ last stone → How I Work, turning away
   if (scroll < stops.about) {
     const u = smootherstep((scroll - stops.workEnd) / Math.max(1, stops.about - stops.workEnd));
     sampleLeg(makeLeg([last, ...waypoints.departure, rests.about]), u, out);
-    return { from: "selected-work", to: "about", blend: u, arrival: null };
+    return {
+      from: "selected-work",
+      to: "about",
+      blend: u,
+      arrival: null,
+      revealed: stations.length,
+    };
   }
 
   // -------------------------------------------- How I Work → Contact
   const u = smootherstep((scroll - stops.about) / Math.max(1, stops.contact - stops.about));
   sampleLeg(makeLeg([rests.about, rests.contact]), u, out);
-  return { from: "about", to: "footer", blend: u, arrival: null };
+  return { from: "about", to: "footer", blend: u, arrival: null, revealed: stations.length };
 }
