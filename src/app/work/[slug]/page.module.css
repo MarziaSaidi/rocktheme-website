@@ -14,11 +14,30 @@
 .backLink {
   composes: micro from "../../../styles/type.module.css";
   display: inline-flex;
+  gap: var(--space-3);
   align-items: center;
   min-height: 2.75rem;
   text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
 }
 
 .backLink:hover {
   color: var(--color-text-primary);
+}
+
+.backArrow {
+  width: 1.5rem;
+  height: auto;
+  transition: translate var(--duration-interface) var(--ease-interface);
+}
+
+.backLink:hover .backArrow {
+  translate: -0.25rem 0;
+}
+
+@media (max-width: 47.99rem) {
+  /* The header stacks into two rows here, so the page starts below both. */
+  .page {
+    padding-block-start: var(--header-height-stacked);
+  }
 }

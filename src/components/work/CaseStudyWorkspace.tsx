@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
 import type { CaseStudyInfo, CaseStudyStage, Project, StoryVisual } from "@/content/projects";
 
 import styles from "./CaseStudyWorkspace.module.css";
@@ -12,7 +13,21 @@ type CaseStudyWorkspaceProps = Readonly<{
   stages: readonly CaseStudyStage[];
 }>;
 
-function StoryVideo({ visual }: { visual: Extract<StoryVisual, { type: "video" }> }) {
+/** Seconds a story stays up when its content does not say otherwise. */
+const DEFAULT_STORY_SECONDS = 6;
+
+type MediaCallbacks = Readonly<{
+  /** A video with controls started or stopped playing. */
+  onPlayingChange?: (playing: boolean) => void;
+  /** A looping video reported how long one pass takes. */
+  onDuration?: (seconds: number) => void;
+}>;
+
+function StoryVideo({
+  visual,
+  onPlayingChange,
+  onDuration,
+}: { visual: Extract<StoryVisual, { type: "video" }> } & MediaCallbacks) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const silentLoop = visual.playback === "silent-loop";
 
@@ -43,11 +58,17 @@ function StoryVideo({ visual }: { visual: Extract<StoryVisual, { type: "video" }
       poster={visual.media.poster.src}
       title={visual.media.title}
       src={visual.media.src}
+      onPlay={silentLoop ? undefined : () => onPlayingChange?.(true)}
+      onPause={silentLoop ? undefined : () => onPlayingChange?.(false)}
+      onEnded={silentLoop ? undefined : () => onPlayingChange?.(false)}
+      onLoadedMetadata={
+        silentLoop ? (event) => onDuration?.(event.currentTarget.duration) : undefined
+      }
     />
   );
 }
 
-function StoryVisualView({ visual }: { visual?: StoryVisual }) {
+function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaCallbacks) {
   if (!visual) {
     return (
       <p className={styles.textOnly}>This stage is told through its decisions and outcomes.</p>
@@ -55,7 +76,7 @@ function StoryVisualView({ visual }: { visual?: StoryVisual }) {
   }
 
   if (visual.type === "video") {
-    return <StoryVideo visual={visual} />;
+    return <StoryVideo visual={visual} {...media} />;
   }
 
   if (visual.type === "comparison") {
@@ -156,6 +177,30 @@ function StoryVisualView({ visual }: { visual?: StoryVisual }) {
   );
 }
 
+/**
+ * Text that arrives line by line. Each word is its own box so the lines can
+ * be found once the text has wrapped; the story then numbers them. Assistive
+ * technology reads the plain string, never the pieces.
+ */
+function Lines({ text }: { text: string }) {
+  const words = text.split(/\s+/).filter(Boolean);
+  return (
+    <>
+      <span className={styles.srOnly}>{text}</span>
+      <span aria-hidden="true">
+        {words.map((word, index) => (
+          <Fragment key={index}>
+            <span className={styles.word} data-word="">
+              {word}
+            </span>
+            {index < words.length - 1 ? " " : null}
+          </Fragment>
+        ))}
+      </span>
+    </>
+  );
+}
+
 function ProjectFacts({ project, info }: { project: Project; info?: CaseStudyInfo }) {
   const facts = [
     ["Role", project.role.join(" + ")],
@@ -180,39 +225,84 @@ function ProjectFacts({ project, info }: { project: Project; info?: CaseStudyInf
   );
 }
 
+type HistoryMode = "push" | "replace" | "none";
+
 export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps) {
   const initialId = stages[0]?.id ?? "";
   const [stageId, setStageId] = useState(initialId);
   const [storyIndex, setStoryIndex] = useState(0);
-  const [storyEpoch, setStoryEpoch] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [documentHidden, setDocumentHidden] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  /*
+   * Autoplay holds only for deliberate reasons: reading the copy, pressing
+   * and holding the visual, moving through by keyboard, or watching a video.
+   * Resting the mouse over the visual (where the arrows are) does not.
+   */
+  const [reading, setReading] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [mediaSeconds, setMediaSeconds] = useState<{ key: string; seconds: number } | null>(null);
+  const articleRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const viewerRef = useRef<HTMLElement>(null);
+  const storyRef = useRef<HTMLElement>(null);
   const touchStart = useRef<number | null>(null);
-  const remainingMs = useRef(6000);
-  const timerStartedAt = useRef(0);
-  const stage = stages.find((item) => item.id === stageId) ?? stages[0];
+  const elapsedMs = useRef(0);
+  const stageIndex = Math.max(
+    0,
+    stages.findIndex((item) => item.id === stageId),
+  );
+  const stage = stages[stageIndex];
   const story = stage?.stories[storyIndex] ?? stage?.stories[0];
   const storyCount = stage?.stories.length ?? 0;
+  const storyKey = `${stage?.id}-${story?.id}`;
+  const atStart = stageIndex === 0 && storyIndex === 0;
+  const atEnd = stageIndex === stages.length - 1 && storyIndex >= storyCount - 1;
 
-  const chooseStage = useCallback((nextId: string, updateHistory = true) => {
+  const loopSeconds = mediaSeconds?.key === storyKey ? mediaSeconds.seconds : undefined;
+  const durationMs =
+    (story?.durationSeconds ??
+      (loopSeconds ? Math.min(30, Math.max(4, loopSeconds)) : DEFAULT_STORY_SECONDS)) * 1000;
+  const autoplay = !mobile && !reducedMotion && !atEnd;
+  const running =
+    autoplay && !documentHidden && !reading && !holding && !keyboardFocus && !videoPlaying;
+
+  const show = useCallback((nextId: string, nextIndex: number, mode: HistoryMode) => {
     setStageId(nextId);
-    setStoryIndex(0);
-    setStoryEpoch((value) => value + 1);
-    if (updateHistory) history.pushState({ stage: nextId }, "", `#${nextId}`);
+    setStoryIndex(nextIndex);
+    setVideoPlaying(false);
+    if (mode === "push") history.pushState({ stage: nextId }, "", `#${nextId}`);
+    if (mode === "replace") history.replaceState({ stage: nextId }, "", `#${nextId}`);
   }, []);
 
-  const previous = useCallback(() => setStoryIndex((value) => Math.max(0, value - 1)), []);
-  const next = useCallback(
-    () => setStoryIndex((value) => Math.min(Math.max(0, storyCount - 1), value + 1)),
-    [storyCount],
+  /**
+   * One story on or back. At either end of a stage it carries into the
+   * neighbouring stage, so the arrows, keys and autoplay run the whole case
+   * study rather than stopping at every stage boundary.
+   */
+  const step = useCallback(
+    (direction: 1 | -1, mode: HistoryMode) => {
+      const within = storyIndex + direction;
+      if (within >= 0 && within < storyCount) {
+        setStoryIndex(within);
+        setVideoPlaying(false);
+        return;
+      }
+      const target = stages[stageIndex + direction];
+      if (!target) return;
+      show(target.id, direction > 0 ? 0 : target.stories.length - 1, mode);
+    },
+    [show, stageIndex, stages, storyCount, storyIndex],
   );
-
+  const previous = useCallback(() => step(-1, "push"), [step]);
+  const next = useCallback(() => step(1, "push"), [step]);
+  const advanceRef = useRef(() => {});
   useEffect(() => {
-    remainingMs.current = (story?.durationSeconds ?? 6) * 1000;
-  }, [stage?.id, story?.durationSeconds, story?.id, storyEpoch]);
+    advanceRef.current = () => step(1, "replace");
+  }, [step]);
 
   useEffect(() => {
     const media = matchMedia("(max-width: 47.99rem)");
@@ -225,13 +315,13 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
     motion.addEventListener("change", syncMotion);
     const fromHash = location.hash.slice(1);
     const initialFrame = requestAnimationFrame(() => {
-      if (stages.some((item) => item.id === fromHash)) chooseStage(fromHash, false);
+      if (stages.some((item) => item.id === fromHash)) show(fromHash, 0, "none");
       else if (initialId) history.replaceState({ stage: initialId }, "", `#${initialId}`);
     });
     const pop = () => {
       const id = location.hash.slice(1);
-      if (stages.some((item) => item.id === id)) chooseStage(id, false);
-      else if (!id && initialId) chooseStage(initialId, false);
+      if (stages.some((item) => item.id === id)) show(id, 0, "none");
+      else if (!id && initialId) show(initialId, 0, "none");
     };
     addEventListener("popstate", pop);
     addEventListener("hashchange", pop);
@@ -242,38 +332,38 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       removeEventListener("popstate", pop);
       removeEventListener("hashchange", pop);
     };
-  }, [chooseStage, initialId, stages]);
+  }, [show, initialId, stages]);
 
+  // A new story starts its clock from zero.
   useEffect(() => {
-    if (
-      mobile ||
-      paused ||
-      documentHidden ||
-      reducedMotion ||
-      storyCount < 2 ||
-      storyIndex >= storyCount - 1
-    )
-      return;
-    timerStartedAt.current = performance.now();
-    const timer = window.setTimeout(next, remainingMs.current);
-    return () => {
-      window.clearTimeout(timer);
-      remainingMs.current = Math.max(
-        0,
-        remainingMs.current - (performance.now() - timerStartedAt.current),
+    elapsedMs.current = 0;
+  }, [storyKey]);
+
+  /*
+   * The autoplay clock. The same frame loop that counts the time paints the
+   * progress segment, so the bar and the advance can never disagree, and a
+   * pause keeps exactly the time already spent.
+   */
+  useEffect(() => {
+    const bar = progressRef.current;
+    const paint = () =>
+      bar?.style.setProperty(
+        "--story-progress",
+        String(Math.min(1, elapsedMs.current / durationMs)),
       );
-    };
-  }, [
-    documentHidden,
-    mobile,
-    next,
-    paused,
-    reducedMotion,
-    story?.durationSeconds,
-    storyCount,
-    storyEpoch,
-    storyIndex,
-  ]);
+    paint();
+    if (!running) return;
+    let last = performance.now();
+    let frame = requestAnimationFrame(function tick(now) {
+      // Behind the entry doorway the page is inert; the clock waits for it.
+      if (!articleRef.current?.closest("[inert]")) elapsedMs.current += now - last;
+      last = now;
+      paint();
+      if (elapsedMs.current >= durationMs) advanceRef.current();
+      else frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [durationMs, running, storyKey]);
 
   useEffect(() => {
     const visibility = () => setDocumentHidden(document.hidden);
@@ -300,23 +390,73 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
     return () => removeEventListener("keydown", keydown);
   }, [next, previous]);
 
+  // Keeps the selected stage centred when the stage list scrolls sideways.
   useEffect(() => {
     const nav = navRef.current;
     const selected = nav?.querySelector<HTMLElement>(`[data-stage-id="${stageId}"]`);
     if (!nav || !selected) return;
-    const targetLeft =
-      selected.offsetLeft - nav.offsetLeft - (nav.clientWidth - selected.clientWidth) / 2;
     nav.scrollTo({
-      left: targetLeft,
+      left: selected.offsetLeft - (nav.clientWidth - selected.clientWidth) / 2,
       behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
     });
   }, [stageId]);
+
+  // Moves the stage indicator onto the selected stage, and follows resizes.
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const selected = nav?.querySelector<HTMLElement>(`[data-stage-id="${stageId}"]`);
+    if (!nav || !selected) return;
+    const place = () => {
+      nav.style.setProperty("--indicator-x", `${selected.offsetLeft}px`);
+      nav.style.setProperty("--indicator-width", `${selected.offsetWidth}px`);
+    };
+    place();
+    const frame = requestAnimationFrame(() => nav.setAttribute("data-indicator", "ready"));
+    const observer = new ResizeObserver(place);
+    observer.observe(nav);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [stageId]);
+
+  /*
+   * Numbers the wrapped lines of the copy so they rise one after another.
+   * Runs before paint, so no word is ever seen before its line's turn. The
+   * step shrinks for long copy so the last line never trails far behind.
+   */
+  useLayoutEffect(() => {
+    const words = storyRef.current?.querySelectorAll<HTMLElement>("[data-word]");
+    if (!words?.length) return;
+    let line = -1;
+    let lineTop = -Infinity;
+    for (const word of words) {
+      const top = word.getBoundingClientRect().top;
+      if (top > lineTop + 2) {
+        line += 1;
+        lineTop = top;
+      }
+      word.style.setProperty("--line", String(line));
+    }
+    const step = Math.min(70, 900 / Math.max(1, line));
+    storyRef.current?.style.setProperty("--line-step", `${step}ms`);
+  }, [storyKey]);
+
+  const releaseHold = () => setHolding(false);
 
   if (!stage || !story) return null;
   const info = project.caseStudy.info;
 
   return (
-    <article className={styles.workspace} aria-label={`${project.title} case study`}>
+    <article
+      ref={articleRef}
+      className={styles.workspace}
+      aria-label={`${project.title} case study`}
+      onFocusCapture={(event) => {
+        if ((event.target as Element).matches(":focus-visible")) setKeyboardFocus(true);
+      }}
+      onBlurCapture={() => setKeyboardFocus(false)}
+    >
       <header className={styles.mobileHeader}>
         <h1>{project.title}</h1>
         <p>
@@ -347,15 +487,11 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       </aside>
 
       <section
+        ref={viewerRef}
         className={styles.viewer}
         aria-label={`${stage.label}: ${story.title}`}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={() => setPaused(false)}
         onTouchStart={(event) => {
           touchStart.current = event.touches[0]?.clientX ?? null;
-          setPaused(true);
         }}
         onTouchEnd={(event) => {
           const end = event.changedTouches[0]?.clientX;
@@ -367,59 +503,60 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             }
           }
           touchStart.current = null;
-          setPaused(false);
         }}
       >
-        {storyCount > 1 ? (
-          <div
-            key={`${stage.id}-${storyEpoch}`}
-            className={styles.storyProgress}
-            style={{ gridTemplateColumns: `repeat(${storyCount}, minmax(0, 1fr))` }}
-            aria-label={`Story ${storyIndex + 1} of ${storyCount}`}
+        <div
+          key={stage.id}
+          ref={progressRef}
+          className={styles.storyProgress}
+          data-autoplay={autoplay ? "on" : "off"}
+          style={{ gridTemplateColumns: `repeat(${storyCount}, minmax(0, 1fr))` }}
+          aria-label={`Story ${storyIndex + 1} of ${storyCount}`}
+        >
+          {stage.stories.map((item, index) => (
+            <span
+              key={item.id}
+              data-state={index < storyIndex ? "past" : index === storyIndex ? "current" : "future"}
+            >
+              <span />
+            </span>
+          ))}
+        </div>
+        <div
+          className={styles.visualFrame}
+          key={storyKey}
+          onPointerDown={(event) => {
+            if (!(event.target as Element).closest("button, a, video")) setHolding(true);
+          }}
+          onPointerUp={releaseHold}
+          onPointerCancel={releaseHold}
+          onPointerLeave={releaseHold}
+        >
+          <StoryVisualView
+            visual={story.visual}
+            onPlayingChange={setVideoPlaying}
+            onDuration={(seconds) => {
+              if (Number.isFinite(seconds) && seconds > 0) {
+                setMediaSeconds({ key: storyKey, seconds });
+              }
+            }}
+          />
+          <button
+            className={styles.previousControl}
+            onClick={previous}
+            hidden={atStart}
+            aria-label="Previous story"
           >
-            {stage.stories.map((item, index) => (
-              <span
-                key={item.id}
-                data-state={
-                  index < storyIndex ? "past" : index === storyIndex ? "current" : "future"
-                }
-              >
-                <span
-                  style={
-                    !mobile && !reducedMotion && index === storyIndex
-                      ? {
-                          animationDuration: `${item.durationSeconds ?? 6}s`,
-                          animationPlayState: paused || documentHidden ? "paused" : "running",
-                        }
-                      : undefined
-                  }
-                />
-              </span>
-            ))}
-          </div>
-        ) : null}
-        <div className={styles.visualFrame} key={`${stage.id}-${story.id}`}>
-          <StoryVisualView visual={story.visual} />
-          {storyCount > 1 ? (
-            <>
-              <button
-                className={styles.previousControl}
-                onClick={previous}
-                disabled={storyIndex === 0}
-                aria-label="Previous story"
-              >
-                <span aria-hidden="true">←</span>
-              </button>
-              <button
-                className={styles.nextControl}
-                onClick={next}
-                disabled={storyIndex === storyCount - 1}
-                aria-label="Next story"
-              >
-                <span aria-hidden="true">→</span>
-              </button>
-            </>
-          ) : null}
+            <ArrowGlyph direction="left" className={styles.controlGlyph} />
+          </button>
+          <button
+            className={styles.nextControl}
+            onClick={next}
+            hidden={atEnd}
+            aria-label="Next story"
+          >
+            <ArrowGlyph direction="right" className={styles.controlGlyph} />
+          </button>
         </div>
         {story.caption ? <p className={styles.caption}>{story.caption}</p> : null}
         {story.visual?.type === "image" && story.visual.zoomable ? (
@@ -435,52 +572,63 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       </section>
 
       <section
+        ref={storyRef}
         className={styles.story}
         aria-live="polite"
-        key={`copy-${stage.id}-${story.id}`}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={() => setPaused(false)}
+        key={`copy-${storyKey}`}
+        onMouseEnter={() => setReading(true)}
+        onMouseLeave={() => setReading(false)}
       >
-        <p className={styles.eyebrow}>{story.eyebrow ?? stage.label}</p>
-        <h2>{story.title}</h2>
-        <p className={styles.storyDescription}>{story.description}</p>
+        <p className={styles.eyebrow}>
+          <Lines text={story.eyebrow ?? stage.label} />
+        </p>
+        <h2>
+          <Lines text={story.title} />
+        </h2>
+        <p className={styles.storyDescription}>
+          <Lines text={story.description} />
+        </p>
         {story.supportingPoints?.length ? (
           <ul className={styles.points}>
             {story.supportingPoints.slice(0, 4).map((point) => (
-              <li key={point}>{point}</li>
+              <li key={point}>
+                <Lines text={point} />
+              </li>
             ))}
           </ul>
         ) : null}
-        {story.decision ? (
-          <p className={styles.detail}>
-            <strong>Decision</strong>
-            {story.decision}
-          </p>
-        ) : null}
-        {story.constraint ? (
-          <p className={styles.detail}>
-            <strong>Constraint</strong>
-            {story.constraint}
-          </p>
-        ) : null}
-        {story.outcome ? (
-          <p className={styles.detail}>
-            <strong>Outcome</strong>
-            {story.outcome}
-          </p>
-        ) : null}
+        {(
+          [
+            ["Decision", story.decision],
+            ["Constraint", story.constraint],
+            ["Outcome", story.outcome],
+          ] as const
+        ).map(([label, text]) =>
+          text ? (
+            <p key={label} className={styles.detail}>
+              <strong>
+                <Lines text={label} />
+              </strong>
+              <Lines text={text} />
+            </p>
+          ) : null,
+        )}
         {story.metric ? (
           <p className={styles.metric}>
-            <strong>{story.metric.value}</strong>
-            {story.metric.label}
+            <strong>
+              <Lines text={story.metric.value} />
+            </strong>
+            <Lines text={story.metric.label} />
           </p>
         ) : null}
         {story.quote ? (
           <blockquote>
-            {story.quote.text}
-            {story.quote.attribution ? <cite>{story.quote.attribution}</cite> : null}
+            <Lines text={story.quote.text} />
+            {story.quote.attribution ? (
+              <cite>
+                <Lines text={story.quote.attribution} />
+              </cite>
+            ) : null}
           </blockquote>
         ) : null}
         {story.supportingVideo ? (
@@ -490,26 +638,31 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             target="_blank"
             rel="noopener noreferrer"
           >
-            {story.supportingVideo.label} <span aria-hidden="true">↗</span>
+            <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
           </a>
         ) : null}
       </section>
 
-      <nav
-        ref={navRef}
-        className={styles.stageNav}
-        aria-label="Case study stages"
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocusCapture={() => setPaused(true)}
-        onBlurCapture={() => setPaused(false)}
-      >
+      <nav ref={navRef} className={styles.stageNav} aria-label="Case study stages">
+        <span className={styles.stageIndicator} aria-hidden="true" />
         {stages.map((item) => (
           <button
             key={item.id}
             data-stage-id={item.id}
             aria-current={item.id === stage.id ? "step" : undefined}
-            onClick={() => chooseStage(item.id)}
+            onClick={() => {
+              if (item.id !== stage.id) show(item.id, 0, "push");
+              // On a phone the reader may be deep in the copy; bring the new
+              // stage's visual back into view under the sticky stage list.
+              const viewer = viewerRef.current;
+              const below = navRef.current?.getBoundingClientRect().bottom ?? 0;
+              if (mobile && viewer && viewer.getBoundingClientRect().top < below) {
+                viewer.scrollIntoView({
+                  block: "start",
+                  behavior: reducedMotion ? "auto" : "smooth",
+                });
+              }
+            }}
           >
             {item.label}
           </button>

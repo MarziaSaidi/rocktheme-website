@@ -197,6 +197,11 @@
     padding-inline-start: 0;
     border-inline-start: 0;
   }
+
+  /* Case-study copy scrolls under the header on a phone; keep it legible. */
+  :global(body:has([data-case-study-page])) .header {
+    background: #000;
+  }
 }
 
 /* --------------------------------------------------------- entrance reveal */

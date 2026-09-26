@@ -19,6 +19,8 @@
   min-width: 0;
   padding: clamp(1.25rem, 2.2vw, 2rem);
   overflow: auto;
+  /* The rail stays put while everything right of it changes. */
+  border-inline-end: var(--border-hairline);
 }
 
 .railLabel,
@@ -120,17 +122,14 @@
 .storyProgress > span[data-state="past"] > span {
   scale: 1 1;
 }
+/* Painted every frame by the autoplay clock through --story-progress. */
 .storyProgress > span[data-state="current"] > span {
-  animation: story-fill linear forwards;
+  scale: var(--story-progress, 0) 1;
 }
 
-@keyframes story-fill {
-  from {
-    scale: 0 1;
-  }
-  to {
-    scale: 1 1;
-  }
+/* With no clock running, the current segment simply reads as the current one. */
+.storyProgress[data-autoplay="off"] > span[data-state="current"] > span {
+  scale: 1 1;
 }
 
 .visualFrame {
@@ -142,15 +141,20 @@
   min-height: 18rem;
   overflow: hidden;
   background: transparent;
-  animation: reveal var(--duration-interface) var(--ease-interface);
+  animation: visual-in 520ms var(--ease-interface) both;
 }
 
-@keyframes reveal {
+@keyframes visual-in {
+  from {
+    opacity: 0.2;
+    scale: 0.985;
+  }
+}
+
+@keyframes line-in {
   from {
     opacity: 0;
-  }
-  to {
-    opacity: 1;
+    translate: 0 0.45em;
   }
 }
 
@@ -343,42 +347,59 @@ video.visualMedia[data-fit="cover"] {
 .nextControl {
   position: absolute;
   inset-block: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
   width: 18%;
-  padding: 0;
-  color: transparent;
+  padding: 0 var(--space-5);
+  color: #fff;
   background: transparent;
   border: 0;
   cursor: pointer;
+  /* White over dark screens, dark over the paper boards: no card needed. */
+  mix-blend-mode: difference;
 }
 .previousControl {
   inset-inline-start: 0;
-  text-align: start;
+  justify-content: flex-start;
 }
 .nextControl {
   inset-inline-end: 0;
-  text-align: end;
+  justify-content: flex-end;
 }
-.previousControl span,
-.nextControl span {
-  display: inline-grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  margin: var(--space-4);
-  color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--brand-aubergine) 78%, transparent);
-  opacity: 0;
-  transition: opacity var(--duration-interface) var(--ease-interface);
+.previousControl[hidden],
+.nextControl[hidden] {
+  display: none;
 }
-.visualFrame:hover .previousControl:not(:disabled) span,
-.visualFrame:hover .nextControl:not(:disabled) span,
-.previousControl:focus-visible span,
-.nextControl:focus-visible span {
+
+.controlGlyph {
+  width: 1.75rem;
+  height: auto;
+  opacity: 0.55;
+  transition:
+    opacity var(--duration-interface) var(--ease-interface),
+    translate var(--duration-interface) var(--ease-interface);
+}
+.previousControl:hover .controlGlyph,
+.nextControl:hover .controlGlyph,
+.previousControl:focus-visible .controlGlyph,
+.nextControl:focus-visible .controlGlyph {
   opacity: 1;
 }
-.previousControl:disabled,
-.nextControl:disabled {
-  cursor: default;
+.previousControl:hover .controlGlyph {
+  translate: -0.25rem 0;
+}
+.nextControl:hover .controlGlyph {
+  translate: 0.25rem 0;
+}
+.previousControl:focus-visible,
+.nextControl:focus-visible {
+  outline: none;
+}
+.previousControl:focus-visible .controlGlyph,
+.nextControl:focus-visible .controlGlyph {
+  outline: 1px solid currentColor;
+  outline-offset: 0.5rem;
 }
 
 .caption {
@@ -417,7 +438,22 @@ video.visualMedia[data-fit="cover"] {
   min-width: 0;
   padding: clamp(1.5rem, 2.5vw, 2.5rem);
   overflow: auto;
-  animation: reveal var(--duration-interface) var(--ease-interface);
+}
+
+/* Each wrapped line rises in turn; --line is counted after the copy wraps. */
+.word {
+  display: inline-block;
+  animation: line-in 480ms var(--ease-interface) both;
+  animation-delay: calc(var(--line, 0) * var(--line-step, 60ms));
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .story h2 {
@@ -463,6 +499,7 @@ video.visualMedia[data-fit="cover"] {
 .story blockquote {
   margin: var(--space-6) 0 0;
   padding-block-start: var(--space-5);
+  border-block-start: var(--border-hairline);
   color: var(--color-text-secondary);
 }
 .detail strong,
@@ -488,34 +525,63 @@ video.visualMedia[data-fit="cover"] {
 }
 
 .stageNav {
+  position: relative;
   grid-column: 2 / 4;
   display: flex;
-  gap: clamp(1rem, 3vw, 3rem);
+  gap: clamp(0.5rem, 2vw, 2rem);
   align-items: stretch;
   justify-content: space-around;
   min-width: 0;
   padding-inline: clamp(1rem, 2vw, 1.75rem);
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  /* The track the indicator runs along. */
+  box-shadow: inset 0 1px 0 var(--color-line);
+}
+
+.stageIndicator {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: var(--indicator-width, 0);
+  height: 1px;
+  background: var(--color-text-primary);
+  translate: var(--indicator-x, 0) 0;
+}
+.stageNav[data-indicator="ready"] .stageIndicator {
+  transition:
+    translate 480ms var(--ease-interface),
+    width 480ms var(--ease-interface);
 }
 
 .stageNav button {
   position: relative;
   flex: 0 0 auto;
   min-height: 4rem;
-  padding: 0;
+  padding: 0 var(--space-3);
   color: var(--color-text-muted);
   font: inherit;
   font-size: var(--text-small);
   background: transparent;
   border: 0;
   cursor: pointer;
+  transition: color var(--duration-interface) var(--ease-interface);
 }
 
+.stageNav button:hover {
+  color: var(--color-text-secondary);
+}
+
+/* Colour alone marks the current stage, so the labels never change width. */
 .stageNav button[aria-current="step"] {
   color: var(--color-text-primary);
-  font-weight: var(--weight-body-strong);
 }
+
+.stageNav button:focus-visible {
+  outline: 1px solid var(--color-line-strong);
+  outline-offset: -0.75rem;
+}
+
 .mobileHeader {
   display: none;
 }
@@ -577,7 +643,7 @@ video.visualMedia[data-fit="cover"] {
   }
   .mobileHeader {
     display: block;
-    padding: var(--space-5) var(--layout-gutter);
+    padding: var(--space-4) var(--layout-gutter) var(--space-5);
   }
   .mobileHeader h1 {
     font-size: 2.5rem;
@@ -593,45 +659,65 @@ video.visualMedia[data-fit="cover"] {
   }
   .viewer {
     order: 2;
-    padding: var(--space-4) var(--layout-gutter);
+    padding: var(--space-4) var(--layout-gutter) 0;
+    /* Lands clear of the fixed header and the sticky stage list. */
+    scroll-margin-top: calc(var(--header-height-stacked) + 3rem);
   }
+  .storyProgress {
+    margin-block-end: var(--space-3);
+  }
+  /* The frame is as tall as what it shows: no fixed box, no empty band. */
   .visualFrame {
-    min-height: min(68dvh, 31rem);
+    min-height: 0;
   }
   .visualMedia {
-    max-height: min(68dvh, 31rem);
+    height: auto;
+    max-height: 64svh;
   }
   .story {
     order: 3;
-    padding: var(--space-8) var(--layout-gutter);
+    padding: var(--space-6) var(--layout-gutter) var(--space-8);
     overflow: visible;
   }
   .story h2 {
     max-width: 17ch;
   }
+  /*
+   * On a phone the stage list sits under the project title and stays pinned
+   * below the header, so every stage is one tap away from anywhere in the
+   * copy. It scrolls sideways; the faded edges say there is more.
+   */
   .stageNav {
-    order: 4;
+    position: sticky;
+    inset-block-start: var(--header-height-stacked);
+    z-index: 3;
+    order: 1;
+    gap: 0;
     justify-content: flex-start;
     padding-inline: var(--layout-gutter);
+    background: #000;
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--layout-gutter),
+      #000 calc(100% - var(--layout-gutter)),
+      transparent
+    );
   }
-  .previousControl span,
-  .nextControl span {
-    opacity: 1;
+  .stageNav button {
+    min-height: 2.75rem;
   }
   .previousControl,
   .nextControl {
     inset-block: 50% auto;
     width: 3.5rem;
     height: 3.5rem;
+    padding: 0;
+    justify-content: center;
     translate: 0 -50%;
   }
-  .previousControl span,
-  .nextControl span {
-    margin: 0;
-  }
-  .storyProgress > span[data-state="current"] > span {
-    animation: none;
-    scale: 1 1;
+  .controlGlyph {
+    opacity: 0.85;
   }
   .comparison {
     grid-template-columns: 1fr;
@@ -641,44 +727,36 @@ video.visualMedia[data-fit="cover"] {
     overflow-y: auto;
   }
   .sequence {
-    padding: var(--space-4);
+    height: auto;
+    padding: var(--space-4) var(--space-3);
   }
   .sequenceItems {
     min-height: 0;
+    grid-template-rows: auto;
   }
-  .visualFrame:has(.sequence[data-layout="board"]),
-  .visualFrame:has(.sequence[data-layout="mosaic"]) {
-    display: block;
-    overflow: visible;
-  }
-  .sequence[data-layout="board"],
-  .sequence[data-layout="mosaic"] {
-    height: auto;
-  }
+  /*
+   * Boards keep their desktop grid. Each screen still opens full size on
+   * tap, and the whole flow stays readable in one view instead of a column
+   * of phones taller than the screen.
+   */
   .sequence[data-layout="board"] .sequenceItems,
   .sequence[data-layout="mosaic"] .sequenceItems {
     grid-template-rows: auto;
-    overflow: visible;
+    row-gap: var(--space-4);
   }
-  .sequence[data-layout="board"] .sequenceItems {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .sequence[data-layout="mosaic"] .sequenceItems {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .sequenceItem figcaption {
+    margin-block-start: var(--space-2);
+    font-size: 0.625rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .visualFrame,
-  .story {
+  .word {
     animation: none;
   }
-  .storyProgress > span[data-state="current"] > span {
-    animation: none;
-    scale: 1 1;
-  }
-  .previousControl span,
-  .nextControl span {
+  .controlGlyph,
+  .stageNav[data-indicator="ready"] .stageIndicator {
     transition: none;
   }
 }
