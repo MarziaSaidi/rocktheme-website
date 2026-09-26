@@ -114,24 +114,6 @@
     overflow: hidden;
     white-space: nowrap;
   }
-
-  /*
-   * Until the camera has arrived at the first stone, the stage keeps its
-   * interface out of the shot; it comes in as the camera settles.
-   */
-  .controls {
-    transition:
-      opacity 640ms var(--ease-interface),
-      visibility 0s;
-  }
-
-  :global(:root[data-journey]:not([data-arrived])) .controls {
-    opacity: 0;
-    visibility: hidden;
-    transition:
-      opacity 320ms var(--ease-interface),
-      visibility 0s 320ms;
-  }
 }
 
 /* ---------------------------------------------------------------- project */
@@ -421,88 +403,6 @@
   transform: translateX(0.25rem);
 }
 
-/* --------------------------------------------------------------- controls */
-
-.controls {
-  position: absolute;
-  z-index: var(--layer-content);
-  inset-inline: var(--layout-gutter);
-  inset-block-end: clamp(1.5rem, 5vh, 3rem);
-  display: flex;
-  gap: var(--space-8);
-  align-items: center;
-}
-
-.scroll {
-  composes: micro from "../../styles/type.module.css";
-  display: flex;
-  gap: var(--space-3);
-  align-items: center;
-  margin: 0;
-  color: var(--color-text-muted);
-}
-
-.scrollIcon {
-  width: 1.125rem;
-  height: 1.125rem;
-  fill: none;
-  stroke: var(--color-line-strong);
-  stroke-width: 1.1;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  overflow: visible;
-}
-
-.scrollIcon path:last-child {
-  stroke: var(--color-text-muted);
-}
-
-.steps {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.step {
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  padding: 0;
-  border: var(--border-hairline);
-  border-radius: 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-family: var(--font-body);
-  font-size: var(--text-small);
-  cursor: pointer;
-  transition:
-    color var(--duration-interface) var(--ease-interface),
-    border-color var(--duration-interface) var(--ease-interface);
-}
-
-.step:hover {
-  border-color: var(--color-line-strong);
-  color: var(--color-text-primary);
-}
-
-.step[aria-disabled="true"] {
-  cursor: default;
-  opacity: 0.45;
-}
-
-.continue {
-  composes: micro from "../../styles/type.module.css";
-  margin-inline-start: auto;
-  padding-block: var(--space-2);
-  color: var(--color-text-muted);
-  text-decoration: none;
-  transition: color var(--duration-interface) var(--ease-interface);
-}
-
-.continue:hover {
-  color: var(--color-text-primary);
-}
-
 /* --------------------------------------------------------------- fallback */
 
 /*
@@ -587,19 +487,6 @@
 
   .view {
     margin-block-start: var(--space-4);
-  }
-
-  /* The continue link is too long to share a row at phone width. */
-  .controls {
-    inset-block-end: clamp(1.25rem, 3.5svh, 2rem);
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-5);
-  }
-
-  .continue {
-    flex-basis: 100%;
-    margin-inline-start: 0;
-    white-space: nowrap;
   }
 
   .fallback {

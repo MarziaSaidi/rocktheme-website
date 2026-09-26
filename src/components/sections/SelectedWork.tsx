@@ -1,6 +1,6 @@
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { MonolithGallery, type GalleryProject } from "@/components/work/MonolithGallery";
-import { sectionAnchors, sectionHref } from "@/config/sections";
+import { sectionAnchors } from "@/config/sections";
 import { getProjectRoute, type Project } from "@/content/projects";
 import { siteContent } from "@/content/site/siteContent";
 
@@ -46,11 +46,6 @@ export function SelectedWork({ projects }: SelectedWorkProps) {
         heading={work.displayHeading}
         galleryLabel={work.galleryLabel}
         viewLabel={work.viewLabel}
-        scrollLabel={work.scrollLabel}
-        previousLabel={work.previousLabel}
-        nextLabel={work.nextLabel}
-        continueLabel={work.continueLabel}
-        continueHref={sectionHref("about")}
       >
         {/* Inside the stage so the fallback backdrop stays pinned with it. */}
         <EnvironmentLayer sectionId="selected-work" />

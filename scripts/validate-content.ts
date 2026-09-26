@@ -429,14 +429,7 @@ function validateSiteContent(): void {
   validateRequiredString(siteContent.hero.planeGroupLabel, "site.hero.planeGroupLabel");
 
   validateRequiredString(siteContent.work.displayHeading, "site.work.displayHeading");
-  for (const key of [
-    "galleryLabel",
-    "viewLabel",
-    "scrollLabel",
-    "previousLabel",
-    "nextLabel",
-    "continueLabel",
-  ] as const) {
+  for (const key of ["galleryLabel", "viewLabel"] as const) {
     validateRequiredString(siteContent.work[key], `site.work.${key}`);
   }
 

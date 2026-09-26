@@ -46,10 +46,6 @@ export const siteContent = {
     displayHeading: "Selected work",
     galleryLabel: "Selected projects",
     viewLabel: "View case study",
-    scrollLabel: "Scroll",
-    previousLabel: "Previous project",
-    nextLabel: "Next project",
-    continueLabel: "Continue to How I Work",
   },
   statement: {
     heading: "How I work",

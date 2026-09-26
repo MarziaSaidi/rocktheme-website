@@ -1,19 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { emitSoundEvent } from "@/sound/soundEvents";
 import { setMonolithFaces } from "@/webgl/monolithChannel";
 import { setSceneFocus } from "@/webgl/sceneFocus";
-import { detailsPoint, workMoment, workScreens } from "@/webgl/workJourney";
+import { workMoment, workScreens } from "@/webgl/workJourney";
 
 import styles from "./MonolithGallery.module.css";
 
@@ -56,18 +49,9 @@ type MonolithGalleryProps = Readonly<{
   heading: string;
   galleryLabel: string;
   viewLabel: string;
-  scrollLabel: string;
-  previousLabel: string;
-  nextLabel: string;
-  continueLabel: string;
-  continueHref: string;
   /** Backdrop drawn behind the stage, pinned with it. */
   children?: ReactNode;
 }>;
-
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-/** Screens either side of a project's viewing point that still count as "at" it. */
-const AT_PROJECT = 0.05;
 
 const pad = (value: number) => value.toString().padStart(2, "0");
 
@@ -85,8 +69,6 @@ const pad = (value: number) => value.toString().padStart(2, "0");
  * only be present while the camera stands still at its own stone, scrolling
  * back reverses everything, and every input (wheel, touch, keyboard,
  * scrollbar, the nav) behaves as it does on the rest of the page.
- *
- * The Previous and Next buttons scroll to a project's viewing point.
  */
 export function MonolithGallery({
   projects,
@@ -94,15 +76,9 @@ export function MonolithGallery({
   heading,
   galleryLabel,
   viewLabel,
-  scrollLabel,
-  previousLabel,
-  nextLabel,
-  continueLabel,
-  continueHref,
   children,
 }: MonolithGalleryProps) {
   const runwayRef = useRef<HTMLDivElement>(null);
-  const screensRef = useRef(0);
   const [active, setActive] = useState(0);
   /** Whether the scroll stands in a project's details window. */
   const [inWindow, setInWindow] = useState(false);
@@ -113,9 +89,6 @@ export function MonolithGallery({
    * position alone does not mean the spring has finished carrying the camera.
    */
   const shown = inWindow && settled;
-  /** Whether there is a project to step back to, or on to. */
-  const [canPrevious, setCanPrevious] = useState(false);
-  const [canNext, setCanNext] = useState(true);
 
   // One stone per project; the scene has two.
   const featured = projects.slice(0, 2);
@@ -140,12 +113,9 @@ export function MonolithGallery({
       const box = runway.getBoundingClientRect();
       const span = box.height - window.innerHeight;
       const screens = span > 0 ? Math.min(1, Math.max(0, -box.top / span)) * total : 0;
-      screensRef.current = screens;
       const moment = workMoment(screens, count);
       setActive(moment.project);
       setInWindow(moment.details);
-      setCanPrevious(screens > detailsPoint(0) + AT_PROJECT);
-      setCanNext(screens < detailsPoint(count - 1) - AT_PROJECT);
     };
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(sync);
@@ -182,30 +152,6 @@ export function MonolithGallery({
   useEffect(() => {
     if (shown) emitSoundEvent("project:active", { step: active });
   }, [shown, active]);
-
-  /** Scrolls the page to where project `index` is shown with its details. */
-  const goTo = useCallback(
-    (index: number) => {
-      const runway = runwayRef.current;
-      if (!runway || index < 0 || index >= count || total === 0) return;
-      const box = runway.getBoundingClientRect();
-      const span = box.height - window.innerHeight;
-      const top = window.scrollY + box.top + (detailsPoint(index) / total) * span;
-      const reduced = window.matchMedia(REDUCED_MOTION_QUERY).matches;
-      window.scrollTo({ top, behavior: reduced ? "auto" : "smooth" });
-    },
-    [count, total],
-  );
-
-  const step = (direction: 1 | -1) => {
-    const at = screensRef.current;
-    const indices = featured.map((_, index) => index);
-    const next =
-      direction > 0
-        ? indices.find((index) => detailsPoint(index) > at + AT_PROJECT)
-        : indices.findLast((index) => detailsPoint(index) < at - AT_PROJECT);
-    if (next !== undefined) goTo(next);
-  };
 
   const current = featured[active];
 
@@ -311,43 +257,6 @@ export function MonolithGallery({
               </article>
             ) : null}
           </div>
-        </div>
-
-        <div className={styles.controls}>
-          <p className={styles.scroll}>
-            <svg className={styles.scrollIcon} viewBox="0 0 24 24" aria-hidden="true">
-              {/* An open circle, 300° of arc, ending in a small arrowhead. */}
-              <path d="M12 3.5a8.5 8.5 0 1 1-7.36 4.25" />
-              <path d="M1.6 9 4.64 7.75 5.07 11" />
-            </svg>
-            <span>{scrollLabel}</span>
-          </p>
-
-          <div className={styles.steps}>
-            <button
-              type="button"
-              className={styles.step}
-              onClick={() => step(-1)}
-              aria-label={previousLabel}
-              aria-disabled={canPrevious ? undefined : true}
-            >
-              <span aria-hidden="true">←</span>
-            </button>
-            <button
-              type="button"
-              className={styles.step}
-              onClick={() => step(1)}
-              aria-label={nextLabel}
-              aria-disabled={canNext ? undefined : true}
-            >
-              <span aria-hidden="true">→</span>
-            </button>
-          </div>
-
-          <a className={styles.continue} href={continueHref}>
-            {continueLabel}
-            <span aria-hidden="true"> ↓</span>
-          </a>
         </div>
       </div>
     </div>
