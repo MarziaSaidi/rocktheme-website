@@ -20,7 +20,25 @@
   padding-block-end: clamp(5rem, 14vh, 10rem);
 }
 
-/* The contact headline remains solid type; particles live only in the scene. */
+/* The contact headline remains solid type. */
+
+/*
+ * The scene paints a handful of its particles here, above the headline and the
+ * plane, so the type sits inside the trail rather than on top of it. It never
+ * takes input.
+ */
+.frontParticles {
+  position: absolute;
+  inset: 0;
+  z-index: calc(var(--layer-content) + 1);
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+:root:not([data-scene-active]) .frontParticles {
+  display: none;
+}
 
 /* ------------------------------------------------------------- invitation */
 

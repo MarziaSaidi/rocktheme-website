@@ -252,6 +252,51 @@ export type ParticleConfig = Readonly<{
   focusEase: number;
   /** How present the stream is, 0 to 1 (default 1). Eased on a chapter change. */
   presence?: number;
+  /**
+   * When set, the field is a trail instead of a full-width stream: particles
+   * flow along fixed strands whose control points are pinned to named screen
+   * anchors, so the river stays put while the particles in it move.
+   */
+  trail?: ParticleTrailConfig;
+}>;
+
+/**
+ * A control point on a trail strand. `at` is a position in the anchor
+ * rectangle's own fractions (0 to 1 inside it; outside is allowed). `width` is
+ * the strand's width there in CSS px, authored at a 900px-tall viewport.
+ * `front` is the share of particles drawn above the page as they pass here.
+ */
+export type ParticleTrailPoint = Readonly<{
+  anchor: string;
+  at: Vector2Tuple;
+  width: number;
+  front?: number;
+}>;
+
+/** One strand, listed upstream first. Particles enter at the first point. */
+export type ParticleTrailStrand = Readonly<{
+  points: readonly ParticleTrailPoint[];
+  /** Share of the particles that flow along this strand. */
+  weight: number;
+  alpha?: number;
+}>;
+
+export type ParticleTrailConfig = Readonly<{
+  strands: readonly ParticleTrailStrand[];
+  /** Speed along the strand, CSS px per second. */
+  speed: Vector2Tuple;
+  /** Shares of the particles in the loose edge and escaping the trail; the rest are core. */
+  edgeFraction: number;
+  escapeFraction: number;
+  /** Seconds an escaped particle takes to drift off and fade. */
+  escapeSeconds: Vector2Tuple;
+  /** Perpendicular wobble, as a share of the local width, and its rate in rad/s. */
+  wobble: number;
+  wobbleRate: Vector2Tuple;
+  /** Opacity ceiling for particles drawn over the content. */
+  frontAlpha: number;
+  /** Multiplies the quality tier's particle count. */
+  countScale: number;
 }>;
 
 export type SceneSectionConfig = Readonly<{

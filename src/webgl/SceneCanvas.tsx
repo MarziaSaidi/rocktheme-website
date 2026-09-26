@@ -10,7 +10,7 @@ import { subscribeEntryArrival } from "./entryChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { JourneyStops } from "./core/cameraJourney";
 import type { Environment, EnvironmentStats } from "./core/environment";
-import type { ObstacleRect } from "./modules/particleField";
+import type { AnchorRects, ObstacleRect } from "./modules/particleField";
 
 /**
  * React leaf for the environment scene.
@@ -27,6 +27,10 @@ import type { ObstacleRect } from "./modules/particleField";
 
 /** Elements carrying this attribute are flowed around by the particle field. */
 const OBSTACLE_SELECTOR = "[data-scene-obstacle]";
+/** Named rectangles a particle trail is composed against. */
+const ANCHOR_SELECTOR = "[data-scene-anchor]";
+/** A page canvas above the content, for particles that pass in front of it. */
+const FRONT_LAYER_SELECTOR = "canvas[data-scene-front-layer]";
 
 type SceneCanvasProps = Readonly<{
   /** Exposes stats for the development overlay. */
@@ -79,6 +83,21 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     };
 
     /*
+     * Anchors are measured whether or not they are on screen: a trail keeps its
+     * place against them as they scroll in.
+     */
+    const measureAnchors = (): AnchorRects => {
+      const anchors: Record<string, ObstacleRect> = {};
+      document.querySelectorAll<HTMLElement>(ANCHOR_SELECTOR).forEach((node) => {
+        const name = node.dataset.sceneAnchor;
+        const box = node.getBoundingClientRect();
+        if (!name || box.width === 0) return;
+        anchors[name] = { x: box.left, y: box.top, width: box.width, height: box.height };
+      });
+      return anchors;
+    };
+
+    /*
      * The camera journey's scroll ranges, read from the sections themselves so
      * a change of copy, layout or breakpoint moves the rests with it.
      */
@@ -119,6 +138,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       obstacleFrame = requestAnimationFrame(() => {
         obstacleFrame = 0;
         environment?.setObstacles(measureObstacles());
+        environment?.setAnchors(measureAnchors());
         syncChapter();
       });
     };
@@ -210,6 +230,8 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       environment.resize(canvas.clientWidth, canvas.clientHeight);
       syncJourney();
       environment.setObstacles(measureObstacles());
+      environment.setAnchors(measureAnchors());
+      environment.setFrontLayer(document.querySelector<HTMLCanvasElement>(FRONT_LAYER_SELECTOR));
       syncChapter();
 
       pointerSource = createPointerSource();

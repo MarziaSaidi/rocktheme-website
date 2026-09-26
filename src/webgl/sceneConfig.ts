@@ -234,6 +234,85 @@ export const heroHorizonLightConfig: HorizonLightConfig = {
 export const heroParticleConfig: ParticleConfig = { ...particleConfig, presence: 0 };
 
 /*
+ * Contact is one trail, not a field. Strands are listed upstream first and
+ * flow right to left: down from the top right, across the lower half of the
+ * conversation plane ("plane"), pinched through the dark gap, then through the
+ * right end of the headline ("heading"), sweeping up from "TED." to "ATE". A
+ * thinner thread runs on low through the second line, one wraps under the
+ * plane, and a faint one runs high above. Front shares are non-zero only where a strand crosses the type
+ * or the plane, so the crossing is dimensional and the rest of each letter
+ * stays clean. Widths are CSS px at a 900px-tall viewport.
+ */
+export const footerParticleConfig: ParticleConfig = {
+  ...particleConfig,
+  sizeRange: [1.1, 2.5],
+  trail: {
+    strands: [
+      {
+        weight: 0.72,
+        points: [
+          { anchor: "plane", at: [1.32, -1.05], width: 50 },
+          { anchor: "plane", at: [1.12, -0.35], width: 44 },
+          { anchor: "plane", at: [0.98, 0.3], width: 42, front: 0.12 },
+          { anchor: "plane", at: [0.75, 0.66], width: 70, front: 0.14 },
+          { anchor: "plane", at: [0.45, 0.78], width: 88, front: 0.12 },
+          { anchor: "plane", at: [0.12, 0.6], width: 52, front: 0.08 },
+          { anchor: "plane", at: [-0.15, 0.42], width: 32 },
+          // Into the headline, sweeping up and left from "TED." toward "ATE".
+          { anchor: "heading", at: [0.97, 0.64], width: 62, front: 0.6 },
+          { anchor: "heading", at: [0.86, 0.58], width: 88, front: 0.62 },
+          { anchor: "heading", at: [0.76, 0.46], width: 70, front: 0.6 },
+          { anchor: "heading", at: [0.68, 0.33], width: 44, front: 0.56 },
+          { anchor: "heading", at: [0.6, 0.24], width: 18, front: 0.45 },
+        ],
+      },
+      {
+        // A thinner thread that carries on low through the second line.
+        weight: 0.12,
+        points: [
+          { anchor: "plane", at: [0.02, 0.6], width: 18 },
+          { anchor: "heading", at: [1.04, 0.66], width: 20 },
+          { anchor: "heading", at: [0.88, 0.72], width: 28, front: 0.55 },
+          { anchor: "heading", at: [0.72, 0.76], width: 24, front: 0.5 },
+          { anchor: "heading", at: [0.58, 0.74], width: 12, front: 0.4 },
+        ],
+      },
+      {
+        // Wrapping under the plane and rejoining the main strand.
+        weight: 0.1,
+        points: [
+          { anchor: "plane", at: [1.08, 0.75], width: 20 },
+          { anchor: "plane", at: [0.85, 1.1], width: 26, front: 0.06 },
+          { anchor: "plane", at: [0.55, 1.14], width: 22 },
+          { anchor: "plane", at: [0.3, 0.95], width: 20 },
+          { anchor: "plane", at: [0.12, 0.7], width: 18 },
+        ],
+      },
+      {
+        // Faint and high, from the top right toward the headline.
+        weight: 0.08,
+        alpha: 0.75,
+        points: [
+          { anchor: "plane", at: [1.2, -1.5], width: 24 },
+          { anchor: "plane", at: [0.6, -1.05], width: 28 },
+          { anchor: "plane", at: [0.0, -0.75], width: 22 },
+          { anchor: "heading", at: [0.9, 0.05], width: 16 },
+          { anchor: "heading", at: [0.72, -0.05], width: 10 },
+        ],
+      },
+    ],
+    speed: [22, 62],
+    edgeFraction: 0.2,
+    escapeFraction: 0.03,
+    escapeSeconds: [4, 8],
+    wobble: 0.08,
+    wobbleRate: [0.3, 1.1],
+    frontAlpha: 1,
+    countScale: 2.8,
+  },
+};
+
+/*
  * The intro keeps two quiet beacons well to the left. At landscape intensity
  * they lit the water into a bright violet that the charcoal rock could not
  * belong to; here the rock is the subject and the water stays close to it.
@@ -955,7 +1034,7 @@ export const sceneSections = {
     fog: horizonAtmosphereConfig,
     mist: lowMistConfig,
     water: floorConfig,
-    particles: particleConfig,
+    particles: footerParticleConfig,
     rockInstanceIds: ["footer-dominant-right"],
     reducedMotion,
   },
