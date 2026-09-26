@@ -48,13 +48,11 @@ export const siteContent = {
     viewLabel: "View case study",
   },
   statement: {
-    heading: "How I work",
     paragraphs: [
-      "I like figuring out how things work, then finding ways to make them better.",
-      "I move between design, code, and AI to explore, prototype, and ship.",
+      "I explore how to shape AI-era workflows with craft and taste, building the next generation of digital products.",
     ],
-    /** Stage 4 attaches per-word reveals to these terms. */
-    emphasis: ["design", "code", "AI", "ship"],
+    /** Words that settle in lavender as the sentence is read. */
+    emphasis: ["AI-era", "craft", "taste"],
   },
   contact: {
     displayLines: ["Let’s create", "the unexpected."],

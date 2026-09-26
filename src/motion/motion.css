@@ -27,8 +27,6 @@
   --motion-keyframes-display: motionDisplayRise;
   --motion-keyframes-copy: motionCopyReveal;
   --motion-keyframes-plane: motionPlaneSettle;
-  --motion-keyframes-term-code: motionTermCode;
-  --motion-keyframes-term-light: motionTermLight;
   --motion-keyframes-dissolve: motionDissolve;
   --motion-keyframes-speckle: motionSpeckle;
 
@@ -84,22 +82,12 @@
 
   /* ------------------------------------------ personal statement reveal */
   /*
-   * The statement is the calm scene. Its paragraphs arrive slowly, one after
-   * the other, and the three marked terms each receive one restrained
-   * treatment on top. Nothing glitches, stutters or repeats.
+   * The statement is the calm scene. The thesis is lit by scroll
+   * (ReadingLight); any further paragraph arrives slowly after it.
    */
   --motion-statement-delay: 120ms;
   --motion-statement-duration: 1100ms;
   --motion-statement-stagger: 320ms;
-
-  /* "code" assembles in a mechanical sequence rather than fading. */
-  --motion-term-code-delay: 1200ms;
-  --motion-term-code-duration: 760ms;
-  --motion-ease-mechanical: steps(11, end);
-
-  /* "AI" receives one traveling light. It passes once and does not loop. */
-  --motion-term-light-delay: 1700ms;
-  --motion-term-light-duration: 2000ms;
 
   /* ------------------------------------------------- footer dissolve */
   /*
@@ -222,30 +210,6 @@
   }
 }
 
-/* "code" assembles from the left in discrete steps. */
-@keyframes motionTermCode {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-/* One restrained light passes across "AI". The base fill never moves. */
-@keyframes motionTermLight {
-  from {
-    background-position:
-      -120% 0,
-      0 0;
-  }
-  to {
-    background-position:
-      260% 0,
-      0 0;
-  }
-}
-
 /*
  * The solid word erodes from the right, then returns.
  *
@@ -335,11 +299,6 @@
     --motion-statement-delay: 0ms;
     --motion-statement-duration: 200ms;
     --motion-statement-stagger: 60ms;
-    --motion-term-code-delay: 0ms;
-    --motion-term-code-duration: 200ms;
-    --motion-ease-mechanical: linear;
-    --motion-term-light-delay: 0ms;
-    --motion-term-light-duration: 200ms;
     /* The footer word never dissolves; it simply stays legible. */
     --motion-dissolve-duration: 0s;
 

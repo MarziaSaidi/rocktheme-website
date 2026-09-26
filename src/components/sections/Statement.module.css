@@ -15,23 +15,6 @@
   padding-inline: var(--layout-gutter);
 }
 
-.eyebrow {
-  composes: micro from "../../styles/type.module.css";
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin: 0 0 clamp(2rem, 5vh, 3.5rem);
-  color: var(--color-text-muted);
-}
-
-.eyebrow::after {
-  content: "";
-  display: block;
-  width: clamp(2rem, 6vw, 5rem);
-  height: 1px;
-  background: var(--color-line-strong);
-}
-
 .thesis {
   max-width: 24ch;
   margin: 0;
@@ -60,15 +43,39 @@
   color: var(--color-text-primary);
 }
 
+/* ============================================================ reading light */
+
+/*
+ * ReadingLight publishes --read (0 → 1) while the thesis crosses the reading
+ * band. Each word lights once the reading position passes its index, over a
+ * short soft edge a few words wide. The default of 1 is the settled state:
+ * without JavaScript, or with reduced motion, the sentence is simply lit.
+ */
+.thesis {
+  --read: 1;
+  --word-dim: color-mix(in srgb, var(--color-text-primary) 18%, transparent);
+}
+
+.word {
+  --lit: clamp(0, calc((var(--read) * (var(--count) + 3) - var(--i)) / 3), 1);
+  --word-lit: var(--color-text-primary);
+  /* Keeps hyphenated terms such as "AI-era" on one line. */
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--word-lit) calc(var(--lit) * 100%), var(--word-dim));
+}
+
+.word[data-term] {
+  --word-lit: color-mix(in srgb, var(--brand-lavender) 70%, var(--brand-porcelain));
+}
+
 /* ========================================================= statement motion */
 
 /*
  * The copy is present and readable before anything animates. `data-in-view`
  * only adds the arrival; its absence means "settled", not "hidden", so the
- * section is complete without JavaScript.
+ * section is complete without JavaScript. The thesis has no arrival of its
+ * own: the reading light is its motion.
  */
-.section[data-in-view] .eyebrow,
-.section[data-in-view] .thesis,
 .section[data-in-view] .body {
   animation-name: var(--motion-keyframes-copy);
   animation-duration: var(--motion-statement-duration);
@@ -76,67 +83,8 @@
   animation-fill-mode: both;
 }
 
-.section[data-in-view] .eyebrow {
-  animation-delay: var(--motion-statement-delay);
-}
-
-.section[data-in-view] .thesis {
-  animation-delay: calc(var(--motion-statement-delay) + var(--motion-statement-stagger));
-}
-
 .section[data-in-view] .body {
-  animation-delay: calc(var(--motion-statement-delay) + var(--motion-statement-stagger) * 2);
-}
-
-/*
- * "design" is traced by the particle field rather than by CSS. SectionMotion
- * publishes this word's rectangle to the scene; nothing is drawn here.
- */
-
-/* "code" assembles from the left in discrete steps. No blur, no flicker. */
-.section[data-in-view] .term[data-term="code"] {
-  animation-name: var(--motion-keyframes-term-code);
-  animation-duration: var(--motion-term-code-duration);
-  animation-timing-function: var(--motion-ease-mechanical);
-  animation-delay: var(--motion-term-code-delay);
-  animation-fill-mode: both;
-}
-
-/*
- * "AI" receives one traveling light. Two clipped backgrounds: a solid fill so
- * the word is always legible, and a highlight that passes across it once.
- */
-@supports (background-clip: text) or (-webkit-background-clip: text) {
-  .term[data-term="AI"] {
-    background-image:
-      linear-gradient(100deg, transparent 42%, var(--brand-porcelain) 50%, transparent 58%),
-      linear-gradient(var(--color-text-primary), var(--color-text-primary));
-    background-repeat: no-repeat;
-    background-size:
-      280% 100%,
-      100% 100%;
-    background-position:
-      260% 0,
-      0 0;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .section[data-in-view] .term[data-term="AI"] {
-    animation-name: var(--motion-keyframes-term-light);
-    animation-duration: var(--motion-term-light-duration);
-    animation-timing-function: var(--motion-ease-interface);
-    animation-delay: var(--motion-term-light-delay);
-    animation-fill-mode: both;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  /* The mechanical assembly would read as a stutter, so it is dropped. */
-  .section[data-in-view] .term[data-term="code"] {
-    animation-name: none;
-  }
+  animation-delay: calc(var(--motion-statement-delay) + var(--motion-statement-stagger));
 }
 
 @media (max-width: 63.99rem) {

@@ -433,7 +433,6 @@ function validateSiteContent(): void {
     validateRequiredString(siteContent.work[key], `site.work.${key}`);
   }
 
-  validateRequiredString(siteContent.statement.heading, "site.statement.heading");
   validateStringArray(siteContent.statement.paragraphs, "site.statement.paragraphs");
   validateStringArray(siteContent.statement.emphasis, "site.statement.emphasis");
 
