@@ -45,8 +45,8 @@ function subscribeEntry(listener: () => void): () => void {
   return () => window.removeEventListener(ENTRY_EVENT, listener);
 }
 
-/** How long the gate takes to open onto the hero once the camera has crossed. */
-const REVEAL_MS = 380;
+/** How long the page takes to fade up out of the passage's black. */
+const REVEAL_MS = 1100;
 
 export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>) {
   const [forcedEntered, setForcedEntered] = useState(false);
@@ -81,8 +81,8 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
   }, []);
 
   /*
-   * The camera is through the doorway. The hero camera takes over the last
-   * stretch of the journey while the gate opens onto it, then the gate goes.
+   * The passage has closed to black: the page fades up out of it while the
+   * hero camera glides into its rest, then the gate goes.
    */
   const reveal = useCallback(() => {
     if (revealTimer.current !== null) return;
@@ -129,6 +129,7 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
           data-leaving={leaving ? "" : undefined}
           aria-label="Enter the portfolio"
         >
+          <div className={styles.sky} aria-hidden="true" />
           <IntroDoorway ref={doorway} surface={gate} onCrossed={reveal} />
           <div className={styles.choices}>
             <button

@@ -360,13 +360,14 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   /** Where the scroll is taking the camera: if that is elsewhere, it is not at rest. */
   const destination: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
   /*
-   * The entry arrival: the camera carries on forward out of the doorway and
-   * decelerates into the hero rest. Offsets are where it starts relative to
-   * that rest; -1 means no arrival is running.
+   * The entry arrival. The page fades up out of the passage's black while
+   * the camera rises and glides forward into the hero rest. Offsets are
+   * where it starts relative to that rest; -1 means no arrival is running.
+   * The rest itself is untouched.
    */
-  const ENTRY_SETTLE_SECONDS = 1.1;
-  const ENTRY_EYE_OFFSET = new Vector3(0, -0.3, 2.6);
-  const ENTRY_TARGET_OFFSET = new Vector3(0, 0.35, 0);
+  const ENTRY_SETTLE_SECONDS = 2.4;
+  const ENTRY_EYE_OFFSET = new Vector3(0, -0.8, 4.5);
+  const ENTRY_TARGET_OFFSET = new Vector3(0, 0.3, 0);
   let entryAge = -1;
 
   const buildRests = (): JourneyRests => ({

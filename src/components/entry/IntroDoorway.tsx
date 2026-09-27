@@ -27,21 +27,46 @@ type IntroDoorwayProps = Readonly<{
 }>;
 
 /*
- * The entry sequence, in seconds from the click. The camera holds while the
- * cracks wake, sets off gently, gathers pace, drops a little and looks up as
- * the stone closes around it, goes through, and is gone into a brief dark.
+ * The entry sequence, in seconds from the click. The light runs through the
+ * joints and the doorway breaks into its stones; the camera goes on through
+ * them while they gather into a ring facing it; a spinning passage of light
+ * opens inside the ring. The camera pushes in until the ring has passed out
+ * of every edge of the screen, and only then does the light burst outward
+ * and the page show through.
  */
 const SEQUENCE = {
-  /** The camera leaves rest here; before it, only the stone changes. */
-  depart: 0.25,
-  /** The spreading front has reached most of the arch. */
-  activated: 0.35,
-  /** The camera reaches the end of its path, beyond the doorway. */
-  arrive: 1.75,
-  /** The dark of the threshold: in, then fully dark, then the hero. */
-  darkFrom: 1.6,
-  darkFull: 1.69,
-  crossed: 1.75,
+  /** The pieces let go, from the keystone down. */
+  release: 0.15,
+  /** The camera sets off through the breaking doorway. */
+  depart: 0.2,
+  /** The pieces begin to gather into the ring. */
+  gather: 1.2,
+  /** The camera stands beyond the doorway, the ring before it. */
+  arrive: 2.7,
+  /** The passage opens inside the ring. */
+  vortex: 3.0,
+  /** It has filled the ring. */
+  vortexOpen: 3.8,
+  /** The camera begins to push into the ring. */
+  pushFrom: 3.4,
+  /** The ring is past every edge of the screen: the light bursts. */
+  boom: 6.0,
+  /** How long the burst runs. */
+  boomLength: 0.9,
+  /** The gate may go: the page shows through the last of the burst. */
+  crossed: 6.3,
+} as const;
+
+/** The share of the ring's radius inside its stones, where the passage may reach. */
+const RING_INNER = 0.84;
+
+/** The ring: how far before the camera it stands, and how much of the frame it spans. */
+const RING = {
+  distance: 10,
+  fill: 0.7,
+  spin: 0.35,
+  /** Clearance between the ring's lowest stone and the water. */
+  clearance: 0.9,
 } as const;
 
 /** Reduced motion: the cracks wake, a short dark, the hero. No flight. */
@@ -71,6 +96,13 @@ const EXPLORE = {
   follow: 5.5,
   aimFollow: 8,
 } as const;
+
+/**
+ * The ring's size against the frame's height. On a tall, narrow screen a ring
+ * fitted to the width is too small to read as a circle, so it is allowed to
+ * run a little past the sides.
+ */
+const ringSpan = (aspect: number) => Math.min(1, Math.max(aspect, 0.78));
 
 /** Height of the supplied model in its own units. */
 const MODEL_HEIGHT = 0.98187;
@@ -103,6 +135,7 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
     const dark = veil.current;
     if (!element || !dark) return;
     const shade: HTMLDivElement = dark;
+    const view: HTMLDivElement = element;
 
     let cancelled = false;
     let dispose = () => {};
@@ -125,6 +158,8 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         { createHorizonAtmosphere },
         { applyWaterlineContact },
         { createCrackEnergy },
+        { createDoorwayShatter },
+        { createEntryVortex },
       ] = await Promise.all([
         import("three"),
         import("three/addons/loaders/GLTFLoader.js"),
@@ -134,6 +169,8 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         import("@/webgl/modules/horizonAtmosphere"),
         import("@/webgl/modules/rocks"),
         import("@/webgl/modules/crackEnergy"),
+        import("@/webgl/modules/doorwayShatter"),
+        import("@/webgl/modules/entryVortex"),
       ]);
       if (cancelled) return;
 
@@ -172,7 +209,8 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
        * Charcoal stone. Neutral light only: the violet belongs to the cracks,
        * and a coloured key would tint the whole doorway.
        */
-      scene.add(new THREE.HemisphereLight(0x3a3a3a, 0x0a0a0c, 1.2));
+      const sky = new THREE.HemisphereLight(0x3a3a3a, 0x0a0a0c, 1.2);
+      scene.add(sky);
       const key = new THREE.DirectionalLight(0xd5dad4, 2.2);
       key.position.set(-6, 7, 8);
       scene.add(key);
@@ -186,6 +224,8 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
       const rim = new THREE.DirectionalLight(0x9b82bd, 0.3);
       rim.position.set(7, 1.2, -24);
       scene.add(rim);
+      // The stone is drawn in a pass of its own while the window is open (layer 1).
+      [sky, key, fill, back, rim].forEach((light) => light.layers.enableAll());
 
       const floor = createReflectiveFloor({
         width: 160,
@@ -208,6 +248,39 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
 
       const energy = createCrackEnergy({ radius: 0.7 });
       const { uniforms } = energy;
+      // In the model's own units: the keystone, and the middle of the opening.
+      const shatter = createDoorwayShatter({
+        crown: new THREE.Vector3(door.opening.x, door.opening.head + 0.1, 0),
+        opening: new THREE.Vector2(door.opening.x, (door.opening.floor + door.opening.head) / 2),
+      });
+
+      const vortex = createEntryVortex();
+      /*
+       * While the ring forms, the water and the sky go dark behind it: a
+       * veil drawn over everything but the stones.
+       */
+      const dimMaterial = new THREE.ShaderMaterial({
+        uniforms: { uDim: { value: 0 } },
+        vertexShader: "void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }",
+        fragmentShader:
+          "uniform float uDim; void main() { gl_FragColor = vec4(0.02, 0.012, 0.03, uDim); }",
+        depthTest: false,
+        depthWrite: false,
+        transparent: true,
+      });
+      const dimScene = new THREE.Scene();
+      dimScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), dimMaterial));
+      const flatCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+      /** The ring in the world, composed when the flight is. */
+      const ring = {
+        centre: new THREE.Vector3(),
+        direction: new THREE.Vector3(),
+        radius: 1,
+      };
+      let stoneMesh: InstanceType<typeof THREE.Mesh> | null = null;
+      const local = new THREE.Vector3();
+      const projected = new THREE.Vector3();
+
       const doorCentre = new THREE.Vector3(0, door.height * 0.45 - door.sink, door.z);
       uniforms.uPoint.value.copy(doorCentre).setY(-100);
       let loaded: Object3D | null = null;
@@ -279,14 +352,24 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         // Lower as the stone closes in, so the doorway towers.
         e2.set(openingX, passHeight + 0.06, z + face * 2.1);
         e3.set(openingX, passHeight, z - face * 0.9);
-        e4.set(openingX, passHeight + 0.1, z - face * 4);
+        /*
+         * Beyond the doorway the camera rises, so the whole ring stands clear
+         * of the water; below it the rock is cut away at the surface.
+         */
+        const ringRadius =
+          RING.fill *
+          RING.distance *
+          Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) *
+          ringSpan(camera.aspect);
+        const endHeight = Math.max(passHeight + 0.1, ringRadius + RING.clearance);
+        e4.set(openingX, endHeight, z - face * 4);
         const [t0, t1, t2, t3, t4] = aims.points as [Vector3, Vector3, Vector3, Vector3, Vector3];
         t0.copy(aim);
         t1.set(openingX, door.aimHeight + 0.05, z - face * 5);
-        // Looking up into the arch at the closest approach, then levelling.
-        t2.set(openingX, passHeight + 1.45, z - face * 6);
-        t3.set(openingX, passHeight + 1.2, z - face * 9);
-        t4.set(openingX, passHeight + 1.05, z - face * 14);
+        // Level through the opening: the horizon holds still as the stone parts.
+        t2.set(openingX, passHeight + 0.55, z - face * 6);
+        t3.set(openingX, passHeight + 0.45, z - face * 9);
+        t4.set(openingX, endHeight, z - face * 14);
         eyes.updateArcLengths();
         aims.updateArcLengths();
       };
@@ -425,8 +508,36 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         // The water mirrors the doorway through the landscape's planar pass.
         floor.renderReflection(renderer, scene, camera, [floor.mesh, lights.group]);
         renderer.clear();
-        renderer.render(scene, camera);
+        const dim = dimMaterial.uniforms.uDim!.value as number;
+        if (dim <= 0) {
+          renderer.render(scene, camera);
+        } else {
+          // Water and sky, then the dark over them, then the stones on top.
+          doorway.visible = false;
+          renderer.render(scene, camera);
+          doorway.visible = true;
+          renderer.render(dimScene, flatCamera);
+          camera.layers.set(1);
+          renderer.render(scene, camera);
+          camera.layers.enableAll();
+        }
+        vortex.render(renderer, view.clientHeight);
       }
+
+      /** Places the ring in the mesh's own space, where the pieces are moved. */
+      const placeRing = () => {
+        if (!stoneMesh) return;
+        stoneMesh.updateWorldMatrix(true, false);
+        const scaleNow = stoneMesh.getWorldScale(local).x;
+        shatter.uniforms.uRingCentre.value.copy(stoneMesh.worldToLocal(local.copy(ring.centre)));
+        shatter.uniforms.uRingRadius.value = ring.radius / scaleNow;
+        // A narrow screen makes a small ring: smaller pieces keep it a circle.
+        shatter.uniforms.uRingPieceSize.value = THREE.MathUtils.lerp(
+          0.3,
+          0.55,
+          THREE.MathUtils.clamp((camera.aspect - 0.45) / 0.9, 0, 1),
+        );
+      };
 
       const smooth = (edge0: number, edge1: number, value: number) =>
         THREE.MathUtils.smoothstep(value, edge0, edge1);
@@ -472,13 +583,60 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
           return;
         }
 
-        // Still, then a slow pull that keeps gathering pace to the threshold.
+        shatter.uniforms.uBreak.value = clock - SEQUENCE.release;
+        shatter.uniforms.uGather.value = clock - SEQUENCE.gather;
+        shatter.uniforms.uRingSpin.value =
+          Math.max(0, clock - SEQUENCE.gather) * RING.spin +
+          Math.pow(Math.max(0, clock - SEQUENCE.vortex), 2) * 0.12;
+        shatter.uniforms.uRingGlow.value =
+          smooth(SEQUENCE.gather + 0.8, SEQUENCE.vortex, clock) * 0.6 +
+          smooth(SEQUENCE.vortex, SEQUENCE.vortexOpen + 0.4, clock) * 0.9;
+        // The joints burn brighter once the passage is open.
+        uniforms.uEnergy.value =
+          smooth(0, 0.22, clock) *
+          (1 + 0.9 * smooth(SEQUENCE.gather, SEQUENCE.vortex + 0.6, clock));
+        uniforms.uSpread.value = Math.max(uniforms.uSpread.value, 14 * smooth(0, 0.9, clock));
+
+        // Through the breaking doorway to the ring's stand, eased at both ends.
         const u = Math.min(
           1,
           Math.max(0, (clock - SEQUENCE.depart) / (SEQUENCE.arrive - SEQUENCE.depart)),
         );
-        place(Math.pow(u, 1.6));
-        shade.style.opacity = smooth(SEQUENCE.darkFrom, SEQUENCE.darkFull, clock).toFixed(3);
+        place(u * u * u * (u * (u * 6 - 15) + 10));
+
+        /*
+         * Then the push into the ring, as far as this screen needs for the
+         * ring's inner edge to pass out past its corners: further on a wide
+         * desktop than on a phone.
+         */
+        const width = view.clientWidth;
+        const height = view.clientHeight;
+        const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        const pxPerUnitAt = (distance: number) => height / 2 / (distance * halfTan);
+        const corner = Math.hypot(width, height) / 2;
+        const clearAt = (ring.radius * RING_INNER * pxPerUnitAt(1)) / (corner * 1.12);
+        const pushLength = Math.min(RING.distance * 0.9, Math.max(0, RING.distance - clearAt));
+        const p = Math.min(
+          1,
+          Math.max(0, (clock - SEQUENCE.pushFrom) / (SEQUENCE.boom - SEQUENCE.pushFrom)),
+        );
+        const push = pushLength * (p * p * (3 - 2 * p));
+        camera.position.addScaledVector(ring.direction, push);
+        camera.updateMatrixWorld();
+
+        dimMaterial.uniforms.uDim!.value = smooth(0.7, 2.6, clock) * 0.94;
+
+        // The passage: on the ring's centre, and never past its inner edge.
+        projected.copy(ring.centre).project(camera);
+        const ringPx = ring.radius * pxPerUnitAt(RING.distance - push);
+        const open = smooth(SEQUENCE.vortex, SEQUENCE.vortexOpen, clock);
+        vortex.set({
+          x: (projected.x * 0.5 + 0.5) * width,
+          y: (-projected.y * 0.5 + 0.5) * height,
+          radius: clock < SEQUENCE.vortex ? 0 : ringPx * RING_INNER * open,
+          boom: Math.min(1, Math.max(0, (clock - SEQUENCE.boom) / SEQUENCE.boomLength)),
+          time: clock,
+        });
         if (clock >= SEQUENCE.crossed) cross();
       }
 
@@ -490,7 +648,8 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         step(deltaSeconds);
         draw(deltaSeconds);
         if (still && !entering) return;
-        if (hasCrossed && clock > SEQUENCE.crossed + 0.6) return;
+        // Held until the page has shown through the end of the burst.
+        if (hasCrossed && clock > SEQUENCE.crossed + 1.2) return;
         frame = window.requestAnimationFrame(animate);
       };
 
@@ -500,6 +659,14 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         clock = 0;
         // The flight starts exactly where the camera is, looking where it looks.
         composeEntry();
+        // The ring stands before the flight's end, square to its gaze.
+        const [, , , , endEye] = eyes.points as Vector3[];
+        const [, , , , endAim] = aims.points as Vector3[];
+        ring.direction.subVectors(endAim!, endEye!).normalize();
+        ring.centre.copy(endEye!).addScaledVector(ring.direction, RING.distance);
+        const halfTan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        ring.radius = RING.fill * RING.distance * halfTan * ringSpan(camera.aspect);
+        placeRing();
         // The front sets off from wherever the light already is, kept on the stone.
         const origin = uniforms.uSpreadOrigin.value;
         if (presence > 0.2) {
@@ -561,7 +728,12 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
             // Wet and dark at the waterline, cut at the surface, as every rock is.
             applyWaterlineContact(material);
             energy.apply(material);
+            shatter.apply(material);
           });
+          // Moved stones leave the mesh's bounds; it is never culled.
+          item.frustumCulled = false;
+          stoneMesh = item;
+          item.layers.enable(1);
         });
 
         doorway.add(model);
@@ -599,6 +771,8 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
             material.dispose();
           });
         });
+        vortex.dispose();
+        dimMaterial.dispose();
         atmosphere.destroy();
         lights.destroy();
         floor.destroy();

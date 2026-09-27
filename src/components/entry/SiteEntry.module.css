@@ -2,6 +2,15 @@
   min-height: 100dvh;
 }
 
+/*
+ * Behind the gate the page waits at the start of its entrance: the doorway's
+ * window shows the landscape alone, and the hero copy arrives once the
+ * visitor is through.
+ */
+.site[inert] * {
+  animation-play-state: paused;
+}
+
 .gate {
   position: fixed;
   inset: 0;
@@ -15,19 +24,24 @@
   overscroll-behavior: none;
   touch-action: none;
   color: var(--color-text-primary);
-  /*
-   * Sky only. The water, beacons and doorway are the scene modules rendered
-   * into the canvas above this, not a photograph of them.
-   */
-  background: radial-gradient(ellipse at 50% 70%, #221b2c 0%, #16111e 38%, #0d0a13 78%);
   isolation: isolate;
+}
+
+/*
+ * Sky only. The water and the doorway are the scene modules rendered into
+ * the canvas above this, not a photograph of them.
+ */
+.sky {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 70%, #221b2c 0%, #16111e 38%, #0d0a13 78%);
 }
 
 /* The camera is through the doorway: the gate opens onto the hero. */
 .gate[data-revealing] {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 380ms cubic-bezier(0.33, 0, 0.2, 1);
+  transition: opacity 1100ms cubic-bezier(0.33, 0, 0.2, 1);
 }
 
 .doorway {
