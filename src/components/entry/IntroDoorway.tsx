@@ -3,6 +3,7 @@
 import { useEffect, useImperativeHandle, useRef, type Ref, type RefObject } from "react";
 import type { Object3D, Vector3 } from "three";
 
+import { markDoorwayStanding } from "@/webgl/entryChannel";
 import {
   environmentLightingConfig,
   introAtmosphereConfig,
@@ -106,14 +107,34 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
     let cancelled = false;
     let dispose = () => {};
 
+    // The doorway is the first thing seen: its bytes start downloading now,
+    // alongside the code that will draw it, not after it.
+    const modelBytes = fetch(door.source).then((response) => {
+      if (!response.ok) throw new Error(`doorway model: ${response.status}`);
+      return response.arrayBuffer();
+    });
+    modelBytes.catch(() => markDoorwayStanding());
+
     void (async () => {
-      const THREE = await import("three");
-      const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
-      const { createReflectiveFloor } = await import("@/webgl/modules/reflectiveFloor");
-      const { createHorizonLights } = await import("@/webgl/modules/horizonLights");
-      const { createHorizonAtmosphere } = await import("@/webgl/modules/horizonAtmosphere");
-      const { applyWaterlineContact } = await import("@/webgl/modules/rocks");
-      const { createCrackEnergy } = await import("@/webgl/modules/crackEnergy");
+      const [
+        THREE,
+        { GLTFLoader },
+        { MeshoptDecoder },
+        { createReflectiveFloor },
+        { createHorizonLights },
+        { createHorizonAtmosphere },
+        { applyWaterlineContact },
+        { createCrackEnergy },
+      ] = await Promise.all([
+        import("three"),
+        import("three/addons/loaders/GLTFLoader.js"),
+        import("three/addons/libs/meshopt_decoder.module.js"),
+        import("@/webgl/modules/reflectiveFloor"),
+        import("@/webgl/modules/horizonLights"),
+        import("@/webgl/modules/horizonAtmosphere"),
+        import("@/webgl/modules/rocks"),
+        import("@/webgl/modules/crackEnergy"),
+      ]);
       if (cancelled) return;
 
       const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -127,6 +148,7 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         });
       } catch {
         // No WebGL: the gate is the sky and the two choices, and entering crosses.
+        markDoorwayStanding();
         return;
       }
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -520,7 +542,8 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
       observer.observe(element);
       resize();
 
-      new GLTFLoader().load(door.source, ({ scene: model }) => {
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      const onModel = ({ scene: model }: { scene: Object3D }) => {
         if (cancelled) return;
         const bounds = new THREE.Box3().setFromObject(model);
         const centre = bounds.getCenter(new THREE.Vector3());
@@ -544,9 +567,14 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
         doorway.add(model);
         loaded = model;
         element.dataset.doorwayReady = "";
+        markDoorwayStanding();
         draw(0);
         if (!still) frame = window.requestAnimationFrame(animate);
-      });
+      };
+      void modelBytes
+        .then((bytes) => loader.parseAsync(bytes, ""))
+        .then(onModel)
+        .catch(() => markDoorwayStanding());
 
       dispose = () => {
         observer.disconnect();

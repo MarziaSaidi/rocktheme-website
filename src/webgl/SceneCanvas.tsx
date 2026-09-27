@@ -6,7 +6,7 @@ import { isSectionId, sectionAnchors, type SectionId } from "@/config/sections";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
-import { subscribeEntryArrival } from "./entryChannel";
+import { afterDoorway, subscribeEntryArrival } from "./entryChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { JourneyStops } from "./core/cameraJourney";
 import type { Environment, EnvironmentStats } from "./core/environment";
@@ -177,6 +177,11 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     };
 
     void (async () => {
+      // The entry doorway downloads first; the landscape follows it.
+      await afterDoorway();
+      if (disposed) {
+        return;
+      }
       const { createEnvironment } = await import("./core/environment");
 
       if (disposed) {

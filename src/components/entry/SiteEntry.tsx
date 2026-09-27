@@ -10,7 +10,7 @@ import {
   writeStoredPreference,
 } from "@/sound/soundStore";
 
-import { requestEntryArrival } from "@/webgl/entryChannel";
+import { markDoorwayStanding, requestEntryArrival } from "@/webgl/entryChannel";
 
 import styles from "./SiteEntry.module.css";
 import { IntroDoorway, type IntroDoorwayHandle } from "./IntroDoorway";
@@ -110,6 +110,8 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
     writeStoredPreference(withSound);
     window.dispatchEvent(new Event("marzia-saidi:sound-entry"));
     setLeaving(true);
+    // Entering before the doorway loaded: the landscape must not keep waiting.
+    markDoorwayStanding();
     doorway.current?.enter();
   };
 
