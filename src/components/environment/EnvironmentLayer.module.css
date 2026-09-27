@@ -37,12 +37,10 @@
   position: absolute;
   inset-block-start: var(--horizon);
   inset-inline-start: var(--x);
+  /* No spark: the beacon is only its halo (::after) and its water path. */
   width: 3px;
   height: 3px;
   translate: -50% -50%;
-  border-radius: 50%;
-  background: #eee4ff;
-  box-shadow: 0 0 5px 1px #bca3d9;
 }
 
 .beacon::after {

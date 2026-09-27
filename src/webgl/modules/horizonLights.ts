@@ -39,10 +39,10 @@ const VERTEX_SHADER = /* glsl */ `
 /*
  * Light scattered through atmosphere, not a light object.
  *
- * The visible mass is a wide, flat scattering lobe; the source itself is a tiny
- * bright core. Drawing the source large is what produces a glowing purple bulb,
- * so it stays small and the width does the work. Brightness desaturates toward
- * pale lavender rather than intensifying into neon.
+ * Only the scattering is drawn: a wide, flat lobe and a softer inner glow.
+ * The source itself has no visible core, so there is no bright spark sitting
+ * on the horizon; its presence is read from the haze and from its path on
+ * the water. Brightness desaturates toward pale lavender, never into neon.
  */
 const FRAGMENT_SHADER = /* glsl */ `
   precision highp float;
@@ -91,14 +91,6 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 innerP = vec2(p.x / 0.17, p.y / 0.075);
     float innerGlow = exp(-dot(innerP, innerP) * 2.5);
 
-    /*
-     * The actual source. The quad is roughly 2.2 times wider than tall, so the
-     * two radii stay in that ratio: equal fractions would stretch the core into
-     * the horizontal dash this replaced. Bigger than a pinpoint, still a point.
-     */
-    vec2 sourceP = vec2(p.x / 0.014, p.y / 0.028);
-    float source = exp(-dot(sourceP, sourceP) * 3.4);
-
     float noise = fbm(vec2(vUv.x * 5.0 + uSeed, vUv.y * 4.0 + uTime * 0.008));
     atmosphere *= mix(0.78, 1.10, noise);
 
@@ -106,18 +98,13 @@ const FRAGMENT_SHADER = /* glsl */ `
     float horizonMask = exp(-pow((vUv.y - 0.47) / 0.24, 2.0));
     atmosphere *= horizonMask;
 
-    // The core carries more weight now that it covers far fewer pixels.
-    float alpha = atmosphere * 0.15 + innerGlow * 0.18 + source * 0.95;
+    float alpha = atmosphere * 0.15 + innerGlow * 0.18;
     alpha *= uIntensity;
 
     vec3 outerColor = vec3(0.23, 0.16, 0.31);
     vec3 innerColor = vec3(0.52, 0.39, 0.68);
-    vec3 sourceColor = vec3(0.90, 0.84, 1.0);
 
-    vec3 color =
-      outerColor * atmosphere +
-      innerColor * innerGlow * 0.55 +
-      sourceColor * source;
+    vec3 color = outerColor * atmosphere + innerColor * innerGlow * 0.55;
 
     gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.78));
   }
@@ -240,7 +227,7 @@ export function createHorizonLights(
         sources[index]!.intensity = intensity;
         total += intensity * level;
       });
-      mean = total / config.sources.length;
+      mean = config.sources.length > 0 ? total / config.sources.length : 0;
     },
     setFocus: (viewportX) => {
       if (viewportX === null) {
