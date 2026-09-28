@@ -10,7 +10,7 @@ export type SceneCapability = Readonly<{
   maxTextureSize: number;
   /** Logical cores, where the browser exposes them. */
   cores: number;
-  /** Device memory in GB, where the browser exposes it. */
+  /** Device memory in GB, or 0 where the browser doesn't expose it. */
   memory: number;
   devicePixelRatio: number;
 }>;
@@ -47,7 +47,7 @@ export function detectCapability(): SceneCapability | null {
     webgl2,
     maxTextureSize,
     cores: navigatorWithHints.hardwareConcurrency ?? 4,
-    memory: navigatorWithHints.deviceMemory ?? 4,
+    memory: navigatorWithHints.deviceMemory ?? 0,
     devicePixelRatio: window.devicePixelRatio || 1,
   };
 }

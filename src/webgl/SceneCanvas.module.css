@@ -10,6 +10,12 @@
   display: block;
   width: 100%;
   height: 100%;
+  /*
+   * The large viewport, so a mobile toolbar sliding in and out during scroll
+   * never resizes the canvas. A resize reallocates the drawing buffer, which
+   * blanks it for a frame and rebuilds the particle field.
+   */
+  height: 100lvh;
   pointer-events: none;
   /* Nothing is visible until the scene reports that it started. */
   opacity: 0;

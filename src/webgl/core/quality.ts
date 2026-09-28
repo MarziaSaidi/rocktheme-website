@@ -61,9 +61,19 @@ const ORDER: readonly QualityTier[] = ["high", "medium", "low"];
 const BUDGET_MS = 20;
 /** Consecutive seconds over budget before a downgrade. */
 const PATIENCE_MS = 1200;
+/**
+ * The most one frame can add to the over-budget total. A single long frame is
+ * a shader compile or an asset upload, not a slow device; capping it means only
+ * a sustained run of slow frames can cost the scene a tier.
+ */
+const MAX_FRAME_CHARGE_MS = 50;
+/** Frames in the first stretch after start compile programs; they don't count. */
+const WARMUP_MS = 3000;
 
 export function pickInitialTier(capability: SceneCapability, viewportArea: number): QualityTier {
-  const coarse = capability.cores <= 4 || capability.memory <= 4;
+  // Safari and Firefox don't expose device memory, so a missing value is not
+  // evidence of a small device.
+  const coarse = capability.cores <= 4 || (capability.memory > 0 && capability.memory <= 4);
   const large = viewportArea > 2_200_000;
 
   if (!capability.webgl2 || capability.maxTextureSize < 4096 || (coarse && large)) {
@@ -107,6 +117,7 @@ export function createQualityManager(initial: QualityTier): QualityManager {
   let overBudgetMs = 0;
   let total = 0;
   let count = 0;
+  let firstSampleAt = 0;
 
   return {
     current: () => settings,
@@ -118,11 +129,17 @@ export function createQualityManager(initial: QualityTier): QualityManager {
         return null;
       }
 
+      const now = performance.now();
+      if (firstSampleAt === 0) firstSampleAt = now;
+      if (now - firstSampleAt < WARMUP_MS) {
+        return null;
+      }
+
       total += frameMs;
       count += 1;
 
       if (frameMs > BUDGET_MS) {
-        overBudgetMs += frameMs;
+        overBudgetMs += Math.min(frameMs, MAX_FRAME_CHARGE_MS);
       } else {
         overBudgetMs = Math.max(0, overBudgetMs - frameMs);
       }

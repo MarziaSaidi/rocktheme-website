@@ -794,7 +794,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       // Density is per megapixel, so a resize changes the count too.
       particles.setCount(particleCountFor(settings, width * height));
 
-      if (options.reducedMotion) {
+      // setSize cleared the drawing buffer. Paint now, in the same frame, or
+      // the backdrop flashes empty until the next tick.
+      if ((options.reducedMotion || running) && !contextLost) {
         renderOnce(0);
       }
     },
