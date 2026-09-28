@@ -72,6 +72,15 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
     };
   }, [entered]);
 
+  /*
+   * A reload after entering hydrates with the gate up for one render, which is
+   * long enough for the landscape to start waiting on a doorway that unmounts
+   * before it stands. With the gate gone there is nothing to wait for.
+   */
+  useEffect(() => {
+    if (entered) markDoorwayStanding();
+  }, [entered]);
+
   useEffect(() => {
     return () => {
       if (revealTimer.current !== null) {
