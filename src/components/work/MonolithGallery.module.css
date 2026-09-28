@@ -119,16 +119,31 @@
 /* ---------------------------------------------------------------- project */
 
 /*
- * Right of the stone, which holds the left half of the settled view. The
- * card never reaches back over the screen set into the rock.
+ * One wide composition with a rear glass plane and a separate foreground
+ * visual volume. Project media enters only through that foreground volume.
  */
 .project {
   position: absolute;
   z-index: var(--layer-content);
   inset-block-start: 50%;
-  inset-inline-end: var(--layout-gutter);
-  width: clamp(22rem, 32vw, 30rem);
-  translate: 0 -46%;
+  inset-inline: var(--layout-gutter);
+  width: auto;
+  max-width: 94rem;
+  margin-inline: auto;
+  translate: 0 -48%;
+}
+
+/*
+ * One 3D space for the glass and the pieces in front of it. The vanishing
+ * point sits over the visual region, so depth reads as distance from the
+ * glass rather than as a slide across the frame.
+ */
+.depthScene {
+  position: relative;
+  min-height: clamp(34rem, 66svh, 46rem);
+  perspective: 1800px;
+  perspective-origin: 68% 50%;
+  transform-style: preserve-3d;
 }
 
 /*
@@ -140,16 +155,580 @@
  * meta and action follow it in; so the panel is never seen empty and stays
  * secondary to the title. Leaving, the order reverses: the action goes first,
  * the title near the end, the glass last. Every duration, delay and distance
- * is a token in motion.css; the second stone's calmer pace only changes the
+ * is a token in motion.css; the second composition's calmer pace only changes the
  * pause and the spacing (`data-pace="calm"`).
  */
 .card {
   position: relative;
+  z-index: 1;
   isolation: isolate;
+  min-height: inherit;
   padding: clamp(1.75rem, 1rem + 1.6vw, 2.5rem);
   visibility: hidden;
+  transform: translateZ(0);
   transition: visibility 0s linear
     calc(var(--motion-details-exit-panel-at) + var(--motion-exit-panel-duration));
+}
+
+.card article {
+  width: clamp(21rem, 36%, 31rem);
+  min-height: calc(clamp(34rem, 66svh, 46rem) - 2 * clamp(1.75rem, 1rem + 1.6vw, 2.5rem));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/*
+ * The floating composition. It is not inside `.card`: the glass stands at
+ * Z 0 and every piece floats at its own depth in front of it, so there is
+ * air between the glass and the pieces.
+ *
+ *   back (Z 40)        gallery tile, top right, dim, partly behind the phone
+ *   secondary (Z 90)   detection screen, left, tucked behind the phone
+ *   main (Z 170)       the Survue phone, taller than the glass
+ *   detail (Z 250)     risk alert tile, bottom right, nearest the camera
+ *
+ * Each piece has an entrance origin (`--from`) and a resting pose (`--to`).
+ * Every origin is in front of the glass (Z > 0) and in front of the pieces
+ * already resting behind it, so nothing passes through the glass or through
+ * another piece; farther back reads through scale and blur instead.
+ * They assemble one after another once the glass has formed, each from its
+ * own direction and depth; as transitions, so leaving or scrolling back
+ * mid-assembly reverses from wherever the pieces are.
+ */
+.visualLayer {
+  --assembly-at: 320ms;
+  position: absolute;
+  inset: 0 0 0 42%;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+/*
+ * Pointer parallax. Each piece sits in its own full-size wrapper that only
+ * shifts with the pointer (`--pointer-x/y`, -1..1, eased in
+ * MonolithGallery.tsx), by an amount set by its depth: the deepest barely,
+ * the nearest most. The glass is outside these wrappers and stays put, so
+ * the pieces slide over it and the air between them shows. Never a tilt of
+ * the group: every layer only translates, independently.
+ */
+.parallax {
+  --reach: 0px;
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  translate: calc(var(--pointer-x, 0) * var(--reach))
+    calc(var(--pointer-y, 0) * var(--reach) * 0.6);
+}
+
+.parallax[data-depth="back"] {
+  --reach: 2.5px;
+}
+
+.parallax[data-depth="secondary"] {
+  --reach: 4.5px;
+}
+
+.parallax[data-depth="main"] {
+  --reach: 6.5px;
+}
+
+.parallax[data-depth="detail"] {
+  --reach: 10px;
+}
+
+.piece {
+  position: absolute;
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: var(--from);
+  filter: var(--from-filter, none);
+  backface-visibility: hidden;
+  /* Leaving: all together and quickly, before the glass goes. */
+  transition:
+    opacity var(--motion-exit-panel-duration) var(--motion-ease-exit),
+    transform var(--motion-exit-title-duration) var(--motion-ease-exit),
+    filter var(--motion-exit-panel-duration) var(--motion-ease-exit);
+}
+
+.visualLayer[data-shown] .piece {
+  opacity: 1;
+  transform: var(--to);
+  filter: var(--to-filter, none);
+  transition:
+    opacity calc(var(--dur) * 0.55) var(--ease) calc(var(--assembly-at) + var(--delay)),
+    transform var(--dur) var(--ease) calc(var(--assembly-at) + var(--delay)),
+    filter calc(var(--dur) * 0.7) var(--ease) calc(var(--assembly-at) + var(--delay));
+}
+
+.pieceImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Phones: a thin dark shell around the real screen. */
+.piece[data-placement="main"],
+.piece[data-placement="secondary"] {
+  box-sizing: border-box;
+  aspect-ratio: 430 / 932;
+  border: 1px solid color-mix(in srgb, var(--brand-porcelain) 16%, transparent);
+  background: #09080c;
+}
+
+.piece[data-placement="main"] .pieceImage,
+.piece[data-placement="secondary"] .pieceImage {
+  border-radius: inherit;
+}
+
+/* Tiles: part of a screen, cut out and floating on its own. */
+.piece[data-placement="back"],
+.piece[data-placement="detail"] {
+  border: 1px solid color-mix(in srgb, var(--brand-porcelain) 12%, transparent);
+  border-radius: clamp(0.75rem, 1.1vw, 1.1rem);
+  background: #000;
+}
+
+/*
+ * Shadows fall down and to the left, back onto the glass, and grow softer
+ * the further a piece floats from it: that offset is the visible air gap.
+ */
+.piece[data-placement="back"] {
+  --to: translateZ(40px) rotateY(-4deg) rotateZ(1.5deg);
+  --from: translate3d(9%, 2%, 4px) scale(0.94) rotateY(-4deg) rotateZ(1.5deg);
+  --to-filter: brightness(0.6) saturate(0.8) blur(0);
+  --from-filter: brightness(0.6) saturate(0.8) blur(6px);
+  --dur: 700ms;
+  --delay: 150ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  inset-block-start: -7%;
+  inset-inline-end: 11%;
+  width: 29%;
+  aspect-ratio: 430 / 440;
+  box-shadow: -0.75rem 1.25rem 2rem color-mix(in srgb, #000 55%, transparent);
+}
+
+.piece[data-placement="secondary"] {
+  --to: translateZ(90px) rotateY(10deg) rotateZ(-1.5deg);
+  --from: translate3d(-8%, -10%, 55px) scale(0.96) rotateY(20deg) rotateX(-8deg) rotateZ(-4deg);
+  --to-filter: brightness(0.84);
+  --from-filter: brightness(0.84);
+  --dur: 700ms;
+  --delay: 600ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  inset-block-start: 17%;
+  inset-inline-start: 9%;
+  height: 68%;
+  padding: 0.3rem;
+  border-radius: clamp(1.4rem, 2vw, 1.9rem);
+  box-shadow: -1.25rem 1.75rem 2.75rem color-mix(in srgb, #000 60%, transparent);
+}
+
+.piece[data-placement="main"] {
+  --to: translateZ(170px) rotateY(-7deg) rotateX(2deg) rotateZ(0.6deg);
+  --from: translate3d(-2%, 8%, 50px) scale(0.9) rotateY(-16deg) rotateX(5deg) rotateZ(2.5deg);
+  --to-filter: blur(0);
+  --from-filter: blur(5px);
+  --dur: 950ms;
+  --delay: 350ms;
+  --ease: cubic-bezier(0.19, 1, 0.22, 1);
+  inset-block-start: -2%;
+  inset-inline-start: 28%;
+  /* Taller than the glass, but clear of the header on short screens. */
+  height: min(104%, 72svh);
+  padding: 0.45rem;
+  border-radius: clamp(2rem, 3vw, 2.75rem);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--brand-porcelain) 10%, transparent),
+    -2rem 3rem 4.5rem color-mix(in srgb, #000 62%, transparent),
+    -0.5rem 0.75rem 1.25rem color-mix(in srgb, #000 35%, transparent);
+}
+
+.piece[data-placement="detail"] {
+  --to: translateZ(250px) rotateY(-3deg) rotateZ(-1.2deg);
+  --from: translate3d(14%, 16%, 420px) scale(1.08) rotateY(-10deg) rotateZ(-4deg);
+  --to-filter: blur(0);
+  --from-filter: blur(6px);
+  --dur: 600ms;
+  --delay: 850ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  inset-block-end: -3%;
+  inset-inline-end: 22%;
+  width: 18%;
+  aspect-ratio: 440 / 600;
+  box-shadow: -2.25rem 3.25rem 4rem color-mix(in srgb, #000 58%, transparent);
+}
+
+/* A framed piece: the whole screen, offset so only its cut shows. */
+.pieceImageFramed {
+  position: absolute;
+  display: block;
+  max-width: none;
+}
+
+/*
+ * Quill & Pigeon: data moving through the import, on a diagonal from the
+ * upper left to the lower right. Light product screens on the night, so the
+ * shadows are deeper and the back piece is dimmer than Survue's.
+ *
+ *   back (Z 30)        the CSV file, upper left, mostly behind the table
+ *   secondary (Z 95)   saved contacts, lower right, behind the table, past the glass edge
+ *   main (Z 160)       the review table with its validation alerts
+ *   detail (Z 260)     two duplicate rows lifted out of the table, in front
+ *
+ * The entrance is the import itself, one piece handing on to the next
+ * (choreography below the resting poses).
+ */
+.visualLayer[data-project="quill-and-pigeon"] .piece {
+  --from-filter: var(--to-filter, none);
+  inset: auto;
+  height: auto;
+  padding: 0;
+  background: #fff;
+  translate: var(--from-shift, 0 0);
+  transition: none;
+}
+
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="back"] {
+  --to: translateZ(30px) rotateY(9deg) rotateX(-2deg) rotateZ(-2.5deg);
+  --to-filter: brightness(0.62) saturate(0.85);
+  inset-block-start: -3%;
+  inset-inline-start: -3%;
+  width: 52%;
+  aspect-ratio: 1338 / 492;
+  border-radius: 0.6rem;
+  box-shadow: -0.75rem 1.25rem 2rem color-mix(in srgb, #000 60%, transparent);
+}
+
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="secondary"] {
+  --to: translateZ(95px) rotateY(-11deg) rotateX(1deg) rotateZ(1.8deg);
+  --to-filter: brightness(0.86);
+  inset-block-end: 6%;
+  inset-inline-end: 1%;
+  width: 40%;
+  border: 1px solid color-mix(in srgb, #000 8%, transparent);
+  border-radius: 0.55rem;
+  box-shadow: -1.25rem 1.75rem 2.75rem color-mix(in srgb, #000 65%, transparent);
+}
+
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="main"] {
+  --to: translateZ(160px) rotateY(-5deg) rotateX(2deg) rotateZ(0.4deg);
+  --to-filter: brightness(0.93);
+  inset-block-start: 17%;
+  inset-inline-start: 11%;
+  width: 78%;
+  aspect-ratio: 2042 / 1190;
+  border: 1px solid color-mix(in srgb, var(--brand-porcelain) 30%, transparent);
+  border-radius: 0.7rem;
+  box-shadow:
+    -2.25rem 3.25rem 5rem color-mix(in srgb, #000 70%, transparent),
+    -0.5rem 0.75rem 1.25rem color-mix(in srgb, #000 40%, transparent);
+}
+
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="detail"] {
+  --to: translateZ(260px) rotateY(3deg) rotateX(-1deg) rotateZ(-1.6deg);
+  --to-filter: none;
+  inset-block-start: 49%;
+  inset-inline-start: 1%;
+  width: 34%;
+  border: 1px solid color-mix(in srgb, #e5484d 45%, transparent);
+  border-radius: 0.6rem;
+  box-shadow:
+    -2rem 3rem 3.5rem color-mix(in srgb, #000 62%, transparent),
+    0 0 0 4px color-mix(in srgb, #e5484d 10%, transparent);
+}
+
+/*
+ * Quill & Pigeon's entrance: data moving through the import, each step
+ * starting while the one before is still settling. Every starting depth is
+ * in front of the glass, so nothing passes through it, and the pieces stay
+ * in their depth order the whole way.
+ *
+ *   0.15  the CSV drifts in from the left out of depth, unhurried. Its sideways travel
+ *         (`translate`) lands first; its rise toward the camera (`transform`)
+ *         finishes later, so the path bends forward: the file feeding in.
+ *   0.50  the review table forms forward through Z, rising and untilting.
+ *   0.80  the duplicate rows start flush on their own rows in the table and
+ *         lift off toward the camera, their red ring and shadow growing as
+ *         the gap opens: the imported data asking for attention.
+ *   1.05  the saved contacts slide out from behind the table's lower right,
+ *         small and quick: clean data leaving the other side.
+ *
+ * Times are after the glass has formed (`--assembly-at`); `--dur` is each
+ * piece's longest entrance transition, when its resting motion takes over.
+ * No exit yet: the pieces go when the details go.
+ */
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="back"] {
+  --from-shift: -24% 7%;
+  --from: translateZ(6px) scale(0.93) rotateY(15deg) rotateX(-2deg) rotateZ(-3.5deg);
+  --delay: 150ms;
+  --dur: 1150ms;
+}
+
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="main"] {
+  --from-shift: 0 9%;
+  --from: translateZ(40px) scale(0.9) rotateY(-13deg) rotateX(7deg) rotateZ(1.4deg);
+  --delay: 500ms;
+  --dur: 950ms;
+}
+
+/*
+ * Starts exactly over rows 3-4 of the table: same depth and angle as the
+ * table, scaled to the rows' size (0.711) and shifted onto them.
+ */
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="detail"] {
+  --from-shift: 22% -25%;
+  --from: translateZ(160px) scale(0.711) rotateY(-5deg) rotateX(2deg) rotateZ(0.4deg);
+  --delay: 800ms;
+  --dur: 650ms;
+  border-color: transparent;
+  box-shadow:
+    -0.25rem 0.4rem 0.6rem color-mix(in srgb, #000 30%, transparent),
+    0 0 0 4px transparent;
+}
+
+.visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="secondary"] {
+  --from-shift: -18% -30%;
+  --from: translateZ(80px) scale(0.94) rotateY(-4deg) rotateX(1deg) rotateZ(0.5deg);
+  --delay: 1050ms;
+  --dur: 500ms;
+}
+
+.visualLayer[data-project="quill-and-pigeon"][data-shown] .piece {
+  --start: calc(var(--assembly-at) + var(--delay));
+  translate: 0 0;
+}
+
+.visualLayer[data-project="quill-and-pigeon"][data-shown] .piece[data-placement="back"] {
+  transition:
+    opacity 600ms var(--motion-ease-reveal) var(--start),
+    translate 950ms cubic-bezier(0.3, 0.2, 0.2, 1) var(--start),
+    transform 1150ms cubic-bezier(0.45, 0, 0.2, 1) var(--start);
+}
+
+.visualLayer[data-project="quill-and-pigeon"][data-shown] .piece[data-placement="main"] {
+  transition:
+    opacity 420ms var(--motion-ease-reveal) var(--start),
+    translate 950ms var(--motion-ease-plane) var(--start),
+    transform 950ms var(--motion-ease-plane) var(--start);
+}
+
+.visualLayer[data-project="quill-and-pigeon"][data-shown] .piece[data-placement="detail"] {
+  border-color: color-mix(in srgb, #e5484d 45%, transparent);
+  box-shadow:
+    -2rem 3rem 3.5rem color-mix(in srgb, #000 62%, transparent),
+    0 0 0 4px color-mix(in srgb, #e5484d 10%, transparent);
+  transition:
+    opacity 160ms linear var(--start),
+    translate 650ms var(--motion-ease-reveal) var(--start),
+    transform 650ms var(--motion-ease-reveal) var(--start),
+    border-color 400ms var(--motion-ease-reveal) calc(var(--start) + 120ms),
+    box-shadow 650ms var(--motion-ease-reveal) var(--start);
+}
+
+.visualLayer[data-project="quill-and-pigeon"][data-shown] .piece[data-placement="secondary"] {
+  transition:
+    opacity 300ms var(--motion-ease-reveal) var(--start),
+    translate 500ms var(--motion-ease-reveal) var(--start),
+    transform 500ms var(--motion-ease-reveal) var(--start);
+}
+
+/*
+ * Resting motion: once a piece has settled it never quite freezes. A slow
+ * figure-of-eight drift (sideways, half as much vertically at twice the
+ * rate, a little depth) plus a tilt on a fixed axis, each on its own cycle.
+ * Both are added to the resting pose (`animation-composition: add`) on
+ * properties the entrance does not hold at rest, and both start at zero the
+ * moment the piece's entrance ends, so nothing jumps and the approved
+ * composition stays the centre of the motion.
+ *
+ * Amplitude grows toward the camera; every piece has its own two
+ * durations (7-12 s), so no two ever move together. The glass never moves.
+ */
+.visualLayer[data-shown] .piece {
+  animation:
+    piece-drift var(--drift-time) linear calc(var(--assembly-at) + var(--delay) + var(--dur))
+      infinite,
+    piece-sway var(--sway-time) linear calc(var(--assembly-at) + var(--delay) + var(--dur))
+      infinite;
+  animation-composition: add;
+}
+
+/* Deepest: barely there. */
+.piece[data-placement="back"] {
+  --drift-x: 1.2px;
+  --drift-y: 0.9px;
+  --drift-z: 2px;
+  --sway: 0.12deg;
+  --drift-time: 11.4s;
+  --sway-time: 12s;
+}
+
+.piece[data-placement="secondary"] {
+  --drift-x: 1.8px;
+  --drift-y: 1.2px;
+  --drift-z: 3px;
+  --sway: 0.2deg;
+  --drift-time: 9.6s;
+  --sway-time: 10.9s;
+}
+
+/* Main: small and slow. */
+.piece[data-placement="main"] {
+  --drift-x: 2.6px;
+  --drift-y: 1.6px;
+  --drift-z: 4px;
+  --sway: 0.28deg;
+  --drift-time: 10.3s;
+  --sway-time: 8.7s;
+}
+
+/* Nearest the camera: a little more. */
+.piece[data-placement="detail"] {
+  --drift-x: 3.6px;
+  --drift-y: 2.2px;
+  --drift-z: 6px;
+  --sway: 0.45deg;
+  --drift-time: 7.6s;
+  --sway-time: 9.3s;
+}
+
+@keyframes piece-drift {
+  0% {
+    translate: calc(var(--drift-x) * 0) calc(var(--drift-y) * 0) calc(var(--drift-z) * 0);
+  }
+
+  8.333% {
+    translate: calc(var(--drift-x) * 0.5) calc(var(--drift-y) * 0.433) calc(var(--drift-z) * 0.6);
+  }
+
+  16.667% {
+    translate: calc(var(--drift-x) * 0.866) calc(var(--drift-y) * 0.433) calc(var(--drift-z) * 0);
+  }
+
+  25% {
+    translate: calc(var(--drift-x) * 1) calc(var(--drift-y) * 0) calc(var(--drift-z) * -0.6);
+  }
+
+  33.333% {
+    translate: calc(var(--drift-x) * 0.866) calc(var(--drift-y) * -0.433) calc(var(--drift-z) * 0);
+  }
+
+  41.667% {
+    translate: calc(var(--drift-x) * 0.5) calc(var(--drift-y) * -0.433) calc(var(--drift-z) * 0.6);
+  }
+
+  50% {
+    translate: calc(var(--drift-x) * 0) calc(var(--drift-y) * 0) calc(var(--drift-z) * 0);
+  }
+
+  58.333% {
+    translate: calc(var(--drift-x) * -0.5) calc(var(--drift-y) * 0.433) calc(var(--drift-z) * -0.6);
+  }
+
+  66.667% {
+    translate: calc(var(--drift-x) * -0.866) calc(var(--drift-y) * 0.433) calc(var(--drift-z) * 0);
+  }
+
+  75% {
+    translate: calc(var(--drift-x) * -1) calc(var(--drift-y) * 0) calc(var(--drift-z) * 0.6);
+  }
+
+  83.333% {
+    translate: calc(var(--drift-x) * -0.866) calc(var(--drift-y) * -0.433) calc(var(--drift-z) * 0);
+  }
+
+  91.667% {
+    translate: calc(var(--drift-x) * -0.5) calc(var(--drift-y) * -0.433) calc(var(--drift-z) * -0.6);
+  }
+
+  100% {
+    translate: calc(var(--drift-x) * 0) calc(var(--drift-y) * 0) calc(var(--drift-z) * 0);
+  }
+}
+
+@keyframes piece-sway {
+  0% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 0);
+  }
+
+  8.333% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 0.5);
+  }
+
+  16.667% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 0.866);
+  }
+
+  25% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 1);
+  }
+
+  33.333% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 0.866);
+  }
+
+  41.667% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 0.5);
+  }
+
+  50% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 0);
+  }
+
+  58.333% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * -0.5);
+  }
+
+  66.667% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * -0.866);
+  }
+
+  75% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * -1);
+  }
+
+  83.333% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * -0.866);
+  }
+
+  91.667% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * -0.5);
+  }
+
+  100% {
+    rotate: 0.35 1 0.12 calc(var(--sway) * 0);
+  }
+}
+
+/* Reduced motion: the pieces are simply there, after a short fade. */
+@media (prefers-reduced-motion: reduce) {
+  .piece {
+    --from: var(--to);
+    --from-filter: var(--to-filter, none);
+    --delay: 0ms;
+    --dur: 360ms;
+  }
+
+  .visualLayer {
+    --assembly-at: 0ms;
+  }
+
+  .visualLayer[data-project="quill-and-pigeon"] .piece[data-placement] {
+    --from: var(--to);
+    --from-shift: 0 0;
+  }
+
+  .visualLayer[data-project="quill-and-pigeon"][data-shown] .piece[data-placement] {
+    transition: opacity 360ms var(--motion-ease-reveal);
+  }
+
+  .visualLayer[data-shown] .piece {
+    animation: none;
+  }
 }
 
 /*
@@ -179,19 +758,115 @@
     var(--motion-details-exit-panel-at);
 }
 
+/*
+ * The glass's edge, in two layers over the pane; both are transparent
+ * across the pane itself, so the glass is untouched.
+ *
+ * `::after` is the specular line: a 1px ring (the mask keeps only the ring)
+ * lit by soft pools of light, hottest at the top-left corner, warm along the
+ * lower edge where the water's light reaches it, fainter at the top right,
+ * over a dim base so it never disappears mid-span.
+ *
+ * `.glassEdge` is the pane's thickness: a luminous band a few pixels deep
+ * inside the line, fading inward, a brighter lip along the top, and the
+ * faintest halo outside. Both form and leave with the glass.
+ */
+.card {
+  --glass-radius: 0.9rem;
+}
+
+.card::before {
+  border-radius: var(--glass-radius);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  padding: 1px;
+  border-radius: var(--glass-radius);
+  background:
+    radial-gradient(
+      20rem 10rem at 0 0,
+      var(--brand-porcelain),
+      color-mix(in srgb, var(--brand-porcelain) 40%, transparent) 45%,
+      transparent 80%
+    ),
+    radial-gradient(
+      34rem 8rem at 62% 100%,
+      color-mix(in srgb, var(--brand-porcelain) 85%, transparent),
+      transparent 75%
+    ),
+    radial-gradient(
+      14rem 9rem at 100% 0,
+      color-mix(in srgb, var(--brand-porcelain) 70%, transparent),
+      transparent 75%
+    ),
+    radial-gradient(
+      12rem 12rem at 100% 100%,
+      color-mix(in srgb, var(--brand-porcelain) 80%, transparent),
+      transparent 75%
+    ),
+    radial-gradient(
+      10rem 14rem at 0 100%,
+      color-mix(in srgb, var(--brand-porcelain) 65%, transparent),
+      transparent 75%
+    ),
+    color-mix(in srgb, var(--brand-porcelain) 32%, transparent);
+  /* Prefixed first: in current engines `-webkit-mask` aliases `mask`. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-exit-panel-duration) var(--motion-ease-exit)
+    var(--motion-details-exit-panel-at);
+}
+
+.glassEdge {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: var(--glass-radius);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--brand-porcelain) 34%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--brand-porcelain) 16%, transparent),
+    inset 0 0 0.25rem color-mix(in srgb, var(--brand-porcelain) 22%, transparent),
+    inset 0 0 0.9rem color-mix(in srgb, var(--brand-porcelain) 8%, transparent),
+    inset 0 0 2.5rem color-mix(in srgb, var(--brand-porcelain) 3%, transparent),
+    0 0 0.35rem color-mix(in srgb, var(--brand-porcelain) 14%, transparent),
+    0 0 1.25rem color-mix(in srgb, var(--brand-porcelain) 5%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-exit-panel-duration) var(--motion-ease-exit)
+    var(--motion-details-exit-panel-at);
+}
+
+.card[data-shown] .glassEdge {
+  opacity: 1;
+  transition: opacity var(--motion-details-panel-duration) var(--motion-ease-reveal)
+    var(--motion-details-pause);
+}
+
 .card[data-shown] {
   visibility: visible;
   transition: visibility 0s;
 }
 
-.card[data-shown]::before {
+.card[data-shown]::before,
+.card[data-shown]::after {
   opacity: 1;
   transition: opacity var(--motion-details-panel-duration) var(--motion-ease-reveal)
     var(--motion-details-pause);
 }
 
 /* Small text: a short rise with its opacity; leaving drops back and fades. */
-.chapterLine,
 .index,
 .role,
 .description,
@@ -202,7 +877,6 @@
   --enter: calc(var(--motion-details-pause) + var(--at, 0ms) * var(--motion-details-step));
 }
 
-.chapterLine,
 .index,
 .role,
 .description,
@@ -215,7 +889,6 @@
     transform var(--motion-exit-duration) var(--motion-ease-exit) var(--exit-at, 0ms);
 }
 
-.card[data-shown] .chapterLine,
 .card[data-shown] .index,
 .card[data-shown] .role,
 .card[data-shown] .description,
@@ -227,7 +900,6 @@
     transform var(--motion-small-duration) var(--motion-ease-reveal) var(--enter);
 }
 
-.chapterLine,
 .index {
   --at: var(--motion-details-index-at);
   --exit-at: var(--motion-details-exit-index-at);
@@ -287,30 +959,6 @@
     --motion-details-pause: 120ms;
     --motion-details-step: 1.15;
     --motion-details-title-duration: 950ms;
-  }
-}
-
-/* Reduced motion never passes through the chapter title, so the first card names it. */
-.chapterLine {
-  composes: micro from "../../styles/type.module.css";
-  display: none;
-  margin: 0 0 var(--space-3);
-  color: var(--color-text-muted);
-}
-
-@media (prefers-reduced-motion: reduce) and (min-width: 64rem) {
-  :global(:root[data-journey]) .chapterLine {
-    display: block;
-  }
-}
-
-/*
- * Desktop: where the stone stands on the right, the details take the open
- * water on the left, on the hero headline's edge.
- */
-@media (min-width: 64rem) {
-  .project[data-side="start"] {
-    inset-inline: 6vw auto;
   }
 }
 
@@ -403,49 +1051,16 @@
   transform: translateX(0.25rem);
 }
 
-/* --------------------------------------------------------------- fallback */
-
-/*
- * Without the scene there are no stones, so the current project's screen
- * stands where its stone would have been. With the scene running, the stones
- * carry the screens.
- */
-.fallback {
-  position: absolute;
-  z-index: var(--layer-content);
-  inset-block-start: 18svh;
-  inset-inline-start: clamp(4rem, 18vw, 18rem);
-  height: 62svh;
-  aspect-ratio: 640 / 922;
-  box-shadow:
-    0 0 0 1px var(--color-plane-rim),
-    var(--plane-shadow);
-}
-
-:root[data-scene-active]:not([data-monolith-failed]) .fallback {
-  display: none;
-}
-
-.fallbackScreen {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 400ms var(--ease-interface);
-}
-
-.fallbackScreen[data-active] {
-  opacity: 1;
-}
-
 /* ---------------------------------------------------------------- stacked */
 
 /*
- * Tablet and phone: the stone holds the upper part of the view, as the scene
- * frames it there, and the details arrive below it rather than beside a
- * stone too small to read. Title and action stay near the thumb.
+ * Tablet and phone: the same spatial system turned upright. The glass holds
+ * the whole height below the header, an empty upper region with its copy
+ * below it, near the thumb; the project's pieces float in front of that
+ * upper region, breaking past the glass edges, as they do on the right of
+ * the desktop glass. Each
+ * project has its own upright composition below, with the same pieces,
+ * depth order, entrance and resting motion. No pointer parallax: no cursor.
  */
 @media (max-width: 63.99rem) {
   /* The header wraps to two rows at these widths. */
@@ -453,8 +1068,10 @@
     inset-block-start: calc(var(--header-height) * 2 + var(--space-2));
   }
 
+  /* From below the chapter label to near the bottom edge. */
   .project {
-    inset-block: auto calc(clamp(1.25rem, 3.5svh, 2rem) + 5.25rem);
+    inset-block: calc(var(--header-height) * 2 + var(--space-2) + 2.25rem)
+      clamp(1rem, 3svh, 1.75rem);
     inset-inline: var(--layout-gutter);
     width: auto;
     max-width: 34rem;
@@ -462,8 +1079,121 @@
     translate: none;
   }
 
+  .depthScene {
+    display: grid;
+    grid-template-rows: minmax(11rem, 1fr) auto;
+    height: 100%;
+    min-height: 0;
+    perspective: 2400px;
+    perspective-origin: 50% 40%;
+  }
+
+  /*
+   * The glass spans both rows; as a subgrid its copy alone sizes the second,
+   * and the pieces get the rest, above it.
+   */
   .card {
-    padding: var(--space-5);
+    display: grid;
+    grid-area: 1 / 1 / 3 / 2;
+    grid-template-rows: subgrid;
+    min-height: 0;
+    padding: 0 var(--space-5) var(--space-5);
+  }
+
+  .card article {
+    grid-row: 2;
+    width: 100%;
+    min-height: 0;
+  }
+
+  /*
+   * The pieces' region: the glass's empty upper part, clear of the copy
+   * below it and inside the screen edges. It is a size container, so every
+   * piece takes whichever is tighter, the region's width or its height, and
+   * the composition holds from a short phone to a tablet.
+   */
+  .visualLayer {
+    position: relative;
+    grid-area: 1 / 1 / 2 / 2;
+    inset: auto;
+    margin: var(--space-5) var(--space-4) var(--space-6);
+    container-type: size;
+  }
+
+  /* Phone corners in proportion, whatever the phone's size. */
+  .piece[data-placement="main"],
+  .piece[data-placement="secondary"] {
+    border-radius: 13% / 6%;
+  }
+
+  /*
+   * Survue upright: the phone centred (92% of the region tall, so 42.4cqh
+   * wide), the detection screen tucked behind its left edge, the gallery
+   * over its right shoulder, the alert in front of its lower right. The
+   * others are placed from the phone's edges so they stay tucked at any
+   * proportion.
+   */
+  .piece {
+    --phone-left: calc(50cqw - 21.2cqh);
+    --phone-right: calc(50cqw + 21.2cqh);
+  }
+
+  .piece[data-placement="back"] {
+    inset-block-start: 0;
+    inset-inline-start: calc(var(--phone-right) - 0.3 * min(36cqw, 40cqh));
+    width: min(36cqw, 40cqh);
+  }
+
+  .piece[data-placement="secondary"] {
+    inset-block-start: 18%;
+    inset-inline-start: calc(var(--phone-left) - 23cqh);
+    height: 64%;
+  }
+
+  .piece[data-placement="main"] {
+    inset-block-start: 3%;
+    inset-inline-start: var(--phone-left);
+    height: 92%;
+  }
+
+  .piece[data-placement="detail"] {
+    inset-block-end: 0;
+    inset-inline-start: calc(var(--phone-right) - 0.35 * min(28cqw, 30cqh));
+    width: min(28cqw, 30cqh);
+  }
+
+  /* Quill upright: the CSV above, the table cropped to its left columns,
+     the saved contacts below it, the duplicate rows lifted out in front. */
+  .visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="back"] {
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    width: min(68cqw, 80cqh);
+  }
+
+  .visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="main"] {
+    inset-block-start: 20%;
+    inset-inline-start: calc(50cqw - min(44cqw, 38cqh));
+    width: min(88cqw, 76cqh);
+    aspect-ratio: 1.3;
+  }
+
+  .visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="main"] .pieceImage {
+    object-position: 0 0;
+  }
+
+  .visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="secondary"] {
+    inset-block-end: 0;
+    inset-inline-end: 0;
+    width: min(62cqw, 64cqh);
+  }
+
+  /* Starts over rows 3-4 of the cropped table, as on desktop. */
+  .visualLayer[data-project="quill-and-pigeon"] .piece[data-placement="detail"] {
+    --from-shift: -5% -29%;
+    --from: translateZ(160px) scale(0.64) rotateY(-5deg) rotateX(2deg) rotateZ(0.4deg);
+    inset-block-start: 54%;
+    inset-inline-start: calc(50cqw - min(44cqw, 38cqh) - 4cqw);
+    width: min(56cqw, 48cqh);
   }
 
   .title {
@@ -487,12 +1217,5 @@
 
   .view {
     margin-block-start: var(--space-4);
-  }
-
-  .fallback {
-    inset-block-start: calc(var(--header-height) + 3rem);
-    inset-inline: 0;
-    height: 38svh;
-    margin-inline: auto;
   }
 }

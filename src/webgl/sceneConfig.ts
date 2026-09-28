@@ -624,52 +624,6 @@ export const distanceFogConfig: DistanceFogConfig = {
 };
 
 /*
- * The Selected Work stones. Face plane, alignment yaw and pillar axis were
- * measured from public/assets/selected-work/monolith.glb: its square section
- * sits 36° off the model axes, the wide face leans back a few degrees and is
- * twisted 11° across its width. The plane is a least-squares fit to the rock's
- * surface, raised to its highest point, so the housing sits flush and its
- * walls stay inside the stone. Re-measure it if the stone asset is replaced.
- *
- * Each featured project has its own stone at its own place on the water:
- * Quill & Pigeon where the single stone used to stand, Survue 18 units
- * further out and 21 to the left, in front of the same range. Further out
- * than that, its settled view would stand so close to the range that the
- * peaks lose their haze and read as nearer, paler rock than anywhere else. The camera
- * travels from one to the other (see `stations`); neither stone ever moves.
- */
-const stoneOnDesktop = {
-  height: 18,
-  /*
-   * A little broader than the model's own proportions, so the stone holds
-   * close to half the settled view, but not so broad that it turns into a
-   * slab. It is tall because it is big, not because it is stretched.
-   */
-  girth: 1.2,
-  screenHeight: 0.34,
-  screenCenterY: 0.49,
-} as const;
-
-/*
- * Stacked, the stone stands centred above the details, so it is squatter and
- * its screen takes more of the face to stay legible on a narrow screen.
- */
-const stoneStacked = {
-  height: 10.5,
-  girth: 1.4,
-  screenHeight: 0.44,
-  screenCenterY: 0.53,
-} as const;
-
-/*
- * How far each stone stands in the water. The model is widest at its flat
- * underside, which stood exactly on the surface: the rubble's whole lower edge
- * was a line drawn on the water. 0.3 is 1.8% of the desktop stone's height
- * and 3% of the stacked one's, enough that the surface cuts across the rubble.
- */
-const STONE_SINK = -0.3;
-
-/*
  * Frame 05, and the first stone's settled view, where its details show. Low
  * and a little left of the stone, 28 units out, looking up about 7°: the
  * crown runs out of the top of the frame, the waterline and the rubble at its
@@ -700,20 +654,9 @@ export const monolithConfig: MonolithConfig = {
     alignYaw: (-36 * Math.PI) / 180,
     axis: [0.023, -0.015],
   },
-  stones: [
-    // Quill & Pigeon
-    {
-      desktop: { ...stoneOnDesktop, position: [2.7, STONE_SINK, -6.4], yaw: -0.1 },
-      tablet: stoneStacked,
-      mobile: stoneStacked,
-    },
-    // Survue: turned a little further toward the viewer's side of its approach.
-    {
-      desktop: { ...stoneOnDesktop, height: 17, position: [-30, STONE_SINK, -14], yaw: -0.2 },
-      tablet: stoneStacked,
-      mobile: stoneStacked,
-    },
-  ],
+  // Project media now occupies a separate DOM foreground layer. The landscape
+  // keeps its range and camera stations, but no project-bearing stones.
+  stones: [],
   mountains: {
     source: "/assets/selected-work/mountains.glb",
     /*

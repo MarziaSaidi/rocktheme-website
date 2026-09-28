@@ -376,54 +376,58 @@ export function createMonolith(
   loadFaceTextures();
 
   // ----------------------------------------------------------------- models
-  loader.load(
-    config.stone.source,
-    ({ scene: model }) => {
-      if (destroyed) {
-        disposeModel(model);
-        return;
-      }
-      /*
-       * Every stone shares the geometry but fades on its own materials, so the
-       * copies are cloned from the untouched originals before any is adjusted.
-       */
-      const copies = stones.map((_, index) => {
-        if (index === 0) return model;
-        const copy = model.clone();
-        copy.traverse((item) => {
-          if (!(item instanceof Mesh)) return;
-          item.material = Array.isArray(item.material)
-            ? item.material.map((material) => material.clone())
-            : item.material.clone();
-        });
-        return copy;
-      });
-      copies.forEach((copy, index) => {
-        const stone = stones[index]!;
-        copy.traverse((item) => {
-          if (!(item instanceof Mesh)) return;
-          item.renderOrder = 0;
-          const materials = Array.isArray(item.material) ? item.material : [item.material];
-          materials.forEach((material) => {
-            if (!(material instanceof MeshStandardMaterial)) return;
-            material.metalness = 0.05;
-            material.roughness = Math.max(0.86, material.roughness);
-            material.transparent = true;
-            material.opacity = 0;
-            material.depthWrite = true;
-            applyWaterlineContact(material, stone.waterline);
-            matchStone(material);
-            stone.stoneMaterials.push(material);
+  if (stones.length > 0) {
+    loader.load(
+      config.stone.source,
+      ({ scene: model }) => {
+        if (destroyed) {
+          disposeModel(model);
+          return;
+        }
+        /*
+         * Every stone shares the geometry but fades on its own materials, so the
+         * copies are cloned from the untouched originals before any is adjusted.
+         */
+        const copies = stones.map((_, index) => {
+          if (index === 0) return model;
+          const copy = model.clone();
+          copy.traverse((item) => {
+            if (!(item instanceof Mesh)) return;
+            item.material = Array.isArray(item.material)
+              ? item.material.map((material) => material.clone())
+              : item.material.clone();
           });
+          return copy;
         });
-        stone.aligned.add(copy);
-      });
-      stonesReady = true;
-      handlers.onLoaded?.();
-    },
-    undefined,
-    () => handlers.onFailure?.("monolith"),
-  );
+        copies.forEach((copy, index) => {
+          const stone = stones[index]!;
+          copy.traverse((item) => {
+            if (!(item instanceof Mesh)) return;
+            item.renderOrder = 0;
+            const materials = Array.isArray(item.material) ? item.material : [item.material];
+            materials.forEach((material) => {
+              if (!(material instanceof MeshStandardMaterial)) return;
+              material.metalness = 0.05;
+              material.roughness = Math.max(0.86, material.roughness);
+              material.transparent = true;
+              material.opacity = 0;
+              material.depthWrite = true;
+              applyWaterlineContact(material, stone.waterline);
+              matchStone(material);
+              stone.stoneMaterials.push(material);
+            });
+          });
+          stone.aligned.add(copy);
+        });
+        stonesReady = true;
+        handlers.onLoaded?.();
+      },
+      undefined,
+      () => handlers.onFailure?.("monolith"),
+    );
+  } else {
+    stonesReady = true;
+  }
 
   loader.load(
     config.mountains.source,
