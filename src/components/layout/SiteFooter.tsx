@@ -15,11 +15,10 @@ export function SiteFooter() {
 
   return (
     <footer id={sectionAnchors.footer} className={styles.footer} aria-labelledby="contact-title">
-      {/* The contact plane is the one element that speaks on arrival. */}
+      {/* Reaching out answers with a chime. Hovering is silent. */}
       <CueEmitter
         sectionId={sectionAnchors.footer}
-        selector="[data-contact-plane]"
-        hoverEvent="contact:hover"
+        selector="[data-contact-plane], [data-contact-primary]"
         activateEvent="contact:open"
       />
 
@@ -36,7 +35,7 @@ export function SiteFooter() {
             sceneAnchor="heading"
           />
           <p className={styles.lead}>{contact.lead}</p>
-          <a className={styles.primary} href={email.href}>
+          <a className={styles.primary} href={email.href} data-contact-primary="">
             {contact.primaryLabel}
             <span aria-hidden="true">↗</span>
           </a>

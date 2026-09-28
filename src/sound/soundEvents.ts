@@ -12,21 +12,15 @@
  */
 
 export const SOUND_EVENTS = [
-  /** The engine has been switched on by the visitor. */
-  "environment:start",
-  /** A particle entered the pointer's contact zone. */
-  "particles:contact",
-  /** A project plane is coming towards its active position. */
-  "project:approach",
-  /** A project plane has locked into place. */
+  /** The doorway has opened into the passage and the camera is pushing in. */
+  "entry:passage",
+  /** A project has settled in front of the camera. */
   "project:active",
-  /** A project is being opened. */
+  /** The statement's words have begun to light. */
+  "statement:read",
+  /** A case study is being opened. */
   "project:open",
-  /** The pointer disturbed the reflective floor. */
-  "water:ripple",
-  /** The pointer reached the contact plane. */
-  "contact:hover",
-  /** The contact plane was activated. */
+  /** The contact plane or email link was activated. */
   "contact:open",
 ] as const;
 
@@ -40,9 +34,8 @@ export type SoundEventDetail = Readonly<{
   /** 0 to 1. Scales this one cue within its layer. */
   intensity?: number;
   /**
-   * Selects a pitch from the layer's scale, for cues that have one. Used by
-   * the horizon lights so consecutive projects form a chord rather than a
-   * repeated note.
+   * Which of a sequence this is, for cues that vary along one. Consecutive
+   * projects lock in at different pitches.
    */
   step?: number;
 }>;

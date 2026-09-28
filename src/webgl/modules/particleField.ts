@@ -9,8 +9,6 @@ import {
   ShaderMaterial,
 } from "three";
 
-import { emitSoundEvent, soundEventsIdle } from "@/sound/soundEvents";
-
 import { createCurlField } from "../core/noise";
 import { particleConfig, sceneColors } from "../sceneConfig";
 import type { ParticleConfig } from "../sceneTypes";
@@ -791,11 +789,6 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
 
           if (influence.contact && goldTimer[index]! <= 0 && Math.random() < config.goldChance) {
             goldTimer[index] = config.goldSeconds;
-            if (!soundEventsIdle()) {
-              emitSoundEvent("particles:contact", {
-                intensity: Math.min(1, pointer.speed / 1200),
-              });
-            }
           }
         }
       }
@@ -910,17 +903,6 @@ export function createParticleField(options: ParticleFieldOptions): ParticleFiel
 
           if (influence.contact && goldTimer[index]! <= 0 && Math.random() < config.goldChance) {
             goldTimer[index] = config.goldSeconds;
-
-            /*
-             * Report the contact. This is an event, not a sound: the field
-             * never learns whether anything is listening. The engine's own
-             * cooldown decides how much of this becomes audible.
-             */
-            if (!soundEventsIdle()) {
-              emitSoundEvent("particles:contact", {
-                intensity: Math.min(1, pointer.speed / 1200),
-              });
-            }
           }
         }
       }

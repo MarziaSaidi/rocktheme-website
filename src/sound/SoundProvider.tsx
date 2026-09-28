@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 import { createSoundEngine, type SoundEngine } from "./soundEngine";
-import { emitSoundEvent } from "./soundEvents";
 import {
   getSoundState,
   readStoredPreference,
@@ -26,12 +26,24 @@ import {
  * 3. A hidden tab suspends the context.
  * 4. Unmounting disposes every node, listener and the context itself.
  *
+ * It also tells the engine when a case study is open, so the music can make
+ * room for reading.
+ *
  * Exactly one engine exists at a time. `pending` is what guarantees it: two
  * overlapping calls to `sync` would otherwise each build one, and the second
  * would hold the slot while the first waited for a gesture that could never
  * reach it.
  */
 export function SoundProvider() {
+  const reading = usePathname().startsWith("/work/");
+  const readingRef = useRef(reading);
+  const engineRef = useRef<SoundEngine | null>(null);
+
+  useEffect(() => {
+    readingRef.current = reading;
+    engineRef.current?.setReading(reading);
+  }, [reading]);
+
   useEffect(() => {
     let engine: SoundEngine | null = null;
     /** An engine mid-start. Cleanup must be able to reach it too. */
@@ -98,9 +110,10 @@ export function SoundProvider() {
         }
 
         engine = created;
+        engineRef.current = created;
+        created.setReading(readingRef.current);
         pending = false;
         setSoundState({ ready: true });
-        emitSoundEvent("environment:start");
         return;
       }
 
@@ -110,6 +123,7 @@ export function SoundProvider() {
         if (engine) {
           const closing = engine;
           engine = null;
+          engineRef.current = null;
           setSoundState({ ready: false });
           await closing.stop();
           await closing.destroy();
@@ -153,6 +167,7 @@ export function SoundProvider() {
       void engine?.destroy();
       void inFlight?.destroy();
       engine = null;
+      engineRef.current = null;
       inFlight = null;
       setSoundState({ enabled: false, ready: false });
     };

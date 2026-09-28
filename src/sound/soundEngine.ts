@@ -1,29 +1,35 @@
 import {
   BACKGROUND_TRACK,
+  CUE_GAIN,
   CUES,
   FADE_SECONDS,
-  LAYER_GAIN,
-  LIGHT_SCALE,
   MASTER_GAIN,
+  MUSIC_CROSSFADE_SECONDS,
+  MUSIC_DUCK,
   MUSIC_GAIN,
+  READOUT_RATES,
+  SAMPLES,
+  TRANSITION_PEAK,
   VOICE_LIMITS,
-  type SoundLayer,
+  type SampleName,
 } from "./soundConfig";
 import { subscribeSoundEvents, type SoundEvent, type SoundEventDetail } from "./soundEvents";
 
 /**
- * Procedural sound engine.
+ * Sound engine.
  *
- * Owns the AudioContext, the bus graph, the looping music, and every scheduled
- * voice. It is the only place in the codebase that touches Web Audio.
+ * Owns the AudioContext, the bus graph, the looping music, and every playing
+ * cue. It is the only place in the codebase that touches Web Audio.
  *
- * Interaction cues are synthesised from oscillators and a shared noise buffer.
- * The music is an HTML media element routed through the same master gain so
- * enabling, muting, and tab visibility affect the whole mix together.
+ * Cues are short samples, fetched and decoded once the visitor has switched
+ * sound on. The music is two alternating HTML media elements, crossfaded at
+ * the seam, routed through the same master gain so enabling, muting, and tab
+ * visibility affect the whole mix together.
  *
  * The graph:
  *
- *   music + voices → master gain → limiter → destination
+ *   players ×2 → music gain ─┐
+ *   cues       → cue gain  ──┴→ master gain → limiter → destination
  *
  * A limiter sits on the output so no combination of cues can spike, and every
  * voice disconnects itself when it finishes.
@@ -46,27 +52,18 @@ export type SoundEngine = Readonly<{
   /** Suspends while the tab is hidden, without tearing anything down. */
   suspend: () => Promise<void>;
   resume: () => Promise<void>;
+  /** Lowers the music while a case study is being read. */
+  setReading: (reading: boolean) => void;
   /** Disconnects every node, removes every listener, closes the context. */
   destroy: () => Promise<void>;
   /** Live counts, for verification. */
-  stats: () => { voices: number; state: AudioContextState | "closed"; suppressed: number };
+  stats: () => {
+    voices: number;
+    state: AudioContextState | "closed";
+    suppressed: number;
+    samples: number;
+  };
 }>;
-
-function createNoiseBuffer(context: AudioContext): AudioBuffer {
-  const length = Math.floor(context.sampleRate * 2);
-  const buffer = context.createBuffer(1, length, context.sampleRate);
-  const data = buffer.getChannelData(0);
-
-  // Brown-ish noise: softer and lower than white, closer to air than hiss.
-  let last = 0;
-  for (let index = 0; index < length; index += 1) {
-    const white = Math.random() * 2 - 1;
-    last = (last + 0.02 * white) / 1.02;
-    data[index] = last * 3.5;
-  }
-
-  return buffer;
-}
 
 export function createSoundEngine(): SoundEngine | null {
   const AudioContextClass =
@@ -80,7 +77,6 @@ export function createSoundEngine(): SoundEngine | null {
   }
 
   const context = new AudioContextClass();
-  const noiseBuffer = createNoiseBuffer(context);
 
   // ------------------------------------------------------------- bus graph
   const limiter = context.createDynamicsCompressor();
@@ -96,22 +92,101 @@ export function createSoundEngine(): SoundEngine | null {
   master.gain.value = 0;
   master.connect(limiter);
 
-  const layers = {} as Record<SoundLayer, GainNode>;
-  (Object.keys(LAYER_GAIN) as SoundLayer[]).forEach((layer) => {
-    const node = context.createGain();
-    node.gain.value = LAYER_GAIN[layer];
-    node.connect(master);
-    layers[layer] = node;
-  });
+  const cueBus = context.createGain();
+  cueBus.gain.value = CUE_GAIN;
+  cueBus.connect(master);
 
   // ------------------------------------------------------- background music
-  const music = new Audio(BACKGROUND_TRACK);
-  music.loop = true;
-  music.preload = "none";
-  const musicSource = context.createMediaElementSource(music);
+  /*
+   * Two players take turns. A media element set to loop leaves a short gap at
+   * the seam, where the browser seeks back through the MP3's encoder padding,
+   * and a steady pad makes that gap audible. Instead, shortly before one
+   * player ends, the other starts from the top and the two crossfade.
+   */
   const musicGain = context.createGain();
   musicGain.gain.value = MUSIC_GAIN;
-  musicSource.connect(musicGain).connect(master);
+  musicGain.connect(master);
+
+  const players = [0, 1].map(() => {
+    const element = new Audio(BACKGROUND_TRACK);
+    element.preload = "none";
+    const source = context.createMediaElementSource(element);
+    const gain = context.createGain();
+    gain.gain.value = 0;
+    source.connect(gain).connect(musicGain);
+    return { element, source, gain };
+  });
+  let current = 0;
+  let seamWatch: number | null = null;
+  /** Players that were sounding when the tab was hidden. */
+  let parked: HTMLAudioElement[] = [];
+
+  const FADE_IN = Float32Array.from({ length: 64 }, (_, i) => Math.sin((i / 63) * (Math.PI / 2)));
+  const FADE_OUT = Float32Array.from(FADE_IN).reverse();
+
+  const fadePlayer = (gain: GainNode, curve: Float32Array, seconds: number) => {
+    const now = context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueCurveAtTime(curve, now, seconds);
+  };
+
+  const watchSeam = () => {
+    const outgoing = players[current]!;
+    const { duration, currentTime, paused } = outgoing.element;
+    if (paused || !Number.isFinite(duration)) return;
+
+    const left = duration - currentTime;
+    if (left > MUSIC_CROSSFADE_SECONDS) return;
+
+    current = 1 - current;
+    const incoming = players[current]!;
+    const span = Math.max(0.3, left - 0.05);
+    incoming.element.currentTime = 0;
+    void incoming.element.play().catch(() => undefined);
+    fadePlayer(incoming.gain, FADE_IN, span);
+    fadePlayer(outgoing.gain, FADE_OUT, span);
+  };
+
+  const pauseAll = () => players.forEach(({ element }) => element.pause());
+
+  let reading = false;
+  const musicLevel = () => MUSIC_GAIN * (reading ? MUSIC_DUCK.reading : 1);
+
+  /** Glide the music to its resting level, from wherever it is now. */
+  const settleMusic = (seconds: number) => {
+    const now = context.currentTime;
+    musicGain.gain.cancelScheduledValues(now);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+    musicGain.gain.linearRampToValueAtTime(musicLevel(), now + seconds);
+  };
+
+  /** Dip the music so a transition's bloom lands, then bring it back. */
+  const duckFor = (bloomIn: number) => {
+    const { depth, fall, recover } = MUSIC_DUCK.transition;
+    const now = context.currentTime;
+    const bloom = now + Math.max(fall, bloomIn);
+    const level = musicLevel();
+    musicGain.gain.cancelScheduledValues(now);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, bloom - fall);
+    musicGain.gain.linearRampToValueAtTime(level * depth, bloom);
+    musicGain.gain.linearRampToValueAtTime(level, bloom + recover);
+  };
+
+  // ---------------------------------------------------------------- samples
+  const samples = new Map<SampleName, AudioBuffer>();
+  const loading = new AbortController();
+
+  // Fetched only now: the engine exists only after the visitor chose sound.
+  (Object.keys(SAMPLES) as SampleName[]).forEach((name) => {
+    fetch(SAMPLES[name], { signal: loading.signal })
+      .then((response) => response.arrayBuffer())
+      .then((data) => context.decodeAudioData(data))
+      .then((decoded) => samples.set(name, decoded))
+      .catch(() => {
+        // A missing cue is silence, never an error the visitor sees.
+      });
+  });
 
   // ------------------------------------------------------------ voice pool
   const voices = new Set<Voice>();
@@ -126,86 +201,27 @@ export function createSoundEngine(): SoundEngine | null {
     });
   };
 
-  const track = (stop: () => void, duration: number) => {
-    const voice: Voice = { stop, endsAt: context.currentTime + duration + 0.1 };
-    voices.add(voice);
-    window.setTimeout(() => voices.delete(voice), (duration + 0.2) * 1000);
-  };
-
-  /** Short envelope used by every cue. Attack, hold, exponential release. */
-  const envelope = (gain: GainNode, peak: number, duration: number, attack = 0.012) => {
-    const now = context.currentTime;
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), now + attack);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-  };
-
-  const oscillatorVoice = (
-    layer: SoundLayer,
-    type: OscillatorType,
-    from: number,
-    to: number,
-    peak: number,
-    duration: number,
-  ) => {
-    const now = context.currentTime;
-    const oscillator = context.createOscillator();
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(from, now);
-    if (to !== from) {
-      oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, to), now + duration * 0.8);
-    }
-
-    const gain = context.createGain();
-    envelope(gain, peak, duration);
-    oscillator.connect(gain).connect(layers[layer]);
-    oscillator.start(now);
-    oscillator.stop(now + duration + 0.05);
-    oscillator.onended = () => {
-      oscillator.disconnect();
-      gain.disconnect();
-    };
-
-    track(() => oscillator.stop(), duration);
-  };
-
-  const noiseVoice = (
-    layer: SoundLayer,
-    filterType: BiquadFilterType,
-    fromHz: number,
-    toHz: number,
-    peak: number,
-    duration: number,
-    q = 1,
-  ) => {
+  const sampleVoice = (buffer: AudioBuffer, peak: number, offset: number, rate: number) => {
     const now = context.currentTime;
     const source = context.createBufferSource();
-    source.buffer = noiseBuffer;
-    source.loop = true;
-    // A random offset so repeated grains never sound identical.
-    const offset = Math.random() * (noiseBuffer.duration - duration - 0.05);
-
-    const filter = context.createBiquadFilter();
-    filter.type = filterType;
-    filter.Q.value = q;
-    filter.frequency.setValueAtTime(fromHz, now);
-    if (toHz !== fromHz) {
-      filter.frequency.exponentialRampToValueAtTime(Math.max(40, toHz), now + duration * 0.85);
-    }
+    source.buffer = buffer;
+    source.playbackRate.value = rate;
 
     const gain = context.createGain();
-    envelope(gain, peak, duration, 0.006);
-    source.connect(filter).connect(gain).connect(layers[layer]);
-    source.start(now, Math.max(0, offset));
-    source.stop(now + duration + 0.05);
+    // A few milliseconds of fade so entering part way through never clicks.
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(peak, now + (offset > 0 ? 0.06 : 0.004));
+    source.connect(gain).connect(cueBus);
+    source.start(now, offset);
     source.onended = () => {
       source.disconnect();
-      filter.disconnect();
       gain.disconnect();
     };
 
-    track(() => source.stop(), duration);
+    const duration = (buffer.duration - offset) / rate;
+    const voice: Voice = { stop: () => source.stop(), endsAt: now + duration + 0.1 };
+    voices.add(voice);
+    window.setTimeout(() => voices.delete(voice), (duration + 0.2) * 1000);
   };
 
   // --------------------------------------------------------------- the cues
@@ -213,81 +229,32 @@ export function createSoundEngine(): SoundEngine | null {
     const now = context.currentTime;
     reap(now);
 
+    const cue = CUES[event];
+    const buffer = samples.get(cue.sample);
     const cooldown = VOICE_LIMITS.cooldownSeconds[event];
     const previous = lastFired.get(event) ?? -Infinity;
 
-    // Two hard limits. Rapid pointer movement and rapid project navigation
-    // both hit these rather than stacking voices.
-    if (now - previous < cooldown || voices.size >= VOICE_LIMITS.maxConcurrent) {
+    if (!buffer || now - previous < cooldown || voices.size >= VOICE_LIMITS.maxConcurrent) {
       suppressed += 1;
       return;
     }
-
     lastFired.set(event, now);
 
-    const cue = CUES[event];
     const intensity = Math.min(1, Math.max(0, detail.intensity ?? 1));
     const peak = cue.peak * (0.4 + intensity * 0.6);
+    const offset = "lead" in cue ? Math.max(0, TRANSITION_PEAK - cue.lead) : 0;
+    const step = detail.step ?? 0;
+    const rate =
+      cue.sample === "readout"
+        ? READOUT_RATES[
+            ((step % READOUT_RATES.length) + READOUT_RATES.length) % READOUT_RATES.length
+          ]!
+        : 1;
 
-    switch (event) {
-      case "environment:start":
-        // One soft swell as the world wakes. Not a stinger.
-        oscillatorVoice("atmosphere", "sine", 110, 55, peak * 0.5, cue.duration);
-        break;
+    sampleVoice(buffer, peak, offset, rate);
 
-      case "particles:contact":
-        // A tiny granular tick. Short enough that repetition reads as texture.
-        noiseVoice(
-          "particles",
-          "bandpass",
-          2200 + Math.random() * 2600,
-          1800,
-          peak,
-          cue.duration,
-          6,
-        );
-        break;
-
-      case "project:approach":
-        // A filtered low sweep: the plane arriving, not a riser.
-        noiseVoice("planes", "lowpass", 180, 900, peak * 0.7, cue.duration, 0.7);
-        break;
-
-      case "project:active": {
-        // A muted mechanical lock, plus one sparse horizon-light tone so
-        // consecutive projects form a chord rather than a repeated note.
-        noiseVoice("planes", "bandpass", 420, 240, peak, cue.duration, 2.5);
-        oscillatorVoice("planes", "sine", 96, 72, peak * 0.5, cue.duration * 0.8);
-
-        const step = detail.step ?? 0;
-        const pitch =
-          LIGHT_SCALE[((step % LIGHT_SCALE.length) + LIGHT_SCALE.length) % LIGHT_SCALE.length]!;
-        oscillatorVoice("lights", "sine", pitch, pitch, peak * 0.42, 1.8);
-        break;
-      }
-
-      case "project:open":
-        // Reverse suction, then silence. The filter closes rather than booms.
-        noiseVoice("planes", "lowpass", 1600, 140, peak * 0.8, cue.duration, 0.6);
-        break;
-
-      case "water:ripple":
-        // A soft low droplet. A pitch glide, never a splash sample.
-        oscillatorVoice("water", "sine", 420, 170, peak, cue.duration);
-        break;
-
-      case "contact:hover":
-        // The warmest sound in the experience: a sustained fifth.
-        oscillatorVoice("contact", "sine", 196, 196, peak * 0.6, cue.duration);
-        oscillatorVoice("contact", "sine", 294, 294, peak * 0.32, cue.duration * 0.9);
-        break;
-
-      case "contact:open":
-        // One warm chord resolving. The invitation, answered.
-        oscillatorVoice("contact", "sine", 130.81, 130.81, peak * 0.6, cue.duration);
-        oscillatorVoice("contact", "sine", 196, 196, peak * 0.42, cue.duration * 0.95);
-        oscillatorVoice("contact", "sine", 261.63, 261.63, peak * 0.3, cue.duration * 0.85);
-        break;
+    if ("duck" in cue && cue.duck) {
+      duckFor(TRANSITION_PEAK - offset);
     }
   };
 
@@ -321,9 +288,19 @@ export function createSoundEngine(): SoundEngine | null {
        */
       // Both calls begin in the visitor's click handler. Browsers require a
       // gesture for media playback as well as for the AudioContext.
-      const playback = music.play().then(
+      const first = players[current]!;
+      first.gain.gain.value = 1;
+      const playback = first.element.play().then(
         () => true,
         () => false,
+      );
+      // Unlock the second player while the gesture still counts, so it may
+      // start on its own at the seam. Its gain is zero; nothing is heard.
+      const second = players[1 - current]!.element;
+      second.preload = "auto";
+      void second.play().then(
+        () => second.pause(),
+        () => undefined,
       );
 
       await Promise.race([
@@ -332,7 +309,7 @@ export function createSoundEngine(): SoundEngine | null {
       ]);
 
       if (context.state !== "running") {
-        music.pause();
+        pauseAll();
         return false;
       }
 
@@ -342,10 +319,11 @@ export function createSoundEngine(): SoundEngine | null {
       ]);
 
       if (!playing) {
-        music.pause();
+        pauseAll();
         return false;
       }
 
+      seamWatch = window.setInterval(watchSeam, 250);
       fadeMaster(MASTER_GAIN, FADE_SECONDS.in);
       unsubscribe = subscribeSoundEvents(play);
       running = true;
@@ -364,7 +342,9 @@ export function createSoundEngine(): SoundEngine | null {
 
       // Let the fade finish before the bed is torn down, so it never clicks.
       await new Promise((resolve) => window.setTimeout(resolve, FADE_SECONDS.out * 1000 + 60));
-      music.pause();
+      if (seamWatch !== null) window.clearInterval(seamWatch);
+      seamWatch = null;
+      pauseAll();
       voices.forEach((voice) => voice.stop());
       voices.clear();
       await context.suspend();
@@ -374,8 +354,15 @@ export function createSoundEngine(): SoundEngine | null {
       if (destroyed || context.state !== "running") {
         return;
       }
-      music.pause();
+      parked = players.map(({ element }) => element).filter((element) => !element.paused);
+      pauseAll();
       await context.suspend();
+    },
+
+    setReading: (next: boolean) => {
+      if (next === reading || destroyed) return;
+      reading = next;
+      settleMusic(next ? 1.2 : 2);
     },
 
     resume: async () => {
@@ -383,7 +370,8 @@ export function createSoundEngine(): SoundEngine | null {
         return;
       }
       await context.resume();
-      await music.play().catch(() => undefined);
+      await Promise.all(parked.map((element) => element.play().catch(() => undefined)));
+      parked = [];
     },
 
     destroy: async () => {
@@ -393,11 +381,16 @@ export function createSoundEngine(): SoundEngine | null {
 
       destroyed = true;
       running = false;
+      loading.abort();
       unsubscribe?.();
       unsubscribe = null;
-      music.pause();
-      music.removeAttribute("src");
-      music.load();
+      if (seamWatch !== null) window.clearInterval(seamWatch);
+      seamWatch = null;
+      players.forEach(({ element }) => {
+        element.pause();
+        element.removeAttribute("src");
+        element.load();
+      });
       voices.forEach((voice) => {
         try {
           voice.stop();
@@ -408,8 +401,11 @@ export function createSoundEngine(): SoundEngine | null {
       voices.clear();
       lastFired.clear();
 
-      (Object.keys(layers) as SoundLayer[]).forEach((layer) => layers[layer].disconnect());
-      musicSource.disconnect();
+      cueBus.disconnect();
+      players.forEach(({ source, gain }) => {
+        source.disconnect();
+        gain.disconnect();
+      });
       musicGain.disconnect();
       master.disconnect();
       limiter.disconnect();
@@ -423,6 +419,7 @@ export function createSoundEngine(): SoundEngine | null {
       voices: voices.size,
       state: destroyed ? "closed" : context.state,
       suppressed,
+      samples: samples.size,
     }),
   };
 }

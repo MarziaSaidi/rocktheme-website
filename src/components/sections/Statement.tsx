@@ -81,7 +81,11 @@ export function Statement() {
     <section id={sectionAnchors.about} className={styles.section} aria-labelledby="about-title">
       {/* Solid text reveals independently of the ambient particle current. */}
       <SectionMotion sectionId={sectionAnchors.about} />
-      <ReadingLight sectionId={sectionAnchors.about} selector="#about-title" />
+      <ReadingLight
+        sectionId={sectionAnchors.about}
+        selector="#about-title"
+        startEvent="statement:read"
+      />
 
       <EnvironmentLayer sectionId="about" />
 

@@ -18,7 +18,7 @@ import { emitSoundEvent, type SoundEvent } from "@/sound/soundEvents";
 type CueEmitterProps = Readonly<{
   /** Section to scope the listeners to. */
   sectionId: string;
-  /** Element within it that carries the cue. */
+  /** Elements within it that carry the cue. */
   selector: string;
   hoverEvent?: SoundEvent;
   activateEvent?: SoundEvent;
@@ -27,9 +27,9 @@ type CueEmitterProps = Readonly<{
 export function CueEmitter({ sectionId, selector, hoverEvent, activateEvent }: CueEmitterProps) {
   useEffect(() => {
     const section = document.getElementById(sectionId);
-    const target = section?.querySelector<HTMLElement>(selector);
+    const targets = [...(section?.querySelectorAll<HTMLElement>(selector) ?? [])];
 
-    if (!target) {
+    if (targets.length === 0) {
       return;
     }
 
@@ -47,16 +47,20 @@ export function CueEmitter({ sectionId, selector, hoverEvent, activateEvent }: C
       }
     };
 
-    // `pointerenter` does not bubble, so this is one arrival per element.
-    target.addEventListener("pointerenter", handleEnter);
-    target.addEventListener("click", handleActivate);
-    // Keyboard activation must sound the same as a click.
-    target.addEventListener("focus", handleEnter);
+    targets.forEach((target) => {
+      // `pointerenter` does not bubble, so this is one arrival per element.
+      target.addEventListener("pointerenter", handleEnter);
+      target.addEventListener("click", handleActivate);
+      // Keyboard activation must sound the same as a click.
+      target.addEventListener("focus", handleEnter);
+    });
 
     return () => {
-      target.removeEventListener("pointerenter", handleEnter);
-      target.removeEventListener("click", handleActivate);
-      target.removeEventListener("focus", handleEnter);
+      targets.forEach((target) => {
+        target.removeEventListener("pointerenter", handleEnter);
+        target.removeEventListener("click", handleActivate);
+        target.removeEventListener("focus", handleEnter);
+      });
     };
   }, [sectionId, selector, hoverEvent, activateEvent]);
 

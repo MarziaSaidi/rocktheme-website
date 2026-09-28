@@ -10,7 +10,7 @@ every cue, and never be required for navigation or comprehension.
 | ------------------- | ------------------------------------------------------------------------- |
 | `soundEvents.ts`    | The event names and the publish/subscribe channel. **Contains no audio.** |
 | `soundConfig.ts`    | Every level, timing, pitch and limit in the system.                       |
-| `soundEngine.ts`    | The AudioContext, looping music, synthesis, and voice pool.               |
+| `soundEngine.ts`    | The AudioContext, looping music, cue samples, ducking, and voice pool.    |
 | `SoundProvider.tsx` | The engine's lifecycle: consent, session restore, suspend, disposal.      |
 | `SoundToggle.tsx`   | The on/off control and its visual equivalent.                             |
 | `soundStore.ts`     | The preference, shared between the control and the host.                  |
@@ -22,7 +22,7 @@ every cue, and never be required for navigation or comprehension.
 ```ts
 import { emitSoundEvent } from "@/sound/soundEvents";
 
-emitSoundEvent("water:ripple", { intensity: 0.6 });
+emitSoundEvent("project:open");
 ```
 
 `soundEvents.ts` holds no audio code, so importing it from a component or from
@@ -34,15 +34,36 @@ never hold an `AudioContext`, schedule a node, or play a media element.
 `soundEventsIdle()` exists only so a hot loop can skip building an expensive
 detail object. It is not a permission check.
 
+## The cues
+
+Five moments make a sound, and nothing else does. Three sample files cover
+them, rendered by `scripts/render-sound-cues.mjs` into `public/audio/effects/`.
+
+| Event            | Where it is published                                  | Sample                                          |
+| ---------------- | ------------------------------------------------------ | ----------------------------------------------- |
+| `entry:passage`  | `IntroDoorway.tsx`, timed so the bloom meets the burst | `transition`, whole                             |
+| `project:active` | `MonolithGallery.tsx`, a project settles               | `readout`, a step higher for the second project |
+| `statement:read` | `Statement.tsx` via `ReadingLight`, first words light  | `readout`                                       |
+| `project:open`   | `MonolithGallery.tsx`, View case study                 | `transition`, entered late                      |
+| `contact:open`   | `SiteFooter.tsx`, the plane or the email link          | `chime`                                         |
+
+The transition is the signature: one sound for every change of place. Shorter
+scene changes start the file part way through (`lead` in `CUES`) so the bloom
+arrives soon after the gesture. Each transition briefly dips the music, and
+the music sits lower while a case study is open (`MUSIC_DUCK`).
+
+To replace a sound, drop an MP3 with the same name into `public/audio/effects/`.
+If the transition's bloom moves, update `TRANSITION_PEAK` to match.
+
 ## Changing the volume
 
 Everything is in `soundConfig.ts`.
 
 - `MASTER_GAIN` — the whole mix. Deliberately conservative.
 - `MUSIC_GAIN` — the level of the visitor-selected background track.
-- `LAYER_GAIN` — the six layers from the creative direction. Rebalance one
-  layer against the others without touching a cue.
-- `CUES[event].peak` — one cue's level within its layer.
+- `CUE_GAIN` — all cues against the music.
+- `CUES[event].peak` — one cue's level.
+- `MUSIC_DUCK` — how far the music gives way, and for how long.
 - A `DynamicsCompressor` sits on the output as a limiter, so no combination of
   cues can spike past it.
 
@@ -52,44 +73,38 @@ Everything is in `soundConfig.ts`.
 2. Add a cooldown to `VOICE_LIMITS.cooldownSeconds` and a shape to `CUES` in
    `soundConfig.ts`. Both are exhaustive records, so TypeScript will refuse to
    build until you do.
-3. Add a `case` to the switch in `soundEngine.ts`.
-4. Publish it with `emitSoundEvent` from wherever the thing happens.
-
-Removing an event is the same in reverse. Nothing else in the app changes.
+3. Publish it with `emitSoundEvent` from wherever the thing happens.
 
 ## Background track
 
-The intro offers a sound-on and a silent choice. The supplied track at
-`public/audio/sahtori-path-of-the-wind-lofi-223116.mp3` replaces the old
-procedural drone and air bed. It loops only after a sound-on user gesture,
-runs through the master gain, pauses when the tab is hidden, and stops with
-the header toggle. Interaction cues remain procedural and restrained.
+"Dark Ambient Soundscape Dreamscape" by SolarFLEX, from Pixabay. Chosen for
+long listening: no beat, no melody, and a level that barely moves.
 
-Change `BACKGROUND_TRACK` in `soundConfig.ts` to replace the file. The music
-is not constructed or fetched while sound is off.
+`public/audio/night-bed-solarflex-loop.mp3` is prepared from the original
+(kept, untracked, in `assets-src/audio/`): the fade-in and fade-out are cut,
+the last 8 seconds are crossfaded into the opening so the end runs straight
+back into the start, and the level is set to -16 LUFS.
+
+A media element set to loop leaves a small gap at the seam, which a pad makes
+audible. The engine therefore plays the track on two players that take turns,
+crossfading for `MUSIC_CROSSFADE_SECONDS` just before each one ends.
+
+The intro offers a sound-on and a silent choice. The music starts only after a
+sound-on gesture, runs through the master gain, pauses when the tab is hidden,
+and stops with the header toggle. Neither the music nor the cue samples are
+fetched while sound is off. Change `BACKGROUND_TRACK` in `soundConfig.ts` to
+replace it.
 
 ## Keeping it restrained
 
-The interaction layer still rules out audio on every hover, loud beeps,
-literal splashing, trailer impacts, and uncontrolled overlap. Two mechanisms
-enforce the last one:
-
-- **Per-event cooldowns** in `VOICE_LIMITS.cooldownSeconds`. A gesture cannot
-  retrigger a cue faster than it decays.
-- **A global voice cap**, `VOICE_LIMITS.maxConcurrent`. The sum of all cues
-  cannot stack past it.
-
-Both are hard limits, not fades. Cues over the limit are dropped and counted in
-`engine.stats().suppressed`.
-
-No element carries a hover cue except the contact plane. The particle texture
-follows the pointer's position in the field, which is why moving the cursor
-makes sound and resting it on a link does not.
+No hover sounds, and nothing follows the pointer. The particles and the water
+still respond to the cursor, silently. A cue marks a change of place or a
+decision, never movement. Per-event cooldowns and a voice cap
+(`VOICE_LIMITS`) stop rapid scrolling from stacking cues.
 
 ## Visual equivalent
 
-Every cue has one, because sound only ever describes something already
-happening on screen: particles flashing gold, a plane locking into place, a
-ripple spreading, the contact plane lighting. The toggle's waveform moves only
-while the engine is genuinely running, so audio is never playing without
-something visible saying so.
+Every cue describes something already happening on screen: the passage
+bursting, a project's card coming in, the statement lighting, a page opening,
+the contact plane answering. The toggle's waveform moves only while the engine
+is genuinely running.

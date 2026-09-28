@@ -15,8 +15,6 @@ import {
   type WebGLRenderer,
 } from "three";
 
-import { emitSoundEvent } from "@/sound/soundEvents";
-
 import { floorConfig, waterTones } from "../sceneConfig";
 import type { WaterConfig } from "../sceneTypes";
 import type { BeaconSource } from "./horizonLights";
@@ -484,9 +482,6 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
       });
 
       rippleCooldown = config.rippleInterval;
-      // One ripple, one event. The cue is gated by the same interval the
-      // visible ripple is, so sound and image never disagree.
-      emitSoundEvent("water:ripple", { intensity: Math.min(1, 0.3 + speed / 1600) });
       return true;
     },
 

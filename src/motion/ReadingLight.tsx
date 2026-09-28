@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { emitSoundEvent, type SoundEvent } from "@/sound/soundEvents";
+
 /**
  * Scroll-linked reading light.
  *
@@ -11,6 +13,10 @@ import { useEffect } from "react";
  *
  * Without JavaScript, or with reduced motion, nothing is published and the
  * stylesheet's default (`--read: 1`) leaves the text fully lit.
+ *
+ * It can also announce the moment the first words begin to light, scrolling
+ * down into the text. Scrolling back above it re-arms the cue; a page that
+ * loads already part way through does not sound it.
  */
 
 type ReadingLightProps = Readonly<{
@@ -18,19 +24,25 @@ type ReadingLightProps = Readonly<{
   sectionId: string;
   /** Selector, inside the section, for the element to light. */
   selector: string;
+  /** Announced as the first words begin to light. */
+  startEvent?: SoundEvent;
 }>;
 
 /** Viewport fractions where the reading band starts and ends. */
 const BAND_START = 0.85;
 const BAND_END = 0.35;
+/** How far into the band the words have visibly begun to light. */
+const START_AT = 0.04;
 
-export function ReadingLight({ sectionId, selector }: ReadingLightProps) {
+export function ReadingLight({ sectionId, selector, startEvent }: ReadingLightProps) {
   useEffect(() => {
     const target = document.getElementById(sectionId)?.querySelector<HTMLElement>(selector);
     if (!target) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let frame = 0;
+    /** The last reading, or null before the first paint sets a baseline. */
+    let last: number | null = null;
     const paint = () => {
       frame = 0;
       const view = window.innerHeight;
@@ -40,7 +52,12 @@ export function ReadingLight({ sectionId, selector }: ReadingLightProps) {
       const atBottom =
         window.scrollY + view >= document.documentElement.scrollHeight - 2 && read > 0;
       if (atBottom) read = 1;
-      target.style.setProperty("--read", String(Math.min(1, Math.max(0, read))));
+      const clamped = Math.min(1, Math.max(0, read));
+      target.style.setProperty("--read", String(clamped));
+      if (startEvent && last !== null && last < START_AT && clamped >= START_AT) {
+        emitSoundEvent(startEvent);
+      }
+      last = clamped;
     };
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(paint);
@@ -72,7 +89,7 @@ export function ReadingLight({ sectionId, selector }: ReadingLightProps) {
       listen(false);
       target.style.removeProperty("--read");
     };
-  }, [sectionId, selector]);
+  }, [sectionId, selector, startEvent]);
 
   return null;
 }
