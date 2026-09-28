@@ -1,0 +1,150 @@
+/*
+ * Phone-only: above the breakpoint the header shows its inline nav and status,
+ * so the toggle and sheet never display. (`composes` is not allowed inside a
+ * media query, which is why only `display` is gated below.)
+ */
+.toggle,
+.panel {
+  display: none;
+}
+
+@media (max-width: 47.99rem) {
+  .toggle {
+    display: inline-flex;
+  }
+
+  .panel {
+    display: flex;
+  }
+}
+
+.toggle {
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  margin-inline-end: calc(var(--space-3) * -1);
+  padding: 0;
+  color: var(--color-text-primary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Two lines that cross into an X. */
+.icon {
+  position: relative;
+  width: 1.25rem;
+  height: 0.625rem;
+}
+
+.icon > span {
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: currentcolor;
+  transition:
+    translate var(--duration-interface) var(--ease-interface),
+    rotate var(--duration-interface) var(--ease-interface);
+}
+
+.icon > span:first-child {
+  inset-block-start: 0;
+}
+
+.icon > span:last-child {
+  inset-block-end: 0;
+}
+
+.toggle[aria-expanded="true"] .icon > span:first-child {
+  translate: 0 calc(0.3125rem - 0.5px);
+  rotate: 45deg;
+}
+
+.toggle[aria-expanded="true"] .icon > span:last-child {
+  translate: 0 calc(-0.3125rem + 0.5px);
+  rotate: -45deg;
+}
+
+/* ------------------------------------------------------------- sheet */
+
+/*
+ * Sits inside the header's stacking context, behind the wordmark and the
+ * toggle, so both stay in place while the sheet covers the page.
+ */
+.panel {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: calc(var(--header-height-phone) + var(--space-6))
+    max(var(--space-6), env(safe-area-inset-bottom));
+  padding-inline: var(--layout-gutter);
+  background: var(--color-background);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duration-interface) var(--ease-interface),
+    visibility 0s linear var(--duration-interface);
+}
+
+.panel[data-open] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--duration-interface) var(--ease-interface);
+}
+
+.nav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The desktop nav's voice (mono, uppercase, tracked), sized up for a sheet. */
+.link {
+  composes: microStrong from "../../styles/type.module.css";
+  display: inline-flex;
+  align-items: center;
+  min-height: 3rem;
+  font-size: 1.5rem;
+  text-decoration: none;
+  transition: color var(--duration-interface) var(--ease-interface);
+}
+
+.link:active {
+  color: var(--color-text-moonlit);
+}
+
+.footer {
+  padding-block-start: var(--space-4);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.availability {
+  composes: micro from "../../styles/type.module.css";
+}
+
+/* Items settle in one after another, reusing the header's reveal. */
+.panel[data-open] .item,
+.panel[data-open] .footer {
+  animation-name: var(--motion-keyframes-nav);
+  animation-duration: var(--motion-nav-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: both;
+  animation-delay: calc(var(--motion-nav-stagger) * (var(--item-index, 0) + 1));
+}

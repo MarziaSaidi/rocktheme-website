@@ -36,8 +36,8 @@
 }
 
 @media (max-width: 47.99rem) {
-  /* The header stacks into two rows here, so the page starts below both. */
+  /* The page starts below the phone header bar. */
   .page {
-    padding-block-start: var(--header-height-stacked);
+    padding-block-start: var(--header-height-phone);
   }
 }

@@ -103,8 +103,8 @@
   --measure-body: 42ch;
   --measure-statement: 22ch;
   --header-height: clamp(3.5rem, 3rem + 1.6vw, 4.75rem);
-  /* Below 48rem the header wraps to two rows (wordmark + status, then nav). */
-  --header-height-stacked: 7rem;
+  /* Below 48rem the header is one bar: the wordmark and the menu toggle. */
+  --header-height-phone: 4.25rem;
 
   /* --------------------------------------------------- Surfaces and depth */
   --radius-sharp: 0;

@@ -42,6 +42,12 @@ body:has([data-site-entry]) {
   overflow: hidden;
 }
 
+/* The phone menu sheet is open: hold the page still underneath it. */
+html[data-menu-open],
+html[data-menu-open] body {
+  overflow: hidden;
+}
+
 ::selection {
   color: var(--color-background);
   background: var(--color-accent);

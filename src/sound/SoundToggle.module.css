@@ -114,7 +114,11 @@
   }
 }
 
-@media (max-width: 63.99rem) {
+/*
+ * Tablet widths only: the header row is too tight for the bars there. Phones
+ * show the toggle in the menu sheet, where there is room, so they keep them.
+ */
+@media (min-width: 48rem) and (max-width: 63.99rem) {
   .waveform {
     display: none;
   }

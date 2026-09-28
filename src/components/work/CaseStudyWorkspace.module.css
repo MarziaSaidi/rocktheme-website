@@ -661,7 +661,7 @@ video.visualMedia[data-fit="cover"] {
     order: 2;
     padding: var(--space-4) var(--layout-gutter) 0;
     /* Lands clear of the fixed header and the sticky stage list. */
-    scroll-margin-top: calc(var(--header-height-stacked) + 3rem);
+    scroll-margin-top: calc(var(--header-height-phone) + 3rem);
   }
   .storyProgress {
     margin-block-end: var(--space-3);
@@ -689,7 +689,7 @@ video.visualMedia[data-fit="cover"] {
    */
   .stageNav {
     position: sticky;
-    inset-block-start: var(--header-height-stacked);
+    inset-block-start: var(--header-height-phone);
     z-index: 3;
     order: 1;
     gap: 0;

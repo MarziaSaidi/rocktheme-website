@@ -166,36 +166,24 @@
   }
 }
 
+/*
+ * Phones get one bar: the wordmark and a menu toggle. The sections, sound,
+ * and availability move into the sheet MobileMenu opens.
+ */
 @media (max-width: 47.99rem) {
   .header {
-    grid-template-areas:
-      "wordmark status"
-      "nav nav";
-    grid-template-columns: auto auto;
-    gap: var(--space-2) var(--space-4);
+    grid-template-columns: 1fr auto;
+    min-height: var(--header-height-phone);
     padding-block: var(--space-3);
   }
 
-  .wordmark {
-    grid-area: wordmark;
-  }
-
-  .nav {
-    grid-area: nav;
-    justify-self: start;
-  }
-
+  .nav,
   .status {
-    grid-area: status;
+    display: none;
   }
 
-  .navLink {
-    min-height: 2.25rem;
-  }
-
-  .availability {
-    padding-inline-start: 0;
-    border-inline-start: 0;
+  .menu {
+    justify-self: end;
   }
 
   /* Case-study copy scrolls under the header on a phone; keep it legible. */
@@ -212,7 +200,8 @@
  */
 .wordmark,
 .navItem,
-.status {
+.status,
+.menu {
   animation-name: var(--motion-keyframes-nav);
   animation-duration: var(--motion-nav-duration);
   animation-timing-function: var(--motion-ease-interface);

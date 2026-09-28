@@ -4,6 +4,8 @@ import type { CSSProperties } from "react";
 import { siteContent } from "@/content/site/siteContent";
 import { SoundToggle } from "@/sound/SoundToggle";
 
+import { MobileMenu } from "./MobileMenu";
+
 import styles from "./SiteHeader.module.css";
 
 export function SiteHeader() {
@@ -39,6 +41,11 @@ export function SiteHeader() {
 
         <span className={styles.availability}>{siteContent.availability.label}</span>
       </p>
+
+      <MobileMenu
+        toggleClassName={styles.menu}
+        toggleStyle={{ "--nav-index": 1 } as CSSProperties}
+      />
     </header>
   );
 }
