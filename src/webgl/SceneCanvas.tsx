@@ -20,9 +20,9 @@ import type { AnchorRects, ObstacleRect } from "./modules/particleField";
  * project records. The heavy modules arrive through a dynamic import so nothing
  * from three.js is in the initial bundle.
  *
- * If WebGL is unavailable, unsupported, or the context is lost, this renders an
- * empty canvas, `data-scene-active` is never set, and the CSS environment layer
- * stays visible. The page is complete either way.
+ * If WebGL is unavailable, unsupported, or the context stays lost, this renders
+ * an empty canvas and sets `data-scene-fallback`, which brings in the CSS
+ * environment layer. The page is complete either way.
  */
 
 /** Elements carrying this attribute are flowed around by the particle field. */
@@ -58,10 +58,26 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     let unsubscribeFocus: (() => void) | null = null;
     let unsubscribeEntry: (() => void) | null = null;
     let statsTimer = 0;
+    let recoveryTimer = 0;
     let obstacleFrame = 0;
     let disposed = false;
 
     const root = document.documentElement;
+
+    /*
+     * The CSS stand-in environment stays hidden until this is called. It is
+     * for a scene that cannot run, not a placeholder while one loads.
+     */
+    const showFallback = () => {
+      window.clearTimeout(recoveryTimer);
+      recoveryTimer = 0;
+      root.dataset.sceneFallback = "";
+    };
+    const hideFallback = () => {
+      window.clearTimeout(recoveryTimer);
+      recoveryTimer = 0;
+      delete root.dataset.sceneFallback;
+    };
 
     const measureObstacles = (): ObstacleRect[] => {
       const nodes = document.querySelectorAll<HTMLElement>(OBSTACLE_SELECTOR);
@@ -182,7 +198,14 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       if (disposed) {
         return;
       }
-      const { createEnvironment } = await import("./core/environment");
+      let createEnvironment: typeof import("./core/environment").createEnvironment;
+      try {
+        ({ createEnvironment } = await import("./core/environment"));
+      } catch {
+        // The scene chunk failed to load: the stand-in is the environment.
+        showFallback();
+        return;
+      }
 
       if (disposed) {
         return;
@@ -220,8 +243,17 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
           delete root.dataset.sceneActive;
           delete root.dataset.journey;
           setActive(false);
+          /*
+           * Browsers usually hand a lost context back within a moment. Hold
+           * the stand-in off for that moment, so a brief loss reads as the
+           * scene dimming and returning rather than a swap to stripes and
+           * back. Only a context that stays lost brings the stand-in in.
+           */
+          window.clearTimeout(recoveryTimer);
+          recoveryTimer = window.setTimeout(showFallback, 3000);
         },
         onContextRestored: () => {
+          hideFallback();
           root.dataset.sceneActive = "";
           setActive(true);
           syncChapter();
@@ -229,7 +261,8 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       });
 
       if (!environment) {
-        // No WebGL. The CSS environment layer remains the environment.
+        // No WebGL. The CSS environment layer is the environment.
+        showFallback();
         return;
       }
 
@@ -290,6 +323,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     return () => {
       disposed = true;
 
+      window.clearTimeout(recoveryTimer);
       if (statsTimer !== 0) {
         window.clearInterval(statsTimer);
       }
@@ -310,6 +344,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       environment?.destroy();
 
       delete root.dataset.sceneActive;
+      delete root.dataset.sceneFallback;
       delete root.dataset.sceneTier;
       delete root.dataset.monolithFailed;
       delete root.dataset.journey;

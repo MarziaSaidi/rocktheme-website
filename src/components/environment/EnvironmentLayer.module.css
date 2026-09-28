@@ -120,9 +120,12 @@
  * inside each section's stacking context, so leaving any part of it visible
  * would occlude the canvas behind the section.
  *
- * The page keeps its atmospheric base from the body background, so losing the
- * WebGL context reveals this layer again rather than a flat black page.
+ * It is the environment for browsers that cannot run the scene, never a
+ * loading placeholder, so it stays hidden until SceneCanvas sets
+ * `data-scene-fallback`: no WebGL, a scene chunk that failed to load, or a
+ * context that stayed lost. While the scene loads, the body's atmospheric
+ * background is all there is, and the canvas fades up over it.
  */
-html[data-scene-active] .layer {
+html:not([data-scene-fallback]) .layer {
   display: none;
 }

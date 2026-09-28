@@ -55,6 +55,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${displayCondensed.variable} ${heroDisplay.variable}`}
     >
+      <head>
+        {/*
+         * The CSS stand-in environment only appears when the scene asks for it
+         * (`data-scene-fallback`). Without JavaScript nothing can ask, so it
+         * is simply shown.
+         */}
+        <noscript>
+          <style>{"[data-scene-section]{display:block!important}"}</style>
+        </noscript>
+      </head>
       <body id={pageLandmarkIds.top}>
         {/* Owns the audio context. Nothing else may create one. */}
         <SoundProvider />

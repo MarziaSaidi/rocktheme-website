@@ -75,6 +75,6 @@ the renderer. Anything a module allocates, that module disposes.
 ## Fallback
 
 `detectCapability` runs before the renderer is constructed. When it returns
-`null`, or when the context is lost, `data-scene-active` is absent and
-`EnvironmentLayer`'s CSS environment stays on screen. The page is complete
+`null`, or when the context stays lost, `data-scene-fallback` is set and
+`EnvironmentLayer`'s CSS environment takes over. The page is complete
 either way: the canvas carries no text, no controls and no navigation.
