@@ -19,6 +19,14 @@
 export const RIPPLE = {
   /** The reveal's length. */
   durationMs: 1500,
+  /**
+   * Where the distortion starts to let go, as a share of the reveal. From here
+   * the wave eases out on a smooth curve, so the letters drift to rest rather
+   * than stopping on the last frame.
+   */
+  settleFrom: 0.6,
+  /** The canvas fades away over the real heading this long after the reveal. */
+  handoverMs: 450,
   /** Displacement at the wave, in heading widths. */
   strength: 0.055,
   /** Extra lean across the wave. */
@@ -41,6 +49,12 @@ export const RIPPLE = {
 /* GSAP's expoScale(10, 2): a burst, then a long exponential settle. */
 const expoScale = (x: number) => (10 - 10 * Math.pow(0.2, x)) / 8;
 
+/** 1 until `from`, then a smooth ease to 0 at the end of the reveal. */
+const calmFrom = (x: number, from: number) => {
+  const t = Math.min(1, Math.max(0, (x - from) / (1 - from)));
+  return 1 - t * t * (3 - 2 * t);
+};
+
 const VERTEX = `attribute vec2 aPos;
 varying vec2 vUv;
 void main() {
@@ -61,6 +75,7 @@ uniform float uWidth;
 uniform float uChroma;
 uniform float uGlow;
 uniform float uGhost;
+uniform float uCalm;
 varying vec2 vUv;
 
 vec4 tex(vec2 uv) {
@@ -79,7 +94,8 @@ void main() {
   float dist = length(tuv - 0.5);
   float radius = p * 1.2;
   float ring = dist - radius;
-  float bell = p * (1.0 - p) * 4.0;
+  // Zero at both ends, and eased out over the last stretch by uCalm.
+  float bell = p * (1.0 - p) * 4.0 * uCalm;
   float wave = sin(ring * uFreq - uT * 1.5) * exp(-ring * ring * uWidth);
 
   vec2 dir = normalize((tuv - 0.5) * vec2(uAspect, 1.0) + 0.0001);
@@ -121,6 +137,8 @@ export type RippleRenderer = Readonly<{
   play: () => Promise<void>;
   /** Jumps to the settled frame and resolves `play` early. */
   finish: () => void;
+  /** Fades the canvas away; the real heading should already show beneath it. */
+  fadeOut: () => Promise<void>;
   /** Removes the canvas and releases the context. */
   destroy: () => void;
 }>;
@@ -210,6 +228,7 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
     t: uniform("uT"),
     pad: uniform("uPad"),
     aspect: uniform("uAspect"),
+    calm: uniform("uCalm"),
   };
   gl.uniform1i(uniform("uTex"), 0);
   gl.uniform1f(uniform("uStrength"), RIPPLE.strength);
@@ -253,15 +272,26 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
     const padY = height * RIPPLE.padY;
     const cssW = width + padX * 2;
     const cssH = height + padY * 2;
-    const origin = parent.getBoundingClientRect();
-    canvas.style.left = `${left - padX - origin.left - parent.clientLeft}px`;
-    canvas.style.top = `${top - padY - origin.top - parent.clientTop}px`;
-    canvas.style.width = `${cssW}px`;
-    canvas.style.height = `${cssH}px`;
-
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
+    // Snapped to device pixels: a canvas on a half pixel is resampled softer
+    // than the text it stands in for, and the hand-over would show it.
+    const snap = (value: number) => Math.round(value * dpr) / dpr;
+    const origin = parent.getBoundingClientRect();
+    const baseX = origin.left + parent.clientLeft;
+    const baseY = origin.top + parent.clientTop;
+    const canvasX = snap(left - padX - baseX);
+    const canvasY = snap(top - padY - baseY);
+    const pixelW = Math.round(cssW * dpr);
+    const pixelH = Math.round(cssH * dpr);
+    canvas.style.left = `${canvasX}px`;
+    canvas.style.top = `${canvasY}px`;
+    canvas.style.width = `${pixelW / dpr}px`;
+    canvas.style.height = `${pixelH / dpr}px`;
+    canvas.width = pixelW;
+    canvas.height = pixelH;
+    /** Where a page point lands in the canvas, in CSS pixels. */
+    const toCanvasX = (pageX: number) => pageX - baseX - canvasX;
+    const toCanvasY = (pageY: number) => pageY - baseY - canvasY;
 
     const source = document.createElement("canvas");
     source.width = canvas.width;
@@ -298,9 +328,9 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
         want = range.getBoundingClientRect().width;
       }
       const box = boxes[index]!;
-      const x = box.left - left + padX;
+      const x = toCanvasX(box.left);
       const lineHeight = parseFloat(lineStyle.lineHeight) || size;
-      const baseline = box.top - top + padY + (lineHeight - (ascent + descent)) / 2 + ascent;
+      const baseline = toCanvasY(box.top) + (lineHeight - (ascent + descent)) / 2 + ascent;
       const got = context.measureText(text).width;
 
       context.fillStyle = lineFill(context, lineStyle, x);
@@ -325,10 +355,11 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
     gl.uniform1f(u.aspect, width / height);
   };
 
-  const draw = (progress: number, seconds: number) => {
+  const draw = (progress: number, seconds: number, calm = 1) => {
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.uniform1f(u.p, progress);
+    gl.uniform1f(u.calm, calm);
     gl.uniform1f(u.t, seconds);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
@@ -345,7 +376,7 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
         const start = performance.now();
         const step = (now: number) => {
           const x = Math.min(1, (now - start) / RIPPLE.durationMs);
-          draw(expoScale(x), (now - start) / 1000);
+          draw(expoScale(x), (now - start) / 1000, calmFrom(x, RIPPLE.settleFrom));
           if (x < 1 && !finished) {
             frame = requestAnimationFrame(step);
           } else {
@@ -362,10 +393,20 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
       if (finished) return;
       finished = true;
       cancelAnimationFrame(frame);
-      draw(1, 0);
+      draw(1, 0, 0);
       settle?.();
       settle = null;
     },
+
+    fadeOut: () =>
+      new Promise<void>((resolve) => {
+        canvas.style.transition = `opacity ${RIPPLE.handoverMs}ms cubic-bezier(0.23, 1, 0.32, 1)`;
+        // One frame with the real heading painted beneath, then let go.
+        requestAnimationFrame(() => {
+          canvas.style.opacity = "0";
+          window.setTimeout(resolve, RIPPLE.handoverMs + 30);
+        });
+      }),
 
     destroy: () => {
       cancelAnimationFrame(frame);

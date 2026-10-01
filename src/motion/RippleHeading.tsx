@@ -28,8 +28,14 @@ type RippleHeadingProps = Readonly<{
 const ENTRY_DELAY_VAR = "--motion-display-delay";
 /** Share of the heading that must be on screen before it plays. */
 const VIEW_THRESHOLD = 0.55;
-/** A scroll this far during the reveal settles it at once. */
-const SCROLL_ABORT_PX = 48;
+/**
+ * Hero only: a scroll this far during the reveal settles it at once, before
+ * the headline's own exit (which starts some 290 px down on desktop) moves the
+ * real lines out from under the canvas. A heading revealed on arrival in view
+ * is not cut short: visitors are still scrolling when it arrives, and its
+ * canvas travels with the page.
+ */
+const ENTRY_SCROLL_ABORT_PX = 160;
 
 function cssDuration(name: string): number {
   const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -67,10 +73,10 @@ export function RippleHeading({ targetId, trigger }: RippleHeadingProps) {
 
       const startY = window.scrollY;
       const onScroll = () => {
-        if (Math.abs(window.scrollY - startY) > SCROLL_ABORT_PX) renderer?.finish();
+        if (Math.abs(window.scrollY - startY) > ENTRY_SCROLL_ABORT_PX) renderer?.finish();
       };
       const onResize = () => renderer?.finish();
-      window.addEventListener("scroll", onScroll, { passive: true });
+      if (trigger === "entry") window.addEventListener("scroll", onScroll, { passive: true });
       window.addEventListener("resize", onResize);
 
       await renderer.play();
@@ -78,16 +84,14 @@ export function RippleHeading({ targetId, trigger }: RippleHeadingProps) {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       if (disposed) return;
-      // The settled frame is the plain heading: show the real text under it,
-      // let that paint, then take the canvas away.
+      // The settled frame is the plain heading: show the real text beneath it,
+      // then fade the canvas away over it rather than swapping in one frame.
       setState("done");
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          renderer?.destroy();
-          renderer = null;
-          playing = false;
-        }),
-      );
+      await renderer.fadeOut();
+      if (disposed) return;
+      renderer.destroy();
+      renderer = null;
+      playing = false;
     };
 
     if (trigger === "entry") {
