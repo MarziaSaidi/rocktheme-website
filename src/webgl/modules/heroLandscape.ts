@@ -29,6 +29,7 @@ import { toWorld, type ChapterFrame } from "../core/chapterFrame";
 import type { HeroLandscapeConfig, LandscapeModelPlacement } from "../sceneTypes";
 import { applyDistanceFog, createDistanceFogUniforms } from "./distanceFog";
 import { applyWaterlineContact } from "./rocks";
+import { bringRobotToLife, type RobotLife, type RobotLifeInput } from "./robotLife";
 import { matchStone } from "./stoneMaterial";
 
 /**
@@ -57,6 +58,8 @@ export type HeroLandscape = Readonly<{
   resize: (width: number) => void;
   /** Objects that should not be drawn into the water's reflection. */
   reflectionExclusions: () => readonly Object3D[];
+  /** The robot's life: its head follows the cursor, it breathes and blinks. */
+  update: (delta: number, input: RobotLifeInput) => void;
   destroy: () => void;
 }>;
 
@@ -352,9 +355,11 @@ export function createHeroLandscape(
     matchStone(material, config.perchShade);
     perchMeshes.push(mesh);
   });
-  load("robot", config.sources.robot, robot, (material) => {
+  let robotLife: RobotLife | null = null;
+  load("robot", config.sources.robot, robot, (material, mesh) => {
     // No environment map: metal would render black. Painted plastic and enamel.
     material.metalness = Math.min(material.metalness, 0.15);
+    robotLife = bringRobotToLife(mesh);
   });
 
   applyPlacement();
@@ -388,6 +393,9 @@ export function createHeroLandscape(
      * pale band. The moon stays out; its disc is sky, not landscape.
      */
     reflectionExclusions: () => [moonDisc],
+    update: (delta, input) => {
+      if (robot.visible) robotLife?.update(delta, input);
+    },
     destroy: () => {
       destroyed = true;
       flank.clear();

@@ -234,6 +234,12 @@ export const heroHorizonLightConfig: HorizonLightConfig = {
 export const heroParticleConfig: ParticleConfig = { ...particleConfig, presence: 0 };
 
 /*
+ * The bio has no stream either: its only particles are the sentence's own
+ * dust, coming out of the snow doorway and going back into it.
+ */
+export const aboutParticleConfig: ParticleConfig = { ...particleConfig, presence: 0 };
+
+/*
  * Contact is one trail, not a field. Strands are listed upstream first and
  * flow right to left: down from the top right, across the lower half of the
  * conversation plane ("plane"), pinched through the dark gap, then through the
@@ -973,7 +979,7 @@ export const sceneSections = {
     fog: horizonAtmosphereConfig,
     mist: lowMistConfig,
     water: floorConfig,
-    particles: particleConfig,
+    particles: aboutParticleConfig,
     rockInstanceIds: [],
     reducedMotion,
   },
@@ -1089,10 +1095,21 @@ export const journeyWaypoints = {
     { eye: [-36, 4.5, 26], target: [-62, 4, 32], fov: 38 },
     { eye: [-18, 2.6, 10], target: [-12, 3, 34], fov: 42 },
   ],
+  /*
+   * How I Work to Contact, composed in the bio's frame. The camera leaves the
+   * doorway behind it: it rises and drifts left out over the water, looking
+   * away across the dark, then glides on and turns to find the Contact rock.
+   * Both points keep the doorway outside the frame.
+   */
+  passage: [
+    poseInFrame(chapterFrames.about, { eye: [-3.2, 3.4, 2.5], target: [-9, 3.8, -16], fov: 42 }),
+    poseInFrame(chapterFrames.about, { eye: [-3.8, 3, -7], target: [3, 3.4, -32], fov: 42 }),
+  ],
 } as const satisfies Readonly<{
   approach: PosePoint;
   arrival: PosePoint;
   departure: readonly PosePoint[];
+  passage: readonly PosePoint[];
 }>;
 
 /** The arrival keyframes for a viewport. */

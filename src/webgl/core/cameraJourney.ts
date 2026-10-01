@@ -42,6 +42,8 @@ export type JourneyStops = Readonly<{
   workEnd: number;
   /** How I Work sits in the middle of the screen. */
   about: number;
+  /** The camera sets off from the bio for Contact (defaults to `about`). */
+  aboutLeave?: number;
   /** End of the page: Contact. */
   contact: number;
 }>;
@@ -54,6 +56,8 @@ export type JourneyRests = Readonly<{
 export type JourneyWaypoints = Readonly<{
   /** Turning away from the last stone toward How I Work. */
   departure: readonly PosePoint[];
+  /** From How I Work out over the water to Contact. */
+  passage?: readonly PosePoint[];
 }>;
 
 export type JourneyInput = Readonly<{
@@ -355,7 +359,10 @@ export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneySt
   }
 
   // -------------------------------------------- How I Work → Contact
-  const u = smootherstep((scroll - stops.about) / Math.max(1, stops.contact - stops.about));
-  sampleLeg(makeLeg([rests.about, rests.contact]), u, out);
+  // The camera stays at the bio a while first, as the sentence goes back
+  // into the doorway, then sets off.
+  const leave = Math.min(stops.contact, Math.max(stops.about, stops.aboutLeave ?? stops.about));
+  const u = smootherstep((scroll - leave) / Math.max(1, stops.contact - leave));
+  sampleLeg(makeLeg([rests.about, ...(waypoints.passage ?? []), rests.contact]), u, out);
   return { from: "about", to: "footer", blend: u, arrival: null, revealed: stations.length };
 }

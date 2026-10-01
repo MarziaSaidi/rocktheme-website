@@ -3,6 +3,7 @@ import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
+import { BioDust } from "@/motion/BioDust";
 import { ReadingLight } from "@/motion/ReadingLight";
 import { SectionMotion } from "@/motion/SectionMotion";
 
@@ -48,15 +49,15 @@ function readingWords(text: string, terms: readonly string[]): ReactNode {
       <Fragment key={`${word}-${index}`}>
         {terms.includes(core) ? (
           <>
-            <span className={styles.word} style={style} data-term={core}>
+            <span className={styles.word} style={style} data-word={index} data-term={core}>
               {core}
             </span>
-            <span className={styles.word} style={style}>
+            <span className={styles.word} style={style} data-word={index}>
               {tail}
             </span>
           </>
         ) : (
-          <span className={styles.word} style={style}>
+          <span className={styles.word} style={style} data-word={index}>
             {word}
           </span>
         )}
@@ -71,7 +72,9 @@ function readingWords(text: string, terms: readonly string[]): ReactNode {
  *
  * The calm scene. The thesis is read, not played: its words light in order as
  * the page scrolls through the section, and the emphasised terms settle in
- * lavender. The text is ordinary, selectable, semantic text throughout.
+ * lavender. It comes out of the snow doorway as dust and goes back into it
+ * as the visitor moves on. The text is ordinary, selectable, semantic text
+ * throughout.
  */
 export function Statement() {
   const { statement } = siteContent;
@@ -86,6 +89,8 @@ export function Statement() {
         selector="#about-title"
         startEvent="statement:read"
       />
+
+      <BioDust sectionId={sectionAnchors.about} selector="#about-title" />
 
       <EnvironmentLayer sectionId="about" />
 

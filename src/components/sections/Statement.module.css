@@ -2,6 +2,12 @@
   position: relative;
   z-index: var(--layer-content);
   padding-block: calc(var(--section-spacing) * 1.15);
+  /*
+   * A runway after the sentence: the scene has a stretch of scroll to itself
+   * while the camera travels out over the water to Contact, as the hero has
+   * on the way to Selected Work.
+   */
+  padding-block-end: calc(var(--section-spacing) * 1.15 + 110svh);
   overflow: hidden;
   isolation: isolate;
 }
@@ -76,6 +82,28 @@
 
 .word[data-term] {
   --word-lit: color-mix(in srgb, var(--brand-lavender) 70%, var(--brand-porcelain));
+}
+
+/* ================================================================ the dust */
+
+/*
+ * BioDust sets `data-dust` while it runs and `--whole` (0 → 1) on each word as
+ * its grains land, or crumble away. The word shows from the bottom edge up,
+ * as far as its dust has settled, with a soft, burning edge.
+ */
+.thesis[data-dust] .word {
+  --whole: 0;
+  --gone: calc(1 - var(--whole));
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent calc(var(--gone) * 145% - 45%),
+    #000 calc(var(--gone) * 145%)
+  );
+  mask-image: linear-gradient(
+    to top,
+    transparent calc(var(--gone) * 145% - 45%),
+    #000 calc(var(--gone) * 145%)
+  );
 }
 
 /* ========================================================= statement motion */

@@ -1,0 +1,108 @@
+/*
+ * An invisible button over the doorway's opening in the 3D scene. The scene
+ * shows the doorway; this only adds the cursor, focus, and the small label
+ * that appears beneath the arch while the visitor is engaged.
+ */
+.doorway {
+  position: fixed;
+  z-index: calc(var(--layer-content) + 1);
+  padding: 0;
+  border: 0;
+  border-radius: 999px 999px 4px 4px;
+  background: none;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.doorway:focus-visible {
+  outline: 2px solid var(--brand-lavender);
+  outline-offset: 6px;
+}
+
+.label {
+  position: absolute;
+  inset-block-start: calc(100% + var(--space-6));
+  left: 50%;
+  overflow: hidden;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--brand-porcelain) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-aubergine) 70%, transparent);
+  color: var(--brand-porcelain);
+  font: 500 var(--text-micro) / 1 var(--font-technical);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 6px);
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+/* The hold fills the label from the left, in daylight. */
+.fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, #dfe9ff 38%, transparent);
+  transform: scaleX(var(--progress));
+  transform-origin: left;
+}
+
+.doorway[data-engaged="true"] .label {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Read by assistive technology through aria-describedby only. */
+.hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The doorway's daylight blooming out until it is the whole screen. */
+@property --bloom {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+.daylight {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: radial-gradient(
+    circle at var(--origin-x) var(--origin-y),
+    #ffffff 0,
+    #eef3f8 var(--bloom),
+    rgb(223 232 240 / 0) calc(var(--bloom) * 1.6 + 40px)
+  );
+  animation: bloom 1s cubic-bezier(0.55, 0, 0.35, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes bloom {
+  to {
+    --bloom: 180vmax;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label {
+    transition: none;
+  }
+
+  .daylight {
+    animation-duration: 0.1s;
+  }
+}

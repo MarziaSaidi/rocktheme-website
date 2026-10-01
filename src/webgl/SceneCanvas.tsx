@@ -6,6 +6,7 @@ import { isSectionId, sectionAnchors, type SectionId } from "@/config/sections";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
+import { BIO_DWELL } from "./doorwayChannel";
 import { afterDoorway, subscribeEntryArrival } from "./entryChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { JourneyStops } from "./core/cameraJourney";
@@ -128,11 +129,21 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       const end = Math.max(0, document.documentElement.scrollHeight - viewport);
       const workStart = top(work);
       const workEnd = Math.max(workStart, workStart + work.offsetHeight - viewport);
+      // The bio rests on its sentence, not the middle of its (tall) section:
+      // the rest of the section is the runway out over the water to Contact.
+      const thesis = about.querySelector<HTMLElement>("h2") ?? about;
       const aboutRest = Math.min(
         end,
-        Math.max(workEnd, top(about) + about.offsetHeight / 2 - viewport / 2),
+        Math.max(workEnd, top(thesis) + thesis.offsetHeight / 2 - viewport / 2),
       );
-      return { workStart, workEnd, about: aboutRest, contact: Math.max(aboutRest, end) };
+      const contact = Math.max(aboutRest, end);
+      return {
+        workStart,
+        workEnd,
+        about: aboutRest,
+        aboutLeave: Math.min(contact, aboutRest + BIO_DWELL * viewport),
+        contact,
+      };
     };
 
     const syncJourney = () => {

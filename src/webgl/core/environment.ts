@@ -25,6 +25,8 @@ import {
 } from "../modules/particleField";
 import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflectiveFloor";
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
+import { createSnowDoorway, type SnowDoorway } from "../modules/snowDoorway";
+import { getDoorwayInput, publishDoorwayAnchor, publishDoorwayRect } from "../doorwayChannel";
 import { createMonolith, type Monolith } from "../modules/monolith";
 import { createRocks, type Rocks } from "../modules/rocks";
 import {
@@ -291,6 +293,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   );
   heroLandscape.resize(width);
 
+  // The second doorway, beside the bio: the way into the winter cabin.
+  const snowDoorway: SnowDoorway = createSnowDoorway(worldScene);
+
   const monolith: Monolith = createMonolith(worldScene, monolithConfig, {
     onFailure: (asset) => {
       console.error(`Selected Work ${asset} failed to load`);
@@ -378,7 +383,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   let stations = workStations(viewport);
   let arrival = arrivalKeyframes(viewport);
   let departures = departureKeyframes(viewport);
-  const waypoints = { departure: journeyWaypoints.departure };
+  const waypoints = { departure: journeyWaypoints.departure, passage: journeyWaypoints.passage };
 
   // ------------------------------------------------ lighting that travels
   /*
@@ -574,6 +579,17 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       along === null ? 0 : 1 - smootherstep((along - 0.74) / 0.2),
       along === null ? 0 : 1 - smootherstep((along - 0.45) / 0.4),
     );
+
+    // The snow doorway stands only while the camera is at the bio: it comes
+    // as the camera turns away from the last stone and goes on to Contact.
+    snowDoorway.setPresence(
+      state.to === "about" && state.from !== "about"
+        ? smootherstep((state.blend - 0.35) / 0.5)
+        : state.from === "about"
+          ? // Gone as soon as the camera sets off; it never flies past it.
+            1 - smootherstep((state.blend - 0.04) / 0.26)
+          : 0,
+    );
   };
 
   // -------------------------------------------------------- orthographic pass
@@ -655,6 +671,19 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     const normalisedX = pointer && width > 0 ? (pointer.x / width) * 2 - 1 : 0;
     const normalisedY = pointer && height > 0 ? (pointer.y / height) * 2 - 1 : 0;
+
+    snowDoorway.update(deltaSeconds, elapsed, getDoorwayInput());
+    const doorwayRect = snowDoorway.screenRect(view, width, height);
+    publishDoorwayRect(doorwayRect);
+    // The bio's dust flies to and from the opening wherever it is on screen.
+    publishDoorwayAnchor(snowDoorway.screenAnchor(view, width, height));
+
+    heroLandscape.update(deltaSeconds, {
+      pointer: pointer?.active && pointer.inside ? { x: normalisedX, y: -normalisedY } : null,
+      camera: view,
+      reducedMotion: options.reducedMotion,
+      greeting: 0,
+    });
 
     rocks.update(
       options.reducedMotion ? 0 : normalisedX,
@@ -902,6 +931,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       particles.destroy();
       rocks.destroy();
       heroLandscape.destroy();
+      snowDoorway.destroy();
+      publishDoorwayRect(null);
       monolith.destroy();
       lights.destroy();
       atmosphere.destroy();
