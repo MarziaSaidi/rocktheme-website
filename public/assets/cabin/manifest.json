@@ -1,0 +1,132 @@
+{
+  "licence": "CC0 1.0 — Poly Haven (polyhaven.com). No attribution required.",
+  "sun": [
+    0.7135,
+    0.4774,
+    0.5129
+  ],
+  "sky": {
+    "id": "horn-koppe_snow",
+    "source": "https://polyhaven.com/a/horn-koppe_snow"
+  },
+  "props": {
+    "vintage_electric_kettle": {
+      "file": "props/vintage_electric_kettle.glb",
+      "source": "https://polyhaven.com/a/vintage_electric_kettle"
+    },
+    "tea_set_01": {
+      "file": "props/tea_set_01.glb",
+      "source": "https://polyhaven.com/a/tea_set_01"
+    },
+    "Rockingchair_01": {
+      "file": "props/Rockingchair_01.glb",
+      "source": "https://polyhaven.com/a/Rockingchair_01"
+    },
+    "ArmChair_01": {
+      "file": "props/ArmChair_01.glb",
+      "source": "https://polyhaven.com/a/ArmChair_01"
+    },
+    "hatchet": {
+      "file": "props/hatchet.glb",
+      "source": "https://polyhaven.com/a/hatchet"
+    },
+    "wooden_axe": {
+      "file": "props/wooden_axe.glb",
+      "source": "https://polyhaven.com/a/wooden_axe"
+    },
+    "Lantern_01": {
+      "file": "props/Lantern_01.glb",
+      "source": "https://polyhaven.com/a/Lantern_01"
+    },
+    "WoodenTable_01": {
+      "file": "props/WoodenTable_01.glb",
+      "source": "https://polyhaven.com/a/WoodenTable_01"
+    },
+    "desk_lamp_arm_01": {
+      "file": "props/desk_lamp_arm_01.glb",
+      "source": "https://polyhaven.com/a/desk_lamp_arm_01"
+    },
+    "painted_wooden_chair_01": {
+      "file": "props/painted_wooden_chair_01.glb",
+      "source": "https://polyhaven.com/a/painted_wooden_chair_01"
+    },
+    "book_encyclopedia_set_01": {
+      "file": "props/book_encyclopedia_set_01.glb",
+      "source": "https://polyhaven.com/a/book_encyclopedia_set_01"
+    },
+    "painted_wooden_cabinet": {
+      "file": "props/painted_wooden_cabinet.glb",
+      "source": "https://polyhaven.com/a/painted_wooden_cabinet"
+    },
+    "electric_stove": {
+      "file": "props/electric_stove.glb",
+      "source": "https://polyhaven.com/a/electric_stove"
+    },
+    "pot_enamel_01": {
+      "file": "props/pot_enamel_01.glb",
+      "source": "https://polyhaven.com/a/pot_enamel_01"
+    },
+    "brass_pot_01": {
+      "file": "props/brass_pot_01.glb",
+      "source": "https://polyhaven.com/a/brass_pot_01"
+    },
+    "brass_pan_01": {
+      "file": "props/brass_pan_01.glb",
+      "source": "https://polyhaven.com/a/brass_pan_01"
+    },
+    "wooden_cutting_board": {
+      "file": "props/wooden_cutting_board.glb",
+      "source": "https://polyhaven.com/a/wooden_cutting_board"
+    },
+    "wooden_spoon": {
+      "file": "props/wooden_spoon.glb",
+      "source": "https://polyhaven.com/a/wooden_spoon"
+    },
+    "wicker_basket_01": {
+      "file": "props/wicker_basket_01.glb",
+      "source": "https://polyhaven.com/a/wicker_basket_01"
+    },
+    "metal_jug": {
+      "file": "props/metal_jug.glb",
+      "source": "https://polyhaven.com/a/metal_jug"
+    },
+    "Shelf_01": {
+      "file": "props/Shelf_01.glb",
+      "source": "https://polyhaven.com/a/Shelf_01"
+    }
+  },
+  "fir": {
+    "files": [
+      "props/fir.glb",
+      "props/fir-lite.glb"
+    ],
+    "source": "https://polyhaven.com/a/fir_sapling_medium",
+    "note": "Tree a only, whole twigs thinned"
+  },
+  "materials": {
+    "walls": {
+      "folder": "materials/walls",
+      "source": "https://polyhaven.com/a/wood_trunk_wall"
+    },
+    "roof": {
+      "folder": "materials/roof",
+      "source": "https://polyhaven.com/a/roof_slates_02"
+    },
+    "stone": {
+      "folder": "materials/stone",
+      "source": "https://polyhaven.com/a/rustic_stone_wall"
+    },
+    "floor": {
+      "folder": "materials/floor",
+      "source": "https://polyhaven.com/a/wood_floor_worn"
+    },
+    "snow": {
+      "folder": "materials/snow",
+      "source": "https://polyhaven.com/a/snow_02"
+    },
+    "timber": {
+      "folder": "materials/timber",
+      "source": "https://polyhaven.com/a/raw_plank_wall"
+    }
+  }
+}

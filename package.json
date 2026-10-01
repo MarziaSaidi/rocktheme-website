@@ -17,7 +17,8 @@
     "prepare:selected-work": "node scripts/prepare-rocks.mjs --selected-work assets-src/selected-work",
     "prepare:hero": "node scripts/prepare-rocks.mjs --hero assets-src/hero",
     "prepare:intro-arch": "node scripts/prepare-rocks.mjs --intro-arch assets-src/intro",
-    "prepare:monolith-screens": "node scripts/prepare-monolith-screens.mjs"
+    "prepare:monolith-screens": "node scripts/prepare-monolith-screens.mjs",
+    "prepare:cabin": "node scripts/prepare-cabin-assets.mjs"
   },
   "dependencies": {
     "next": "16.3.5",

@@ -1,0 +1,212 @@
+/*
+ * The cabin is the whole screen. The one visible control is the × to leave,
+ * a dark aubergine disc that reads on white sky, snow and timber alike.
+ */
+.stage {
+  --pill: color-mix(in srgb, var(--brand-aubergine) 78%, transparent);
+  --pill-strong: color-mix(in srgb, var(--brand-aubergine) 90%, transparent);
+  --pill-text: var(--brand-porcelain);
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #e3ebf2;
+  touch-action: none;
+}
+
+.host {
+  position: absolute;
+  inset: 0;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.canvas[data-dragging] {
+  cursor: grabbing;
+}
+
+.canvas[data-over-toggle="true"] {
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------ leaving */
+.exit {
+  position: absolute;
+  inset-block-start: calc(var(--space-6) + env(safe-area-inset-top, 0px));
+  inset-inline-end: var(--layout-gutter);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.exitHint {
+  padding: var(--space-2) var(--space-3);
+  border-radius: 999px;
+  background: var(--pill);
+  color: var(--pill-text);
+  font: 500 var(--text-micro) / 1 var(--font-technical);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  transition:
+    opacity 0.8s ease,
+    transform 0.8s ease;
+}
+
+.touchOnly {
+  display: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .desktopOnly {
+    display: none;
+  }
+
+  .touchOnly {
+    display: inline;
+  }
+}
+
+.exitHint[data-hidden="true"] {
+  opacity: 0;
+  transform: translateX(6px);
+  pointer-events: none;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--pill-strong);
+  color: var(--pill-text);
+  backdrop-filter: blur(8px);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.close:hover {
+  background: var(--brand-aubergine);
+  transform: scale(1.05);
+}
+
+.close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+/* ------------------------------------------------------------ notices */
+.notice {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  margin: 0;
+  padding: var(--space-4) var(--space-6);
+  border-radius: 14px;
+  background: var(--pill);
+  color: var(--pill-text);
+  transform: translate(-50%, -50%);
+  font: 500 var(--text-small) / 1.4 var(--font-body);
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice a {
+  color: var(--brand-lavender);
+}
+
+.retry {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: var(--brand-porcelain);
+  color: var(--brand-aubergine);
+  font: 600 var(--text-small) / 1 var(--font-body);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------ keyboard twins */
+/*
+ * Mouse and touch visitors move by clicking the world and switch MARZIA's
+ * theme on its sign. These buttons do the same for keyboard and screen-reader
+ * visitors, and only appear while one of them has focus.
+ */
+.places,
+.theme {
+  position: absolute;
+  inset-block-end: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  max-width: calc(100% - 2 * var(--layout-gutter));
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--pill);
+  transform: translateX(-50%);
+  backdrop-filter: blur(10px);
+}
+
+.theme {
+  inset-block-end: calc(var(--space-6) + env(safe-area-inset-bottom, 0px) + 3.5rem);
+}
+
+.places:not(:focus-within),
+.theme:not(:focus-within) {
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
+.places button,
+.theme button {
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: color-mix(in srgb, var(--brand-porcelain) 70%, transparent);
+  font: 500 var(--text-micro) / 1 var(--font-technical);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.places button[aria-current],
+.theme button[aria-pressed="true"] {
+  background: var(--brand-porcelain);
+  color: var(--brand-aubergine);
+}
+
+.close:focus-visible,
+.retry:focus-visible,
+.places button:focus-visible,
+.theme button:focus-visible {
+  outline: 2px solid var(--brand-lavender);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exitHint,
+  .close {
+    transition: none;
+  }
+}

@@ -1,0 +1,58 @@
+/* Colours are the old site's hero values for each theme. */
+.stage {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: rgb(242, 231, 245);
+}
+
+.stage[data-theme="dark"] {
+  background-color: rgb(18, 13, 32);
+}
+
+.stage > canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  top: 210px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #82ac33;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  color: #14210a;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.8s ease, transform 0.3s ease;
+}
+
+.stage[data-theme="dark"] .hint {
+  background: #b793d2;
+  color: #120d20;
+}
+
+.hint[data-dismissed] {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.94);
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 1023px) {
+  .hint {
+    display: none;
+  }
+}

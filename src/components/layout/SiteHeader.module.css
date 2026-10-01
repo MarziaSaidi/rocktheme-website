@@ -34,6 +34,11 @@
   background: none;
 }
 
+/* The cabin world is full screen; its only control is its own × to leave. */
+:global(body:has([data-cabin-page])) .header {
+  display: none;
+}
+
 .wordmark {
   composes: microStrong from "../../styles/type.module.css";
   display: inline-flex;

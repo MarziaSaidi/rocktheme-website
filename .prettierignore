@@ -5,3 +5,6 @@ docs/homepage-creative-direction.md
 AGENTS.md
 CLAUDE.md
 package-lock.json
+
+# Verbatim copy of the old site's MARZIA code; kept byte-for-byte.
+src/cabin/marziaOriginal.ts
