@@ -2,6 +2,8 @@ import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
+import { DecodeText } from "@/motion/DecodeText";
+import { RippleHeading } from "@/motion/RippleHeading";
 
 import styles from "./Hero.module.css";
 
@@ -19,6 +21,8 @@ export function Hero() {
 
         <div className={styles.inner}>
           <div className={styles.statement}>
+            {/* The headline arrives on a ripple once the visitor is through the doorway. */}
+            <RippleHeading targetId="hero-title" trigger="entry" />
             <DisplayHeading
               id="hero-title"
               as="h1"
@@ -33,7 +37,7 @@ export function Hero() {
             </p>
             <a className={styles.scroll} href={`#${sectionAnchors["selected-work"]}`}>
               <span className={styles.scrollMark} aria-hidden="true" />
-              {hero.scrollLabel}
+              <DecodeText text={hero.scrollLabel} />
             </a>
           </div>
         </div>

@@ -3,6 +3,8 @@ import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
 import { CueEmitter } from "@/motion/CueEmitter";
+import { DecodeText } from "@/motion/DecodeText";
+import { RippleHeading } from "@/motion/RippleHeading";
 
 import styles from "./SiteFooter.module.css";
 
@@ -23,6 +25,8 @@ export function SiteFooter() {
       />
 
       <EnvironmentLayer sectionId="footer" />
+      {/* The invitation arrives on a ripple each time it comes into view. */}
+      <RippleHeading targetId="contact-title" trigger="view" />
 
       <div className={styles.inner}>
         <div className={styles.invitation}>
@@ -36,7 +40,7 @@ export function SiteFooter() {
           />
           <p className={styles.lead}>{contact.lead}</p>
           <a className={styles.primary} href={email.href} data-contact-primary="">
-            {contact.primaryLabel}
+            <DecodeText text={contact.primaryLabel} />
             <span aria-hidden="true">↗</span>
           </a>
         </div>
@@ -49,7 +53,7 @@ export function SiteFooter() {
             data-scene-anchor="plane"
           >
             <span className={styles.planeLabel}>
-              {contact.planeLabel}
+              <DecodeText text={contact.planeLabel} />
               <span aria-hidden="true">↗</span>
             </span>
             <svg

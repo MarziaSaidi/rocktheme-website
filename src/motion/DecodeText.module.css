@@ -1,0 +1,38 @@
+/*
+ * DecodeText. A character with no state is settled and simply inherits the
+ * label's colour, so hover and focus colours keep working untouched.
+ */
+.decode {
+  position: relative;
+}
+
+.char {
+  transition: color 220ms ease;
+}
+
+.char[data-state="hidden"] {
+  opacity: 0;
+}
+
+.char[data-state="scramble"] {
+  color: var(--brand-lavender);
+  opacity: 0.85;
+  transition: none;
+}
+
+.char[data-state="accent"] {
+  color: var(--color-text-moonlit);
+  transition: none;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

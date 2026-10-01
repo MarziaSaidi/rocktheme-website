@@ -47,9 +47,11 @@
 
 /*
  * ReadingLight publishes --read (0 → 1) while the thesis crosses the reading
- * band. Each word lights once the reading position passes its index, over a
- * short soft edge a few words wide. The default of 1 is the settled state:
- * without JavaScript, or with reduced motion, the sentence is simply lit.
+ * band. Each word lights in moonlit as the reading position reaches it, then
+ * settles to its own colour a few words behind, so the words being read glow
+ * and the rest of the sentence is calm. The default of 1 is the settled
+ * state: without JavaScript, or with reduced motion, the sentence is simply
+ * lit, in its final colours.
  */
 .thesis {
   --read: 1;
@@ -57,11 +59,19 @@
 }
 
 .word {
-  --lit: clamp(0, calc((var(--read) * (var(--count) + 3) - var(--i)) / 3), 1);
+  /* Lit as it is reached; settled four words later. Both finish by --read: 1. */
+  --lit: clamp(0, calc((var(--read) * (var(--count) + 7) - var(--i)) / 2.5), 1);
+  --settle: clamp(0, calc((var(--read) * (var(--count) + 7) - var(--i) - 4) / 3), 1);
   --word-lit: var(--color-text-primary);
+  --word-reading: color-mix(in srgb, var(--color-text-moonlit) 85%, var(--brand-porcelain));
   /* Keeps hyphenated terms such as "AI-era" on one line. */
   white-space: nowrap;
-  color: color-mix(in srgb, var(--word-lit) calc(var(--lit) * 100%), var(--word-dim));
+  color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--word-lit) calc(var(--settle) * 100%), var(--word-reading))
+      calc(var(--lit) * 100%),
+    var(--word-dim)
+  );
 }
 
 .word[data-term] {

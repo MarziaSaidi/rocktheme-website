@@ -36,3 +36,18 @@
   /* Compression during a rise reads as the line stretching up into proportion. */
   transform-origin: bottom center;
 }
+
+/*
+ * The ripple reveal (src/motion/RippleHeading). While it plays, a canvas beside
+ * the heading shows the words and the heading itself is hidden but present, so
+ * it is still read and still selectable. The reveal replaces the heading's
+ * own line rise for as long as the heading takes part in it.
+ */
+.heading[data-ripple] .lineInner {
+  animation-name: none;
+}
+
+.heading[data-ripple="pending"],
+.heading[data-ripple="playing"] {
+  opacity: 0;
+}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 
 import { siteContent } from "@/content/site/siteContent";
+import { DecodeText } from "@/motion/DecodeText";
 import { SoundToggle } from "@/sound/SoundToggle";
 
 import { MobileMenu } from "./MobileMenu";
@@ -39,7 +40,9 @@ export function SiteHeader() {
       >
         <SoundToggle />
 
-        <span className={styles.availability}>{siteContent.availability.label}</span>
+        <span className={styles.availability}>
+          <DecodeText text={siteContent.availability.label} />
+        </span>
       </p>
 
       <MobileMenu
