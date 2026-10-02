@@ -119,7 +119,7 @@ export const STATIONS: readonly Station[] = [
   {
     id: "porch",
     label: "Porch",
-    caption: "Snow on the rail, the door ahead",
+    caption: "The deck under the roof, the door ahead",
     zone: "outside",
     mode: "look",
     position: [9.4, 1.7, 10.6],

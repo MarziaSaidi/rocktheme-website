@@ -1,11 +1,12 @@
 import type { Vector3 } from "three";
 
+import { FIRE_PIT, PIT_CHAIRS, ROOF_POSTS } from "./cabinExterior";
 import { HALL_COLUMNS, PLINTH_SIZE, PLINTHS } from "./hall";
 import { HALL } from "./stations";
 
 /**
  * What the visitor can't walk through, in plan (x, z): the cabin's walls
- * with the door left open, porch rails, chimney, log pile, the furniture
+ * with the door left open, the roof posts, flue, log pile, the fire pit, the furniture
  * inside, the steel hall's glass and columns, and the fir trunks. Movement slides along anything it meets.
  */
 type Segment = readonly [number, number, number, number];
@@ -27,11 +28,8 @@ const STATIC_SEGMENTS: Segment[] = [
   [4, 3.5, 4, -3.5],
   // The open door leaf, swung into the room.
   [5.62, 3.38, 5.46, 2.43],
-  // Porch rails, with the gap in front of the door.
-  [4.5, 5.35, 5.6, 5.35],
-  [6.6, 5.35, 8.5, 5.35],
-  // Chimney stack outside the north wall, log pile by the west wall.
-  ...rect(10.4, -4.25, 11.4, -3.6),
+  // Steel flue outside the north wall, log pile by the west wall.
+  ...rect(10.38, -4.27, 11.42, -3.58),
   ...rect(3.42, 2.05, 3.7, 3.6),
   // Inside: hearth, bookcases on the north and west walls, desk.
   ...rect(9.75, -3.5, 11.95, -2.62),
@@ -56,8 +54,9 @@ const STATIC_CIRCLES: Circle[] = [
   [8.4, -2.5, 0.48], // tea table
   [10.6, 2.1, 0.3], // desk chair
   [7.6, -2.6, 0.2], // book stack
-  [4.65, 5.35, 0.12], // porch posts
-  [8.35, 5.35, 0.12],
+  ...ROOF_POSTS.map(([x, z]) => [x, z, 0.1] as const),
+  [FIRE_PIT[0], FIRE_PIT[1], 0.6],
+  ...PIT_CHAIRS.map(([x, z]) => [x, z, 0.32] as const),
   ...HALL_COLUMNS,
 ];
 

@@ -159,7 +159,7 @@ type Door = Readonly<{
   /** The facade's outer face, and the inner face seen from the room. */
   outerZ: number;
   innerZ: number;
-  /** Where the aim from outside is judged: the porch rail, or the wall. */
+  /** Where the aim from outside is judged: the deck's middle, or the wall. */
   aimZ: number;
   /** How far either side of the axis an aim still counts, outside and inside. */
   catchOutside: number;
@@ -213,7 +213,7 @@ const DOORS: readonly Door[] = [
   },
 ];
 
-/** The porch deck, between the cabin wall and its rail. */
+/** The deck in front of the door, under the roof. */
 const onPorch = (x: number, z: number) => x > 4.5 && x < 8.5 && z >= ROOM.maxZ && z < 5.35;
 
 const at = (x: number, z: number) => new Vector3(x, 0, z);
@@ -222,7 +222,7 @@ const at = (x: number, z: number) => new Vector3(x, 0, z);
 function entering(door: Door, position: Vector3): Vector3[] {
   const lateral = Math.abs(position.x - door.x);
   const through = [at(door.x, door.insideZ), at(door.x, door.arriveZ)];
-  // On the porch the rail is in the way of the usual line-up point.
+  // On the deck the usual line-up point is behind the visitor.
   if (door.building === "cabin" && onPorch(position.x, position.z)) {
     return [...(lateral > door.onAxis ? [at(door.x, 4.4)] : []), ...through];
   }

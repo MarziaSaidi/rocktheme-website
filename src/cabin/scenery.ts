@@ -13,7 +13,6 @@ import {
   DoubleSide,
   EquirectangularReflectionMapping,
   Euler,
-  ExtrudeGeometry,
   Fog,
   Group,
   InstancedMesh,
@@ -25,7 +24,6 @@ import {
   PointLight,
   Quaternion,
   Scene,
-  Shape,
   SRGBColorSpace,
   TextureLoader,
   Vector3,
@@ -42,6 +40,7 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { color, mix, normalWorld, smoothstep, texture, uv, vec4 } from "three/tsl";
 import { MeshStandardNodeMaterial } from "three/webgpu";
 
+import { buildCabinExterior, DECK, PIT_CHAIRS } from "./cabinExterior";
 import { buildFlames } from "./flames";
 import { buildHall, buildHallSign } from "./hall";
 import { buildMarziaPanel } from "./marziaPanel";
@@ -230,7 +229,17 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
   const cabin = new Group();
   cabin.userData.kind = "cabin";
   scene.add(cabin);
-  buildCabin(cabin, slab, surface, keep, occluders);
+  buildCabin(cabin, slab, surface, keep);
+  buildCabinExterior({
+    cabin,
+    box: { X0, X1, Z0, Z1, WALL, T },
+    openings: OPENINGS,
+    slab,
+    surface,
+    keep,
+    occluders,
+    groundAt: groundHeight,
+  });
 
   // ------------------------------------------------------------ steel hall
   scene.add(buildHall(surfaces, keep), await buildHallSign(keep));
@@ -258,8 +267,20 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
   place("dining_chair_02", [10.6, FLOOR, 2.1], { turn: 90 });
   place("desk_lamp_arm_01", [11.68, deskTop, 1.5], { turn: -120 });
 
-  // Porch and outside.
-  place("Lantern_01", [7.45, 1.85, 3.78], { interior: false });
+  // Outside: chairs round the fire pit, the axe by the log pile.
+  for (const [x, z, turn] of PIT_CHAIRS) {
+    const chair = place("painted_wooden_chair_01", [x, groundHeight(x, z), z], {
+      turn,
+      interior: false,
+    });
+    // Oiled teak rather than white paint.
+    chair.traverse((child) => {
+      if (child instanceof Mesh && child.material instanceof MeshStandardMaterial) {
+        child.material = keep(child.material.clone());
+        child.material.color.set("#a8784e");
+      }
+    });
+  }
   place("wooden_axe", [3.62, FLOOR, 1.75], { turn: 15, interior: false });
 
   // ------------------------------------------------------------ desk setup
@@ -358,6 +379,7 @@ const PROP_IDS = [
   "hatchet",
   "wooden_axe",
   "Lantern_01",
+  "painted_wooden_chair_01",
   "desk_lamp_arm_01",
   "book_encyclopedia_set_01",
   "fir",
@@ -399,6 +421,7 @@ const CALM: ReadonlyArray<readonly [number, number, number]> = [
   [-3, HALL.maxZ + 2, 5],
   [1, 7, 4],
   [-6, 11, 4],
+  [9.2, 9.1, 3.5],
 ];
 
 /** The snow's height at a point: the terrain mesh is built from this too. */
@@ -423,10 +446,10 @@ export function terrainHeight(x: number, z: number) {
   return height * (1 - calmness) - 0.02;
 }
 
-/** What a visitor stands on: the cabin floor, the porch deck, or the snow. */
+/** What a visitor stands on: the cabin floor, the deck, or the snow. */
 export function groundHeight(x: number, z: number) {
   if (x > X0 && x < X1 && z > Z0 && z < Z1) return FLOOR;
-  if (x > 4.5 && x < 8.5 && z >= Z1 && z < 5.5) return 0.18;
+  if (x > DECK.minX && x < DECK.maxX && z >= DECK.minZ && z < DECK.maxZ) return DECK.top;
   if (x > HALL.minX - 0.3 && x < HALL.maxX + 0.3 && z > HALL.minZ - 0.3 && z < HALL.maxZ + 0.3)
     return HALL.floor;
   if (x > HALL.door.from - 0.6 && x < HALL.door.to + 0.6 && z >= HALL.maxZ && z < HALL.maxZ + 2.6)
@@ -474,12 +497,22 @@ const Z1 = 3.5;
 const WALL = 3;
 const T = 0.22;
 
+/** The log walls' openings: doors and windows, cut through both faces. */
+const OPENINGS = {
+  south: [
+    { from: 5.6, to: 6.6, bottom: 0, top: 2.2 },
+    { from: 9, to: 10.4, bottom: 1, top: 2.1 },
+  ],
+  north: [{ from: 5, to: 6.4, bottom: 1.25, top: 2.15 }],
+  west: [{ from: -1.1, to: 1.1, bottom: 0.75, top: 2.4 }],
+  east: [{ from: 1.3, to: 2.9, bottom: 1.3, top: 2.3 }],
+} as const;
+
 function buildCabin(
   cabin: Group,
   slab: Slab,
   surface: (role: SurfaceRole, interior?: boolean, tint?: string) => Material,
   keep: <T extends { dispose: () => void }>(item: T) => T,
-  occluders: Object3D[],
 ) {
   type Opening = Readonly<{ from: number; to: number; bottom: number; top: number }>;
 
@@ -569,76 +602,31 @@ function buildCabin(
     piece(cursor, end, 0, WALL);
   };
 
-  wall("x", Z1, X0, X1, [
-    { from: 5.6, to: 6.6, bottom: 0, top: 2.2 },
-    { from: 9, to: 10.4, bottom: 1, top: 2.1 },
-  ]);
-  wall("x", Z0, X0, X1, [{ from: 5, to: 6.4, bottom: 1.25, top: 2.15 }]);
-  wall("z", X0, Z0, Z1, [{ from: -1.1, to: 1.1, bottom: 0.75, top: 2.4 }]);
-  wall("z", X1, Z0, Z1, [{ from: 1.3, to: 2.9, bottom: 1.3, top: 2.3 }]);
+  wall("x", Z1, X0, X1, [...OPENINGS.south]);
+  wall("x", Z0, X0, X1, [...OPENINGS.north]);
+  wall("z", X0, Z0, Z1, [...OPENINGS.west]);
+  wall("z", X1, Z0, Z1, [...OPENINGS.east]);
 
-  // Corner posts where the logs meet.
+  // Corner posts where the logs meet: the part inside the room. Outside,
+  // the cladding in cabinExterior.ts covers the corners.
   for (const [x, z] of [
     [X0, Z0],
     [X1, Z0],
     [X0, Z1],
     [X1, Z1],
   ] as const) {
-    slab(cabin, [x - 0.2, 0, z - 0.2], [x + 0.2, WALL + 0.05, z + 0.2], "timber");
-  }
-
-  // Gable ends, in logs.
-  const RIDGE = 4.9;
-  const gable = new Shape();
-  gable.moveTo(Z0 - T / 2, 0);
-  gable.lineTo(Z1 + T / 2, 0);
-  gable.lineTo(0, RIDGE - WALL);
-  gable.closePath();
-  for (const x of [X0, X1]) {
-    const geometry = keep(new ExtrudeGeometry(gable, { depth: T, bevelEnabled: false }));
-    const mesh = new Mesh(geometry, surface("walls"));
-    mesh.rotation.y = Math.PI / 2;
-    mesh.position.set(x + T / 2, WALL, 0);
-    cabin.add(mesh);
-    mesh.updateMatrixWorld(true);
-    applyWorldUVs(geometry, mesh.matrixWorld, TILE.walls, { swap: true });
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    occluders.push(mesh);
-  }
-
-  // Roof: shingles with a thick blanket of snow, rounded at the eaves.
-  const OVERHANG = 0.6;
-  const run = Z1 + OVERHANG;
-  const pitch = Math.atan2(RIDGE - WALL, Z1);
-  const length = run / Math.cos(pitch);
-  for (const side of [-1, 1]) {
-    const roof = new Group();
-    const shingles = new Mesh(
-      keep(new BoxGeometry(X1 - X0 + OVERHANG * 2, 0.16, length)),
-      surface("roof"),
+    const sx = x === X0 ? 1 : -1;
+    const sz = z === Z0 ? 1 : -1;
+    const ax = x + sx * (T / 2);
+    const bx = x + sx * 0.2;
+    const az = z + sz * (T / 2);
+    const bz = z + sz * 0.2;
+    slab(
+      cabin,
+      [Math.min(ax, bx), 0, Math.min(az, bz)],
+      [Math.max(ax, bx), WALL + 0.05, Math.max(az, bz)],
+      "timber",
     );
-    const snow = new Mesh(
-      keep(new RoundedBoxGeometry(X1 - X0 + OVERHANG * 2 - 0.08, 0.34, length + 0.06, 3, 0.14)),
-      surface("snow", false, "#f7f9fc"),
-    );
-    snow.position.y = 0.2;
-    roof.add(shingles, snow);
-    roof.position.set(
-      (X0 + X1) / 2,
-      RIDGE - (Math.sin(pitch) * length) / 2 + 0.1,
-      (side * Math.cos(pitch) * length) / 2,
-    );
-    roof.rotation.x = side * pitch;
-    cabin.add(roof);
-    roof.updateMatrixWorld(true);
-    applyWorldUVs(shingles.geometry, shingles.matrixWorld, TILE.roof);
-    applyWorldUVs(snow.geometry, snow.matrixWorld, TILE.snow);
-    for (const mesh of [shingles, snow]) {
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-    }
-    occluders.push(roof);
   }
 
   // Floor and a ceiling under the roof inside.
@@ -654,17 +642,6 @@ function buildCabin(
     });
   }
 
-  // Porch: deck, posts, rail, its own little roof under snow.
-  slab(cabin, [4.5, 0, Z1], [8.5, 0.18, 5.5], "timber", { solid: false });
-  for (const x of [4.65, 8.35])
-    slab(cabin, [x - 0.09, 0.18, 5.26], [x + 0.09, 2.62, 5.44], "timber");
-  slab(cabin, [4.5, 0.95, 5.3], [5.6, 1.03, 5.4], "timber", { solid: false });
-  slab(cabin, [6.6, 0.95, 5.3], [8.5, 1.03, 5.4], "timber", { solid: false });
-  slab(cabin, [4.5, 1.03, 5.29], [5.6, 1.09, 5.41], "snow", { solid: false, tint: "#f7f9fc" });
-  slab(cabin, [6.6, 1.03, 5.29], [8.5, 1.09, 5.41], "snow", { solid: false, tint: "#f7f9fc" });
-  slab(cabin, [4.35, 2.62, Z1 - 0.1], [8.65, 2.76, 5.7], "roof");
-  slab(cabin, [4.4, 2.76, Z1], [8.6, 2.98, 5.65], "snow", { solid: false, tint: "#f7f9fc" });
-
   // The door, open into the room.
   const door = new Group();
   slab(door, [0, FLOOR, -0.03], [0.96, 2.18, 0.03], "timber", { interior: true });
@@ -672,9 +649,7 @@ function buildCabin(
   door.rotation.y = MathUtils.degToRad(100);
   cabin.add(door);
 
-  // Chimney outside the north wall, breast and hearth inside.
-  slab(cabin, [10.4, 0, -4.25], [11.4, 5.7, -3.6], "stone");
-  slab(cabin, [10.32, 5.7, -4.33], [11.48, 5.92, -3.52], "snow", { solid: false, tint: "#f7f9fc" });
+  // The breast and hearth inside; the flue outside is in cabinExterior.ts.
   slab(cabin, [9.9, FLOOR, -3.4], [10.3, 1.5, -2.72], "stone", { interior: true });
   slab(cabin, [11.4, FLOOR, -3.4], [11.8, 1.5, -2.72], "stone", { interior: true });
   slab(cabin, [10.3, 1.0, -3.4], [11.4, 1.5, -2.72], "stone", { interior: true });
