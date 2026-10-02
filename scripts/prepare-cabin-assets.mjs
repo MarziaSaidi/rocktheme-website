@@ -50,6 +50,10 @@ const PROPS = [
   ["wicker_basket_01", 512, 20000],
   ["metal_jug", 512, 8000],
   ["Shelf_01", 1024, 8000],
+  ["Ottoman_01", 1024, 12000],
+  ["modern_arm_chair_01", 1024, 25000],
+  ["coffee_table_round_01", 1024, 10000],
+  ["dining_chair_02", 1024, 15000],
 ];
 
 /** Surfaces: Poly Haven texture id and the role it plays. */

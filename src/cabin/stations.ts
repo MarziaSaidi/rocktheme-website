@@ -131,7 +131,7 @@ export const STATIONS: readonly Station[] = [
   {
     id: "fire",
     label: "Fire and tea",
-    caption: "The kettle over the fire, a cup by the chair",
+    caption: "The kettle over the fire, tea by the lounge chair",
     zone: "inside",
     mode: "look",
     position: [8.4, 1.5, 0.9],

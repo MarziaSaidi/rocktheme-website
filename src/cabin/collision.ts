@@ -50,11 +50,12 @@ const STATIC_SEGMENTS: Segment[] = [
 ];
 
 const STATIC_CIRCLES: Circle[] = [
-  [8.75, -1.55, 0.45], // rocking chair
+  [8.75, -1.3, 0.5], // armchair by the tea
+  [9.5, -1.82, 0.35], // ottoman
   [11.25, -1.15, 0.5], // armchair
-  [9.45, -2.4, 0.45], // tea table
-  [10.45, 2.1, 0.3], // desk chair
-  [8.05, -2.45, 0.2], // book stack
+  [8.4, -2.5, 0.48], // tea table
+  [10.6, 2.1, 0.3], // desk chair
+  [7.6, -2.6, 0.2], // book stack
   [4.65, 5.35, 0.12], // porch posts
   [8.35, 5.35, 0.12],
   ...HALL_COLUMNS,

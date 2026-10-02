@@ -93,6 +93,22 @@
     "Shelf_01": {
       "file": "props/Shelf_01.glb",
       "source": "https://polyhaven.com/a/Shelf_01"
+    },
+    "Ottoman_01": {
+      "file": "props/Ottoman_01.glb",
+      "source": "https://polyhaven.com/a/Ottoman_01"
+    },
+    "modern_arm_chair_01": {
+      "file": "props/modern_arm_chair_01.glb",
+      "source": "https://polyhaven.com/a/modern_arm_chair_01"
+    },
+    "coffee_table_round_01": {
+      "file": "props/coffee_table_round_01.glb",
+      "source": "https://polyhaven.com/a/coffee_table_round_01"
+    },
+    "dining_chair_02": {
+      "file": "props/dining_chair_02.glb",
+      "source": "https://polyhaven.com/a/dining_chair_02"
     }
   },
   "fir": {

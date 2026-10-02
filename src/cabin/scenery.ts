@@ -7,6 +7,7 @@ import {
   Matrix4,
   Sphere,
   BoxGeometry,
+  BufferGeometry,
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
@@ -36,6 +37,7 @@ import {
 import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { color, mix, normalWorld, smoothstep, texture, uv, vec4 } from "three/tsl";
 import { MeshStandardNodeMaterial } from "three/webgpu";
@@ -235,23 +237,25 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
 
   // ------------------------------------------------------------ interior
   // A library: bookcases along the north and west walls, low under the windows.
-  const library = buildLibrary(slab, keep);
+  const library = buildLibrary(keep);
   scene.add(library);
   place("book_encyclopedia_set_01", [5.7, LOW_SHELF_TOP, -3.18]);
 
-  // Fire corner: rocking chair and armchair facing the hearth, tea between.
-  place("Rockingchair_01", [8.75, FLOOR, -1.55], { turn: 140 });
-  place("ArmChair_01", [11.25, FLOOR, -1.15], { turn: -150 });
-  buildTeaTable(cabin, keep, surface);
-  place("tea_set_01", [9.45, 0.66, -2.4], { turn: 20 });
+  // Fire corner: a pair of armchairs facing the hearth, an ottoman before one,
+  // the tea on a marble table beside them.
+  const topOf = (object: Object3D) => new Box3().setFromObject(object).max.y;
+  place("modern_arm_chair_01", [8.75, FLOOR, -1.3], { turn: 125 });
+  place("Ottoman_01", [9.5, FLOOR, -1.82], { turn: 125 });
+  place("modern_arm_chair_01", [11.25, FLOOR, -1.15], { turn: -150 });
+  const teaTable = place("coffee_table_round_01", [8.4, FLOOR, -2.5], { scale: 0.7 });
+  place("tea_set_01", [8.4, topOf(teaTable), -2.5], { turn: 20, scale: 0.85 });
   place("vintage_electric_kettle", [10.85, 0.51, -3.02], { turn: -20 });
   place("Lantern_01", [10.3, 1.62, -3.1], { turn: 15 });
   place("hatchet", [9.75, FLOOR, -3.15], { turn: 80 });
 
   // Desk under the east window; the lamp and screen stand on its measured top.
-  const desk = place("WoodenTable_01", [11.35, FLOOR, 2.1], { turn: 90 });
-  const deskTop = new Box3().setFromObject(desk).max.y;
-  place("painted_wooden_chair_01", [10.45, FLOOR, 2.1], { turn: 90 });
+  const deskTop = buildDesk(scene, keep);
+  place("dining_chair_02", [10.6, FLOOR, 2.1], { turn: 90 });
   place("desk_lamp_arm_01", [11.68, deskTop, 1.5], { turn: -120 });
 
   // Porch and outside.
@@ -347,14 +351,14 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
 const PROP_IDS = [
   "vintage_electric_kettle",
   "tea_set_01",
-  "Rockingchair_01",
-  "ArmChair_01",
+  "Ottoman_01",
+  "modern_arm_chair_01",
+  "coffee_table_round_01",
+  "dining_chair_02",
   "hatchet",
   "wooden_axe",
   "Lantern_01",
-  "WoodenTable_01",
   "desk_lamp_arm_01",
-  "painted_wooden_chair_01",
   "book_encyclopedia_set_01",
   "fir",
   "fir-lite",
@@ -700,28 +704,79 @@ function buildCabin(
   }
 }
 
-function buildTeaTable(
-  parent: Object3D,
-  keep: <T extends { dispose: () => void }>(item: T) => T,
-  surface: (role: SurfaceRole, interior?: boolean, tint?: string) => Material,
-) {
-  const table = new Group();
-  const top = new Mesh(keep(new CylinderGeometry(0.42, 0.42, 0.05, 40)), surface("timber", true));
-  top.position.y = 0.63;
-  const stem = new Mesh(keep(new CylinderGeometry(0.06, 0.08, 0.5, 16)), surface("timber", true));
-  stem.position.y = 0.38;
-  const foot = new Mesh(keep(new CylinderGeometry(0.26, 0.3, 0.05, 32)), surface("timber", true));
-  foot.position.y = FLOOR + 0.02;
-  table.add(top, stem, foot);
-  table.traverse((child) => {
-    if (child instanceof Mesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
+/** Pale oak: long fine grain running the length of each board. */
+function oakGrain() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 256;
+  const context = canvas.getContext("2d")!;
+  let seed = 5;
+  const random = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  context.fillStyle = "#c49c6f";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  for (let k = 0; k < 140; k++) {
+    const y = random() * canvas.height;
+    const dark = random() > 0.4;
+    context.strokeStyle = dark
+      ? `rgba(110,72,40,${0.08 + random() * 0.18})`
+      : `rgba(240,214,170,${0.08 + random() * 0.12})`;
+    context.lineWidth = 0.6 + random() * 2.2;
+    context.beginPath();
+    const wave = 1 + random() * 3;
+    const phase = random() * Math.PI * 2;
+    for (let x = 0; x <= canvas.width; x += 16) {
+      const dy = Math.sin(x / (120 + wave * 40) + phase) * wave;
+      if (x === 0) context.moveTo(x, y + dy);
+      else context.lineTo(x, y + dy);
     }
-  });
-  table.position.set(9.45, 0, -2.4);
-  parent.add(table);
-  return table;
+    context.stroke();
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+/** A modern desk under the east window: an oak top on black steel sled legs. */
+function buildDesk(scene: Scene, keep: <T extends { dispose: () => void }>(item: T) => T) {
+  const top = 0.74;
+  const [minX, maxX, minZ, maxZ] = [10.95, 11.75, 1.25, 2.95];
+  const oak = keep(
+    new MeshStandardMaterial({ map: keep(oakGrain()), roughness: 0.55, envMapIntensity: 0.45 }),
+  );
+  const steel = keep(
+    new MeshStandardMaterial({
+      color: "#0d0e10",
+      roughness: 0.5,
+      metalness: 0.4,
+      envMapIntensity: 0.45,
+    }),
+  );
+  const desk = new Group();
+  desk.userData.kind = "prop";
+  const add = (min: Vec3, max: Vec3, material: Material) => {
+    const mesh = new Mesh(
+      keep(new BoxGeometry(max[0] - min[0], max[1] - min[1], max[2] - min[2])),
+      material,
+    );
+    mesh.position.set((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    desk.add(mesh);
+  };
+  add([minX, top - 0.035, minZ], [maxX, top, maxZ], oak);
+  // Each leg a closed loop of flat bar: two posts, a foot and a rail under the top.
+  for (const z of [minZ + 0.06, maxZ - 0.06]) {
+    for (const x of [minX + 0.06, maxX - 0.06])
+      add([x - 0.02, FLOOR, z - 0.02], [x + 0.02, top - 0.035, z + 0.02], steel);
+    add([minX + 0.04, FLOOR, z - 0.02], [maxX - 0.04, FLOOR + 0.03, z + 0.02], steel);
+    add([minX + 0.04, top - 0.065, z - 0.02], [maxX - 0.04, top - 0.035, z + 0.02], steel);
+  }
+  scene.add(desk);
+  return top;
 }
 
 // ------------------------------------------------------------------ library
@@ -772,7 +827,7 @@ const SPINES = [
   "#6c7a89",
 ];
 
-function buildLibrary(slab: Slab, keep: <T extends { dispose: () => void }>(item: T) => T) {
+function buildLibrary(keep: <T extends { dispose: () => void }>(item: T) => T) {
   const library = new Group();
   library.userData.kind = "prop";
   let seed = 7;
@@ -792,16 +847,20 @@ function buildLibrary(slab: Slab, keep: <T extends { dispose: () => void }>(item
       .makeTranslation(X0 + T / 2 + 0.01, 0, 0)
       .multiply(new Matrix4().makeRotationY(Math.PI / 2)),
   };
+  // Open shelving: black steel uprights, oak shelves, the log wall behind.
+  const boards = { steel: [] as BufferGeometry[], oak: [] as BufferGeometry[] };
   const corner = new Vector3();
-  const board = (frame: Matrix4, min: Vec3, max: Vec3, tint: string, solid = false) => {
+  const board = (frame: Matrix4, min: Vec3, max: Vec3, kind: keyof typeof boards) => {
     const a = corner
       .set(...min)
       .applyMatrix4(frame)
-      .toArray() as [number, number, number];
-    const b = new Vector3(...max).applyMatrix4(frame).toArray() as [number, number, number];
-    const low: Vec3 = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])];
-    const high: Vec3 = [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])];
-    slab(library, low, high, "timber", { interior: true, tint, solid });
+      .clone();
+    const b = new Vector3(...max).applyMatrix4(frame);
+    const low = a.clone().min(b);
+    const size = a.clone().max(b).sub(low);
+    const geometry = new BoxGeometry(size.x, size.y, size.z);
+    geometry.translate(low.x + size.x / 2, low.y + size.y / 2, low.z + size.z / 2);
+    boards[kind].push(geometry);
   };
 
   const placed: Matrix4[][] = SPINES.map(() => []);
@@ -875,32 +934,30 @@ function buildLibrary(slab: Slab, keep: <T extends { dispose: () => void }>(item
     const [from, to] =
       bookcase.wall === "north" ? [bookcase.from, bookcase.to] : [-bookcase.to, -bookcase.from];
     const top = FLOOR + bookcase.height;
-    const carcass = "#6a5240";
-    board(frame, [from, FLOOR, 0], [to, top, 0.012], "#3a2c22", true);
-    board(frame, [from, FLOOR, 0], [from + BOARD, top, CASE_DEPTH], carcass, true);
-    board(frame, [to - BOARD, FLOOR, 0], [to, top, CASE_DEPTH], carcass, true);
-    board(frame, [from - 0.01, top - BOARD, 0], [to + 0.01, top, CASE_DEPTH + 0.015], carcass);
+    board(frame, [from, FLOOR, 0], [from + BOARD, top, CASE_DEPTH], "steel");
+    board(frame, [to - BOARD, FLOOR, 0], [to, top, CASE_DEPTH], "steel");
+    board(frame, [from + BOARD, top - BOARD, 0], [to - BOARD, top, CASE_DEPTH], "oak");
     board(
       frame,
       [from + BOARD, FLOOR, CASE_DEPTH - 0.03],
       [to - BOARD, FLOOR + PLINTH, CASE_DEPTH - 0.015],
-      carcass,
+      "steel",
     );
 
     const bays = Math.max(1, Math.ceil((to - from - BOARD * 2) / BAY));
     const bayWidth = (to - from - BOARD * 2 - (bays - 1) * BOARD) / bays;
     for (let k = 1; k < bays; k++) {
       const x = from + BOARD + k * bayWidth + (k - 1) * BOARD;
-      board(frame, [x, FLOOR + PLINTH, 0.012], [x + BOARD, top - BOARD, CASE_DEPTH], carcass);
+      board(frame, [x, FLOOR + PLINTH, 0], [x + BOARD, top - BOARD, CASE_DEPTH], "steel");
     }
 
     const bottom = FLOOR + PLINTH + BOARD;
     const clear = (top - BOARD - bottom - (bookcase.rows - 1) * BOARD) / bookcase.rows;
-    board(frame, [from + BOARD, FLOOR + PLINTH, 0.012], [to - BOARD, bottom, CASE_DEPTH], carcass);
+    board(frame, [from + BOARD, FLOOR + PLINTH, 0], [to - BOARD, bottom, CASE_DEPTH], "oak");
     for (let row = 0; row < bookcase.rows; row++) {
       const base = bottom + row * (clear + BOARD);
       if (row > 0)
-        board(frame, [from + BOARD, base - BOARD, 0.012], [to - BOARD, base, CASE_DEPTH], carcass);
+        board(frame, [from + BOARD, base - BOARD, 0], [to - BOARD, base, CASE_DEPTH], "oak");
       for (let k = 0; k < bays; k++)
         fillShelf(frame, from + BOARD + k * (bayWidth + BOARD), bayWidth, base, clear);
     }
@@ -908,7 +965,7 @@ function buildLibrary(slab: Slab, keep: <T extends { dispose: () => void }>(item
 
   // A few being read: a stack on the floor by the rocking chair.
   const floor = new Matrix4()
-    .makeTranslation(8.05, 0, -2.45)
+    .makeTranslation(7.6, 0, -2.6)
     .multiply(new Matrix4().makeRotationY(0.4));
   let y = FLOOR;
   for (let k = 0; k < 4; k++) {
@@ -924,6 +981,21 @@ function buildLibrary(slab: Slab, keep: <T extends { dispose: () => void }>(item
       Math.PI / 2,
     );
     y += t;
+  }
+
+  const finishes = {
+    steel: { color: "#0d0e10", roughness: 0.5, metalness: 0.4 },
+    oak: { map: keep(oakGrain()), roughness: 0.6, metalness: 0 },
+  } as const;
+  for (const kind of ["steel", "oak"] as const) {
+    const mesh = new Mesh(
+      keep(mergeGeometries(boards[kind])),
+      keep(new MeshStandardMaterial({ ...finishes[kind], envMapIntensity: 0.45 })),
+    );
+    boards[kind].forEach((part) => part.dispose());
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    library.add(mesh);
   }
 
   // One material, one atlas: each spine colour is its own instanced box.
