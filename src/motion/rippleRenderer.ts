@@ -24,7 +24,7 @@ export const RIPPLE = {
    * the wave eases out on a smooth curve, so the letters drift to rest rather
    * than stopping on the last frame.
    */
-  settleFrom: 0.6,
+  settleFrom: 0.4,
   /** The canvas fades away over the real heading this long after the reveal. */
   handoverMs: 450,
   /** Displacement at the wave, in heading widths. */
@@ -33,8 +33,14 @@ export const RIPPLE = {
   shear: 0.05,
   /** Wave frequency across the heading. */
   frequency: 9,
-  /** How tight the wave packet is. */
+  /** How sharp the wave's leading edge is. */
   width: 18,
+  /**
+   * How slowly the letters behind the wave come to rest. The wake keeps them
+   * swaying after the front has passed, so they settle with the clock instead
+   * of snapping upright the moment it moves on.
+   */
+  wake: 2.6,
   /** Colour split at the wave. */
   chroma: 0.016,
   /** Moonlit light on the glyphs at the reveal edge. */
@@ -76,6 +82,7 @@ uniform float uChroma;
 uniform float uGlow;
 uniform float uGhost;
 uniform float uCalm;
+uniform float uWake;
 varying vec2 vUv;
 
 vec4 tex(vec2 uv) {
@@ -96,7 +103,9 @@ void main() {
   float ring = dist - radius;
   // Zero at both ends, and eased out over the last stretch by uCalm.
   float bell = p * (1.0 - p) * 4.0 * uCalm;
-  float wave = sin(ring * uFreq - uT * 1.5) * exp(-ring * ring * uWidth);
+  // A sharp front, and behind it a long, softly fading wake.
+  float envelope = ring > 0.0 ? exp(-ring * ring * uWidth) : exp(ring * uWake);
+  float wave = sin(ring * uFreq - uT * 1.5) * envelope;
 
   vec2 dir = normalize((tuv - 0.5) * vec2(uAspect, 1.0) + 0.0001);
   dir.x /= uAspect;
@@ -194,7 +203,11 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
 
   const canvas = document.createElement("canvas");
   canvas.setAttribute("aria-hidden", "true");
-  canvas.style.cssText = "position:absolute;pointer-events:none;z-index:1;";
+  // The reset caps every canvas at its container's width, which would shrink
+  // this one (it is wider than the text, for the wave to spill into) and draw
+  // the heading smaller than the page sets it.
+  canvas.style.cssText =
+    "position:absolute;pointer-events:none;z-index:1;max-width:none;max-height:none;";
   const gl = canvas.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: true });
   if (!gl) return null;
 
@@ -235,6 +248,7 @@ export function createRippleRenderer(heading: HTMLElement): RippleRenderer | nul
   gl.uniform1f(uniform("uShear"), RIPPLE.shear);
   gl.uniform1f(uniform("uFreq"), RIPPLE.frequency);
   gl.uniform1f(uniform("uWidth"), RIPPLE.width);
+  gl.uniform1f(uniform("uWake"), RIPPLE.wake);
   gl.uniform1f(uniform("uChroma"), RIPPLE.chroma);
   gl.uniform1f(uniform("uGlow"), RIPPLE.glow);
   gl.uniform1f(uniform("uGhost"), RIPPLE.ghost);
