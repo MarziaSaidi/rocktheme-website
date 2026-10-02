@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { sceneMediaQueries } from "@/config/responsive";
+import { sectionAnchors } from "@/config/sections";
 import { stableViewportHeight } from "@/config/viewport";
 import { addScrollStop, type ScrollStop } from "@/motion/scrollCatch";
 import { emitSoundEvent } from "@/sound/soundEvents";
@@ -19,12 +20,14 @@ import { setSceneFocus } from "@/webgl/sceneFocus";
 import {
   NARROW_WORK_STRETCHES,
   WORK_STRETCHES,
+  type WorkStretches,
   detailsPoint,
   workMoment,
   workScreens,
 } from "@/webgl/workJourney";
 
 import styles from "./MonolithGallery.module.css";
+import { rememberWorkReturn, takeWorkReturn } from "./workReturn";
 
 /**
  * Whether the scene's camera stands still. The scene publishes it on the root
@@ -233,6 +236,19 @@ type MonolithGalleryProps = Readonly<{
 /** How long a project's card is held on screen when a fast scroll is caught there. */
 const PROJECT_READ_MS = 1700;
 
+/** The page offset of a project's details point, measured fresh; null when unmeasurable. */
+function stationOffset(
+  runway: HTMLElement,
+  station: number,
+  total: number,
+  stretches: WorkStretches,
+): number | null {
+  const span = runway.offsetHeight - stableViewportHeight();
+  if (span <= 0 || total <= 0) return null;
+  const top = runway.getBoundingClientRect().top + window.scrollY;
+  return Math.round(top + (detailsPoint(station, stretches) / total) * span);
+}
+
 const pad = (value: number) => value.toString().padStart(2, "0");
 
 /**
@@ -343,12 +359,7 @@ export function MonolithGallery({
     if (!runway || count === 0) return;
     const stops = Array.from({ length: count }, (_, station) =>
       addScrollStop({
-        position: () => {
-          const span = runway.offsetHeight - stableViewportHeight();
-          if (span <= 0 || total <= 0) return null;
-          const top = runway.getBoundingClientRect().top + window.scrollY;
-          return Math.round(top + (detailsPoint(station, stretches) / total) * span);
-        },
+        position: () => stationOffset(runway, station, total, stretches),
         readFor: PROJECT_READ_MS,
       }),
     );
@@ -361,6 +372,35 @@ export function MonolithGallery({
   useEffect(() => {
     stopsRef.current.forEach((stop, station) => stop.setReady(shown && active === station));
   }, [shown, active]);
+
+  /*
+   * Arriving at the gallery by a link (the case study's back link, the nav's
+   * Work) lands on the project the visitor opened, on its details point, so
+   * they come back to the card they left. With no project to return to it
+   * lands at the top of the gallery. Both are instant: the hash's own smooth
+   * scroll starts while the scene is still mounting and can stall on the hero.
+   */
+  useEffect(() => {
+    const runway = runwayRef.current;
+    if (!runway) return;
+    const frame = requestAnimationFrame(() => {
+      // Taken whichever way the visitor arrived, so it can't apply to a later visit.
+      const slug = takeWorkReturn();
+      if (location.hash !== `#${sectionAnchors["selected-work"]}`) return;
+      const station = featured.findIndex((project) => project.slug === slug);
+      // Read the layout now: the journey hook still reports desktop on its first render.
+      const journey = window.matchMedia(sceneMediaQueries.desktop).matches
+        ? WORK_STRETCHES
+        : NARROW_WORK_STRETCHES;
+      const y =
+        station >= 0 ? stationOffset(runway, station, workScreens(count, journey), journey) : null;
+      if (y !== null) window.scrollTo({ top: y, behavior: "instant" });
+      else runway.closest("section")?.scrollIntoView({ behavior: "instant" });
+    });
+    return () => cancelAnimationFrame(frame);
+    // Once, on arrival: later changes to the journey must not move the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const current = featured[active];
   const visualLayerRef = useRef<HTMLDivElement>(null);
@@ -429,7 +469,10 @@ export function MonolithGallery({
                   <Link
                     className={styles.view}
                     href={current.href}
-                    onClick={() => emitSoundEvent("project:open")}
+                    onClick={() => {
+                      rememberWorkReturn(current.slug);
+                      emitSoundEvent("project:open");
+                    }}
                   >
                     {viewLabel}
                     <span className={styles.hidden}>: {current.title}</span>
