@@ -155,7 +155,9 @@ progress, and its momentum, can't be cancelled from events.
   at about 0.18° per scroll pixel on an iPhone 14. A phone page is about three
   screens shorter.
 - The bio's scroll stop lets go once every word reads whole (`dust.whole()`)
-  plus 0.6 s, rather than on a fixed timer.
+  plus 1.2 s to read it, rather than on a fixed timer. Its backstop is 12 s
+  (`maxHold`), well past the ~4.5 s the sentence takes to stream out, so the
+  hold never lets go mid-sentence. This applies on desktop too.
 
 ## The bio's shots (not frozen)
 

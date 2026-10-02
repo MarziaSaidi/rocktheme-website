@@ -24,13 +24,19 @@ type StopOptions = Readonly<{
   position: () => number | null;
   /** How long the moment needs to have been on screen, in ms, before letting go. */
   readFor: number;
+  /**
+   * The longest this stop may hold, in ms, if its moment never shows. Only a
+   * backstop: set it well past the moment's own length, or the hold can let
+   * go just before the moment has finished.
+   */
+  maxHold?: number;
 }>;
 
 type Stop = StopOptions & { readySince: number | null };
 
 /** Shortest hold, however quickly the moment shows. */
 const MIN_HOLD = 600;
-/** Longest hold, in case the moment never shows (no WebGL, a slow device). */
+/** Longest hold by default, in case the moment never shows (no WebGL, a slow device). */
 const MAX_HOLD = 6500;
 /**
  * Input has to pause this long before the hold lets go, so the tail of a
@@ -121,7 +127,7 @@ function watch() {
   const { stop, since, lastInput: input } = hold;
   const held = at - since;
   const read = stop.readySince !== null && at - Math.max(stop.readySince, since) >= stop.readFor;
-  if (held >= MAX_HOLD || (held >= MIN_HOLD && read && at - input >= QUIET)) {
+  if (held >= (stop.maxHold ?? MAX_HOLD) || (held >= MIN_HOLD && read && at - input >= QUIET)) {
     release();
     return;
   }

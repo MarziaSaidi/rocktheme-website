@@ -28,9 +28,12 @@ const DOORLESS_AFTER = 1.4;
 
 /**
  * A fast scroll stops on the bio and stays until every word has come out of
- * the doorway and stands whole, then a beat to read it (scrollCatch.ts).
+ * the doorway and stands whole, then long enough to read the whole sentence
+ * (scrollCatch.ts). The streaming takes about 4 s after the camera turns in,
+ * so the backstop sits well past it: the hold never lets go mid-sentence.
  */
-const BIO_READ_MS = 600;
+const BIO_READ_MS = 1200;
+const BIO_MAX_HOLD_MS = 12000;
 
 export function BioDust({ sectionId, selector }: BioDustProps) {
   useEffect(() => {
@@ -149,6 +152,7 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
           return Math.round(Math.min(end, box.top + window.scrollY + box.height / 2 - steady / 2));
         },
         readFor: BIO_READ_MS,
+        maxHold: BIO_MAX_HOLD_MS,
       });
       observer.observe(section);
       resize.observe(heading);
