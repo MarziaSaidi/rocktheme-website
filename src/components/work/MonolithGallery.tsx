@@ -11,10 +11,18 @@ import {
   type RefObject,
 } from "react";
 
+import { sceneMediaQueries } from "@/config/responsive";
+import { stableViewportHeight } from "@/config/viewport";
 import { addScrollStop, type ScrollStop } from "@/motion/scrollCatch";
 import { emitSoundEvent } from "@/sound/soundEvents";
 import { setSceneFocus } from "@/webgl/sceneFocus";
-import { detailsPoint, workMoment, workScreens } from "@/webgl/workJourney";
+import {
+  NARROW_WORK_STRETCHES,
+  WORK_STRETCHES,
+  detailsPoint,
+  workMoment,
+  workScreens,
+} from "@/webgl/workJourney";
 
 import styles from "./MonolithGallery.module.css";
 
@@ -38,6 +46,23 @@ function useCameraSettled(): boolean {
     return () => observer.disconnect();
   }, []);
   return settled;
+}
+
+/**
+ * Whether the page is in the desktop layout, which has the desktop journey;
+ * below it the journey is shorter (workJourney.ts). Matches the scene's own
+ * breakpoint, and the runway's height in MonolithGallery.module.css.
+ */
+function useDesktopJourney(): boolean {
+  const [desktop, setDesktop] = useState(true);
+  useEffect(() => {
+    const query = window.matchMedia(sceneMediaQueries.desktop);
+    const read = () => setDesktop(query.matches);
+    read();
+    query.addEventListener("change", read);
+    return () => query.removeEventListener("change", read);
+  }, []);
+  return desktop;
 }
 
 /** One floating piece of a project's composition: a real screen, whole or cropped. */
@@ -248,7 +273,8 @@ export function MonolithGallery({
   // The journey currently features two project composition stations.
   const featured = projects.slice(0, 2);
   const count = featured.length;
-  const total = workScreens(count);
+  const stretches = useDesktopJourney() ? WORK_STRETCHES : NARROW_WORK_STRETCHES;
+  const total = workScreens(count, stretches);
   useEffect(() => {
     // Project media belongs to the DOM foreground layer. Keep particles in
     // the landscape instead of steering them toward the visual itself.
@@ -264,9 +290,9 @@ export function MonolithGallery({
     const sync = () => {
       frame = 0;
       const box = runway.getBoundingClientRect();
-      const span = box.height - window.innerHeight;
+      const span = box.height - stableViewportHeight();
       const screens = span > 0 ? Math.min(1, Math.max(0, -box.top / span)) * total : 0;
-      const moment = workMoment(screens, count);
+      const moment = workMoment(screens, count, stretches);
       setActive(moment.project);
       setInWindow(moment.details);
     };
@@ -300,7 +326,7 @@ export function MonolithGallery({
       observer.disconnect();
       listen(false);
     };
-  }, [count, total]);
+  }, [count, total, stretches]);
 
   useEffect(() => {
     if (shown) emitSoundEvent("project:active", { step: active });
@@ -318,10 +344,10 @@ export function MonolithGallery({
     const stops = Array.from({ length: count }, (_, station) =>
       addScrollStop({
         position: () => {
-          const span = runway.offsetHeight - window.innerHeight;
+          const span = runway.offsetHeight - stableViewportHeight();
           if (span <= 0 || total <= 0) return null;
           const top = runway.getBoundingClientRect().top + window.scrollY;
-          return Math.round(top + (detailsPoint(station) / total) * span);
+          return Math.round(top + (detailsPoint(station, stretches) / total) * span);
         },
         readFor: PROJECT_READ_MS,
       }),
@@ -331,7 +357,7 @@ export function MonolithGallery({
       stops.forEach((stop) => stop.remove());
       stopsRef.current = [];
     };
-  }, [count, total]);
+  }, [count, total, stretches]);
   useEffect(() => {
     stopsRef.current.forEach((stop, station) => stop.setReady(shown && active === station));
   }, [shown, active]);
@@ -344,7 +370,12 @@ export function MonolithGallery({
     <div
       className={styles.runway}
       ref={runwayRef}
-      style={{ "--work-screens": total } as CSSProperties}
+      style={
+        {
+          "--work-screens": workScreens(count, WORK_STRETCHES),
+          "--work-screens-narrow": workScreens(count, NARROW_WORK_STRETCHES),
+        } as CSSProperties
+      }
     >
       <div className={styles.stage}>
         {children}

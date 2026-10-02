@@ -17,6 +17,18 @@
   isolation: isolate;
 }
 
+/*
+ * Below the desktop layout both runways are cut down: on a phone's narrow
+ * frame the turn over empty water read as dead air. The turn into the bio
+ * still runs under 0.2° per scroll pixel on a phone.
+ */
+@media (max-width: 1023px) {
+  .section {
+    padding-block-start: calc(var(--section-spacing) * 1.15 + 85svh);
+    padding-block-end: calc(var(--section-spacing) * 1.15 + 70svh);
+  }
+}
+
 .inner {
   position: relative;
   z-index: var(--layer-content);

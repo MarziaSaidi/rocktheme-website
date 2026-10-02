@@ -43,6 +43,7 @@ import {
   workStations,
 } from "../sceneConfig";
 import type { EnvironmentLightingConfig, Vector3Tuple } from "../sceneTypes";
+import { workStretchesFor } from "../workJourney";
 import {
   evaluateJourney,
   nearestRest,
@@ -458,7 +459,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const applyJourney = (deltaSeconds: number) => {
     if (options.reducedMotion) {
       // Cut between compositions: no flight, no scroll-linked motion.
-      shownScroll = stopsKnown ? nearestRest(targetScroll, stops, stations.length) : 0;
+      shownScroll = stopsKnown
+        ? nearestRest(targetScroll, stops, stations.length, workStretchesFor(viewport))
+        : 0;
     } else if (deltaSeconds === 0) {
       shownScroll = targetScroll;
       scrollVelocity = 0;
@@ -486,6 +489,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         rests,
         waypoints,
         stations,
+        stretches: workStretchesFor(viewport),
         departures,
         shots,
       },
@@ -510,6 +514,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         rests,
         waypoints,
         stations,
+        stretches: workStretchesFor(viewport),
         departures,
         shots,
       },

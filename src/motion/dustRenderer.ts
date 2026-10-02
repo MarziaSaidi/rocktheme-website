@@ -38,6 +38,8 @@ export type BioDust = Readonly<{
   /** Puts every grain back in the doorway and hides the words. */
   reset: () => void;
   formed: () => boolean;
+  /** Whether every word of the sentence has all but landed: it reads whole. */
+  whole: () => boolean;
   /** Grains in flight, so the caller keeps drawing until they land. */
   busy: () => boolean;
   update: (frame: DustFrame) => void;
@@ -537,6 +539,7 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
       gl.clear(gl.COLOR_BUFFER_BIT);
     },
     formed: () => formStart !== null,
+    whole: () => formStart !== null && wordWhole.every((value) => value >= 0.9),
     busy: () => inFlight > 0,
     resample: () => {
       const formed = formStart !== null;

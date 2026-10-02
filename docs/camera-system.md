@@ -134,7 +134,28 @@ on it and held until the moment has been on screen for its reading time
 never less than 0.6 s, never more than 6.5 s), and input has paused 180 ms.
 A stop whose moment has already been on screen that long is not caught, so a
 slow reader never feels it. The nav, Home/End and the scrollbar are never
-caught. No camera value changes.
+caught. No camera value changes. A stop caught from touch freezes the page's
+scroll (`overflow: hidden` on the root) for the hold, since a touch scroll in
+progress, and its momentum, can't be cancelled from events.
+
+### Phones
+
+- Every scroll-driven measurement (work runway progress, the camera's rests,
+  the scroll stops, the bio dust) reads `stableViewportHeight()`
+  (`src/config/viewport.ts`, the `svh` height), and the hero is laid out in
+  `svh`. A phone's browser bars sliding in and out no longer move the page or
+  the camera.
+- The bio on tablet and phone uses `narrowBioCamera` (`sceneConfig.ts`): the
+  same eye, aimed 1.5 right and pitched up 13°, so the snow doorway stands in
+  the lower right under the sentence instead of off the right edge.
+- Below the desktop layout (< 1024 px) the journey is cut to what each shot
+  has to show: `NARROW_WORK_STRETCHES` = approach 1.3, hold 1.1, travel 1.8
+  screens (desktop 1.7 / 1.25 / 3, unchanged), and the bio's runways are
+  85svh before and 70svh after (desktop 150 / 110). The turn into the bio runs
+  at about 0.18° per scroll pixel on an iPhone 14. A phone page is about three
+  screens shorter.
+- The bio's scroll stop lets go once every word reads whole (`dust.whole()`)
+  plus 0.6 s, rather than on a fixed timer.
 
 ## The bio's shots (not frozen)
 

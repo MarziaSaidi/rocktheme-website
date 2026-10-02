@@ -8,6 +8,13 @@
   height: calc(100svh + var(--work-screens, 0) * 100svh);
 }
 
+/* Below the desktop layout the journey is shorter (NARROW_WORK_STRETCHES). */
+@media (max-width: 1023px) {
+  .runway {
+    height: calc(100svh + var(--work-screens-narrow, 0) * 100svh);
+  }
+}
+
 .stage {
   position: sticky;
   inset-block-start: 0;
@@ -218,8 +225,7 @@
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  translate: calc(var(--pointer-x, 0) * var(--reach))
-    calc(var(--pointer-y, 0) * var(--reach) * 0.6);
+  translate: calc(var(--pointer-x, 0) * var(--reach)) calc(var(--pointer-y, 0) * var(--reach) * 0.6);
 }
 
 .parallax[data-depth="back"] {
@@ -552,8 +558,7 @@
   animation:
     piece-drift var(--drift-time) linear calc(var(--assembly-at) + var(--delay) + var(--dur))
       infinite,
-    piece-sway var(--sway-time) linear calc(var(--assembly-at) + var(--delay) + var(--dur))
-      infinite;
+    piece-sway var(--sway-time) linear calc(var(--assembly-at) + var(--delay) + var(--dur)) infinite;
   animation-composition: add;
 }
 

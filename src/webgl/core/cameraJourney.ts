@@ -3,7 +3,14 @@ import { CatmullRomCurve3, Vector3 } from "three";
 import type { SectionId } from "@/config/sections";
 
 import type { Vector3Tuple, WorkStation } from "../sceneTypes";
-import { detailsPoint, holdStart, workMoment, workScreens } from "../workJourney";
+import {
+  WORK_STRETCHES,
+  detailsPoint,
+  holdStart,
+  workMoment,
+  workScreens,
+  type WorkStretches,
+} from "../workJourney";
 import type { ArrivalKeyframe, PosePoint } from "./chapterFrame";
 
 export type { ArrivalKeyframe, PosePoint };
@@ -69,6 +76,8 @@ export type JourneyInput = Readonly<{
   waypoints: JourneyWaypoints;
   /** Selected Work: one station per stone, in project order. */
   stations: readonly WorkStation[];
+  /** The Selected Work journey's lengths for this layout (workJourney.ts). */
+  stretches?: WorkStretches;
   /**
    * The way to each stone after the first, by that stone's index, as a
    * keyframed shot. Where there is none, the station's approach points are
@@ -277,37 +286,62 @@ function setPose(pose: PosePoint, out: CameraPose) {
 }
 
 /** Screens scrolled since the Selected Work stage pinned. */
-function workProgress(scroll: number, stops: JourneyStops, count: number): number {
+function workProgress(
+  scroll: number,
+  stops: JourneyStops,
+  count: number,
+  stretches: WorkStretches,
+): number {
   const span = stops.workEnd - stops.workStart;
-  return span > 0 ? clamp01((scroll - stops.workStart) / span) * workScreens(count) : 0;
+  return span > 0 ? clamp01((scroll - stops.workStart) / span) * workScreens(count, stretches) : 0;
 }
 
 /** The scroll offset at `screens` into the Selected Work stage. */
-function workScroll(screens: number, stops: JourneyStops, count: number): number {
-  const total = workScreens(count);
+function workScroll(
+  screens: number,
+  stops: JourneyStops,
+  count: number,
+  stretches: WorkStretches,
+): number {
+  const total = workScreens(count, stretches);
   return total > 0
     ? stops.workStart + (screens / total) * (stops.workEnd - stops.workStart)
     : stops.workStart;
 }
 
 /** Where the arrival ends: the camera has settled at the first stone. */
-export function arrivalEnd(stops: JourneyStops, stations: number): number {
-  return stations > 0 ? workScroll(holdStart(0), stops, stations) : stops.workStart;
+export function arrivalEnd(
+  stops: JourneyStops,
+  stations: number,
+  stretches: WorkStretches = WORK_STRETCHES,
+): number {
+  return stations > 0
+    ? workScroll(holdStart(0, stretches), stops, stations, stretches)
+    : stops.workStart;
 }
 
 /**
  * The scroll offsets at which the camera rests. Reduced motion snaps to the
  * nearest of these so the camera cuts between compositions instead of flying.
  */
-export function restOffsets(stops: JourneyStops, stations: number): number[] {
+export function restOffsets(
+  stops: JourneyStops,
+  stations: number,
+  stretches: WorkStretches = WORK_STRETCHES,
+): number[] {
   const holds = Array.from({ length: stations }, (_, index) =>
-    workScroll(detailsPoint(index), stops, stations),
+    workScroll(detailsPoint(index, stretches), stops, stations, stretches),
   );
   return [0, ...holds, stops.workEnd, stops.about, stops.contact];
 }
 
-export function nearestRest(scroll: number, stops: JourneyStops, stations: number): number {
-  return restOffsets(stops, stations).reduce((best, value) =>
+export function nearestRest(
+  scroll: number,
+  stops: JourneyStops,
+  stations: number,
+  stretches: WorkStretches = WORK_STRETCHES,
+): number {
+  return restOffsets(stops, stations, stretches).reduce((best, value) =>
     Math.abs(value - scroll) < Math.abs(best - scroll) ? value : best,
   );
 }
@@ -318,7 +352,8 @@ export function nearestRest(scroll: number, stops: JourneyStops, stations: numbe
  */
 export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneyState {
   const { scroll, stops, arrival, rests, waypoints, stations, departures, shots } = input;
-  const arrived = arrivalEnd(stops, stations.length);
+  const stretches = input.stretches ?? WORK_STRETCHES;
+  const arrived = arrivalEnd(stops, stations.length, stretches);
   const last = stations[stations.length - 1]?.settle ?? arrival[arrival.length - 1] ?? rests.about;
 
   // ------------------------------------------- hero → the first stone
@@ -336,7 +371,11 @@ export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneySt
 
   // ----------------------------------- Selected Work: stone to stone
   if (scroll <= stops.workEnd) {
-    const { leg } = workMoment(workProgress(scroll, stops, stations.length), stations.length);
+    const { leg } = workMoment(
+      workProgress(scroll, stops, stations.length, stretches),
+      stations.length,
+      stretches,
+    );
     const station = stations[leg.station];
     const previous = stations[leg.station - 1];
     const keys = departures?.[leg.station];

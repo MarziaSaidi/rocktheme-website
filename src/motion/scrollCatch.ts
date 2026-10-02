@@ -41,6 +41,11 @@ const QUIET = 180;
 const INPUT_RECENT = 400;
 /** Touch momentum carries on without events, so touch counts for longer. */
 const TOUCH_RECENT = 1600;
+/**
+ * Right after a touch catch the browser may still apply a scroll step it had
+ * queued; for this long, movement is put back rather than ending the hold.
+ */
+const SETTLE_GRACE = 250;
 /** A held page moved further than this by anything else means a jump was asked for. */
 const BREAK_DISTANCE = 48;
 
@@ -77,9 +82,25 @@ function crossed(from: number, to: number): { stop: Stop; y: number } | null {
   return best;
 }
 
-function catchAt(target: { stop: Stop; y: number }) {
+/**
+ * A touch scroll, once under way, can't be cancelled from its events, and its
+ * momentum runs on without any. So a hold caught from touch freezes the page's
+ * own scrolling instead, which stops the finger and the momentum alike. The
+ * scroll position is untouched, and code (the nav) can still scroll it.
+ */
+let frozen = false;
+function freeze(on: boolean) {
+  if (on === frozen) return;
+  frozen = on;
+  const value = on ? "hidden" : "";
+  document.documentElement.style.overflow = value;
+  document.body.style.overflow = value;
+}
+
+function catchAt(target: { stop: Stop; y: number }, touch: boolean) {
   const at = now();
   hold = { stop: target.stop, y: target.y, since: at, lastInput: at };
+  if (touch) freeze(true);
   // Instant: the camera's spring already smooths the page's motion.
   window.scrollTo({ top: target.y, behavior: "instant" });
   previousY = target.y;
@@ -88,6 +109,7 @@ function catchAt(target: { stop: Stop; y: number }) {
 
 function release() {
   hold = null;
+  freeze(false);
   if (frame !== 0) cancelAnimationFrame(frame);
   frame = 0;
 }
@@ -131,7 +153,7 @@ function onWheel(event: WheelEvent) {
   const target = crossed(from, to);
   if (target) {
     event.preventDefault();
-    catchAt(target);
+    catchAt(target, false);
   }
 }
 
@@ -157,7 +179,8 @@ function onTouchMove(event: TouchEvent) {
   lastTouch = at;
   // Pinch zoom (two fingers) stays the visitor's.
   if (!hold || event.touches.length > 1) return;
-  event.preventDefault();
+  // A scroll already under way can't be cancelled; the freeze holds it then.
+  if (event.cancelable) event.preventDefault();
   hold.lastInput = at;
 }
 
@@ -166,16 +189,23 @@ function onScroll() {
   const from = previousY;
   previousY = y;
   if (hold) {
-    if (Math.abs(y - hold.y) > BREAK_DISTANCE) release();
+    if (Math.abs(y - hold.y) <= BREAK_DISTANCE) return;
+    // A step the browser had already queued when the hold caught: undo it.
+    if (frozen && now() - hold.since < SETTLE_GRACE) {
+      window.scrollTo({ top: hold.y, behavior: "instant" });
+      previousY = hold.y;
+      return;
+    }
+    release();
     return;
   }
   const at = now();
-  const own = at - lastInput < INPUT_RECENT || at - lastTouch < TOUCH_RECENT;
-  if (!own) return;
+  const touch = at - lastTouch < TOUCH_RECENT;
+  if (!touch && at - lastInput >= INPUT_RECENT) return;
   // Keys, touch momentum, or a wheel step already under way: caught as soon
   // as the stop is passed, which is at most a step beyond it.
   const target = crossed(from, y);
-  if (target) catchAt(target);
+  if (target) catchAt(target, touch);
 }
 
 function listen(on: boolean) {

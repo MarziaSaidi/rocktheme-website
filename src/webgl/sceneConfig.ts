@@ -880,6 +880,24 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
 const camera = { desktop: cameraConfig } as const;
 
 /*
+ * The bio on a narrow screen. From the landscape camera's eye a phone sees
+ * only about 25° across, and the snow doorway, 14° right of the line of
+ * sight, stood off the right edge with the dust streaming in from nowhere.
+ * Same eye, turned a little right and up: the doorway stands in the lower
+ * right of the frame under the sentence, so the words visibly come out of it.
+ */
+const NARROW_BIO_AIM = { x: 1.5, pitch: (13 * Math.PI) / 180 };
+const narrowBioCamera: Partial<CameraComposition> = {
+  target: [NARROW_BIO_AIM.x, 1.55 + 9.86 * Math.tan(NARROW_BIO_AIM.pitch), -1.36],
+  offset: [-NARROW_BIO_AIM.x, -9.86 * Math.tan(NARROW_BIO_AIM.pitch), 9.86],
+};
+const aboutCamera = {
+  desktop: cameraConfig,
+  tablet: narrowBioCamera,
+  mobile: narrowBioCamera,
+} as const;
+
+/*
  * The hero stands at the same eye point as the landscape camera but looks up
  * a little less (6.7° instead of 9.6°), which lifts the far edge of the water
  * from 72% to 68% of the viewport, where the approved composition has it.
@@ -973,7 +991,7 @@ export const sceneSections = {
   about: {
     sectionId: "about",
     fallbackHorizonPercent: 80,
-    camera,
+    camera: aboutCamera,
     lighting: environmentLightingConfig,
     horizonLights: horizonLightConfig,
     fog: horizonAtmosphereConfig,

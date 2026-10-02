@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { isSectionId, sectionAnchors, type SectionId } from "@/config/sections";
+import { stableViewportHeight } from "@/config/viewport";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
@@ -124,7 +125,8 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       const about = byAnchor("about");
       if (!work || !about) return null;
 
-      const viewport = window.innerHeight;
+      // The small viewport: steady while a phone's browser bars come and go.
+      const viewport = stableViewportHeight();
       const top = (node: HTMLElement) => node.getBoundingClientRect().top + window.scrollY;
       const end = Math.max(0, document.documentElement.scrollHeight - viewport);
       const workStart = top(work);

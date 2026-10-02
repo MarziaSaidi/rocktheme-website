@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { stableViewportHeight } from "@/config/viewport";
 import { BIO_DWELL, getDoorwayAnchor } from "@/webgl/doorwayChannel";
 
 import { addScrollStop, type ScrollStop } from "./scrollCatch";
@@ -26,10 +27,10 @@ type BioDustProps = Readonly<{
 const DOORLESS_AFTER = 1.4;
 
 /**
- * A fast scroll stops on the bio and stays until the sentence has streamed
- * out of the doorway this long (scrollCatch.ts): most of its words are whole.
+ * A fast scroll stops on the bio and stays until every word has come out of
+ * the doorway and stands whole, then a beat to read it (scrollCatch.ts).
  */
-const BIO_READ_MS = 3200;
+const BIO_READ_MS = 600;
 
 export function BioDust({ sectionId, selector }: BioDustProps) {
   useEffect(() => {
@@ -70,7 +71,8 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
       const centre = box.top + box.height / 2;
       // 0 while the sentence is centred (the camera's rest), 1 once it has
       // risen through the dwell.
-      const leave = (view / 2 - centre) / (BIO_DWELL * view * 0.85);
+      const steady = stableViewportHeight();
+      const leave = (steady / 2 - centre) / (BIO_DWELL * steady * 0.85);
 
       const anchor = getDoorwayAnchor();
       if (anchor) lastDoor = anchor;
@@ -96,7 +98,7 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
         lastDoor = null;
       }
 
-      stop?.setReady(dust.formed() && leave < 0.5);
+      stop?.setReady(dust.whole() && leave < 0.5);
 
       dust.update({
         now: clock,
@@ -142,10 +144,9 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
       stop = addScrollStop({
         position: () => {
           const box = heading.getBoundingClientRect();
-          const end = document.documentElement.scrollHeight - window.innerHeight;
-          return Math.round(
-            Math.min(end, box.top + window.scrollY + box.height / 2 - window.innerHeight / 2),
-          );
+          const steady = stableViewportHeight();
+          const end = document.documentElement.scrollHeight - steady;
+          return Math.round(Math.min(end, box.top + window.scrollY + box.height / 2 - steady / 2));
         },
         readFor: BIO_READ_MS,
       });

@@ -32,13 +32,34 @@ export const WORK_STRETCHES = {
   travel: 3,
 } as const;
 
+export type WorkStretches = Readonly<{ approach: number; hold: number; travel: number }>;
+
+/*
+ * Phones and tablets below the desktop layout. The frame is half as wide
+ * (about 25° across against 52°) and the page moves by flicks, not wheel
+ * notches, so the desktop lengths read as long stretches of empty water: here
+ * each shot is cut to what it has to show. The arrival keeps a calm settle and
+ * the holds stay long enough to read the card; the travel between projects is
+ * a single move rather than a journey.
+ */
+export const NARROW_WORK_STRETCHES: WorkStretches = {
+  approach: 1.3,
+  hold: 1.1,
+  travel: 1.8,
+};
+
+/** The journey's lengths for a layout: desktop's, or the narrow ones below it. */
+export function workStretchesFor(viewport: "desktop" | "tablet" | "mobile"): WorkStretches {
+  return viewport === "desktop" ? WORK_STRETCHES : NARROW_WORK_STRETCHES;
+}
+
 /**
  * Where in a hold the details are on screen, in screen heights from its start.
  * They arrive just after the camera has settled and leave well before it moves
  * on, so the card is gone before the next stone comes into view.
  */
 const DETAILS_FROM = 0.08;
-const DETAILS_UNTIL = WORK_STRETCHES.hold - 0.38;
+const detailsUntil = (stretches: WorkStretches) => stretches.hold - 0.38;
 
 export type WorkLeg =
   /** Toward stone `station`; the first leg starts at the far view. */
@@ -55,50 +76,52 @@ export type WorkMoment = Readonly<{
 }>;
 
 /** Total scroll length of the pinned stage beyond its first screen. */
-export function workScreens(count: number): number {
+export function workScreens(count: number, stretches: WorkStretches = WORK_STRETCHES): number {
   if (count <= 0) return 0;
-  return (
-    WORK_STRETCHES.approach + count * WORK_STRETCHES.hold + (count - 1) * WORK_STRETCHES.travel
-  );
+  return stretches.approach + count * stretches.hold + (count - 1) * stretches.travel;
 }
 
 /** Where the hold at stone `station` begins, in screens since the stage pinned. */
-export function holdStart(station: number): number {
-  return WORK_STRETCHES.approach + station * (WORK_STRETCHES.hold + WORK_STRETCHES.travel);
+export function holdStart(station: number, stretches: WorkStretches = WORK_STRETCHES): number {
+  return stretches.approach + station * (stretches.hold + stretches.travel);
 }
 
 /** The scroll position, in screens, at which a project is best seen with its details. */
-export function detailsPoint(station: number): number {
-  return holdStart(station) + (DETAILS_FROM + DETAILS_UNTIL) / 2;
+export function detailsPoint(station: number, stretches: WorkStretches = WORK_STRETCHES): number {
+  return holdStart(station, stretches) + (DETAILS_FROM + detailsUntil(stretches)) / 2;
 }
 
 /** The journey at `screens` scrolled since the stage pinned. */
-export function workMoment(screens: number, count: number): WorkMoment {
-  const total = workScreens(count);
+export function workMoment(
+  screens: number,
+  count: number,
+  stretches: WorkStretches = WORK_STRETCHES,
+): WorkMoment {
+  const total = workScreens(count, stretches);
   const at = Math.min(total, Math.max(0, screens));
 
-  if (at < WORK_STRETCHES.approach || count === 0) {
+  if (at < stretches.approach || count === 0) {
     return {
-      leg: { kind: "move", station: 0, progress: at / WORK_STRETCHES.approach },
+      leg: { kind: "move", station: 0, progress: at / stretches.approach },
       project: 0,
       details: false,
     };
   }
 
   for (let station = 0; station < count; station += 1) {
-    const start = holdStart(station);
-    const holdEnd = start + WORK_STRETCHES.hold;
+    const start = holdStart(station, stretches);
+    const holdEnd = start + stretches.hold;
     if (at <= holdEnd || station === count - 1) {
       const into = at - start;
       return {
         leg: { kind: "hold", station },
         project: station,
-        details: into >= DETAILS_FROM && into <= DETAILS_UNTIL,
+        details: into >= DETAILS_FROM && into <= detailsUntil(stretches),
       };
     }
-    const travelEnd = holdEnd + WORK_STRETCHES.travel;
+    const travelEnd = holdEnd + stretches.travel;
     if (at < travelEnd) {
-      const progress = (at - holdEnd) / WORK_STRETCHES.travel;
+      const progress = (at - holdEnd) / stretches.travel;
       return {
         leg: { kind: "move", station: station + 1, progress },
         // The card is long gone by now; its content turns over half way.
