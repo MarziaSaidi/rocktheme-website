@@ -14,7 +14,7 @@ import { createMarziaField } from "./marziaOriginal";
 import { MARZIA } from "./stations";
 
 /**
- * Shows the original MARZIA effect standing in the clearing.
+ * Shows the original MARZIA effect standing in the steel hall.
  *
  * The old site's code draws into its own canvas exactly as it always did;
  * this only puts that canvas on a panel in the world, turns the panel to
@@ -57,13 +57,13 @@ export function buildMarziaPanel({ theme }: { theme: "light" | "dark" }) {
   for (let i = 0; i < uvs.count; i++) uvs.setY(i, 1 - uvs.getY(i));
   const panel = new Mesh(geometry, material);
   panel.renderOrder = 3;
-  // The word's base sits just above the snow.
+  // The word's base sits just above the floor.
   const wordHeight = height * 0.35;
   const wordCentreY = 0.2 + wordHeight / 2;
   // The word sits 2% above the canvas centre, so the panel sits that much lower.
   panel.position.set(
     MARZIA.centre[0],
-    wordCentreY - (0.5 - WORD_CENTRE) * height,
+    MARZIA.centre[1] + wordCentreY - (0.5 - WORD_CENTRE) * height,
     MARZIA.centre[2],
   );
 

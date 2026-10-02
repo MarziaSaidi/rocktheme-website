@@ -12,7 +12,7 @@ import { WebGPURenderer } from "three/webgpu";
 
 import { createCollider } from "./collision";
 import { createExplorer } from "./explorer";
-import { isInRoom, ROOM } from "./paths";
+import { isInHall, isInRoom, ROOM } from "./paths";
 import { buildScenery, groundHeight, type MarziaTheme } from "./scenery";
 import { getStation, MARZIA, STATIONS, type Station, type StationId } from "./stations";
 
@@ -43,6 +43,7 @@ const CLEARING = { x: 3, z: 0, radius: 30 } as const;
 const STOP_SHORT: Readonly<Record<string, number>> = {
   marzia: 3.4,
   cabin: 2,
+  hall: 2,
   prop: 2,
   tree: 2.2,
   ground: 0,
@@ -107,7 +108,7 @@ export async function mountCabinWorld({
   const arrival = getStation("arrival");
   const explorer = createExplorer(camera, {
     start: new Vector3(...(arrival.mode === "look" ? arrival.position : arrival.target)),
-    lookAt: new Vector3(0, 1.4, -1),
+    lookAt: new Vector3(...arrival.target),
     heightAt: groundHeight,
     collider: createCollider(world.trees),
     reducedMotion,
@@ -173,7 +174,10 @@ export async function mountCabinWorld({
       heading,
       -Math.min(shortBy, distance * 0.6),
     );
-    if (kind === "cabin" && !insideHit && hit.face) {
+    const outsideWall =
+      (kind === "cabin" && !insideHit) ||
+      (kind === "hall" && !isInHall(camera.position.x, camera.position.z));
+    if (outsideWall && hit.face) {
       // A wall or roof from outside: stand back from it, square on.
       const outward = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).setY(0);
       if (outward.lengthSq() < 0.09) outward.copy(heading).negate();
@@ -187,7 +191,7 @@ export async function mountCabinWorld({
     }
     const face =
       kind === "marzia"
-        ? new Vector3(MARZIA.centre[0], 1.1, MARZIA.centre[2])
+        ? new Vector3(MARZIA.centre[0], MARZIA.centre[1] + 1.1, MARZIA.centre[2])
         : kind === "ground"
           ? null
           : point.clone();
@@ -214,7 +218,10 @@ export async function mountCabinWorld({
     ndc.set(x, y);
     raycaster.setFromCamera(ndc, camera);
     raycaster.far = 120;
-    const hit = raycaster.intersectObject(world.scene, true)[0];
+    // The hall's glass is seen through: a click lands on what is behind it.
+    const hit = raycaster
+      .intersectObject(world.scene, true)
+      .find((candidate) => !candidate.object.userData.hallGlass);
     if (!hit) return;
     if (isGlass(hit.object)) {
       walkThroughWindow(hit.point);

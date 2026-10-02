@@ -7,7 +7,8 @@
  */
 export type Vec3 = readonly [number, number, number];
 
-export type StationId = "arrival" | "marzia" | "porch" | "fire" | "desk" | "kitchen" | "window";
+export type StationId =
+  "arrival" | "marzia" | "porch" | "fire" | "desk" | "library" | "window" | "hall";
 
 export type Zone = "outside" | "inside";
 
@@ -50,11 +51,27 @@ export type OrbitStation = StationBase &
 
 export type Station = LookStation | OrbitStation;
 
-/** The MARZIA sculpture: centre on the ground, and the direction it faces. */
+/**
+ * The steel hall north of the clearing, where experiments stand. The rect is
+ * its glass line; the floor is a concrete slab a step above the snow.
+ */
+export const HALL = {
+  minX: -14,
+  maxX: 8,
+  minZ: -23,
+  maxZ: -9,
+  floor: 0.22,
+  /** Underside of the roof trusses. */
+  eave: 12,
+  /** The entrance: the open middle bay of the front wall. */
+  door: { from: -4.92, to: -1.08, height: 4.2 },
+} as const;
+
+/** The MARZIA sculpture: centre on the floor, and the direction it faces. */
 export const MARZIA = {
-  centre: [-3, 0, -1] as Vec3,
-  /** Rotation about y, radians. Faces between the arrival path and the cabin. */
-  yaw: 0.3,
+  centre: [-3, HALL.floor, -16] as Vec3,
+  /** Rotation about y, radians. Faces the hall's entrance. */
+  yaw: 0,
   width: 5.2,
   height: 1.7,
   depth: 0.35,
@@ -68,7 +85,7 @@ export const STATIONS: readonly Station[] = [
     zone: "outside",
     mode: "look",
     position: [-8.5, 1.7, 13],
-    target: [0, 1.4, -1],
+    target: [-1, 1.8, -5.5],
     anchor: [-8.5, 0.4, 13],
     yawLimit: 60,
     pitchLimit: 18,
@@ -79,13 +96,25 @@ export const STATIONS: readonly Station[] = [
     caption: "Walk all the way around it",
     zone: "outside",
     mode: "orbit",
-    target: [MARZIA.centre[0], 1, MARZIA.centre[2]],
+    target: [MARZIA.centre[0], MARZIA.centre[1] + 1, MARZIA.centre[2]],
     radius: 4.6,
     azimuth: (MARZIA.yaw * 180) / Math.PI,
     arrivalSpread: 25,
     elevation: 10,
     elevationRange: [3, 34],
     anchor: [MARZIA.centre[0], MARZIA.height + 1.7, MARZIA.centre[2]],
+  },
+  {
+    id: "hall",
+    label: "Steel hall",
+    caption: "Glass, black steel, room for more experiments",
+    zone: "outside",
+    mode: "look",
+    position: [-3, 1.7, -4.5],
+    target: [-3, 4.5, -16],
+    anchor: [-3, HALL.eave + 2.5, HALL.maxZ],
+    yawLimit: 60,
+    pitchLimit: 35,
   },
   {
     id: "porch",
@@ -124,9 +153,9 @@ export const STATIONS: readonly Station[] = [
     pitchLimit: 25,
   },
   {
-    id: "kitchen",
-    label: "Kitchen",
-    caption: "Stove, pots, a window over the counter",
+    id: "library",
+    label: "Library",
+    caption: "Shelves of books, a window above them",
     zone: "inside",
     mode: "look",
     position: [7.4, 1.55, -0.6],
@@ -138,11 +167,11 @@ export const STATIONS: readonly Station[] = [
   {
     id: "window",
     label: "Window",
-    caption: "Looking back out at MARZIA",
+    caption: "Looking out over the clearing",
     zone: "inside",
     mode: "look",
     position: [7.0, 1.6, 0.3],
-    target: [MARZIA.centre[0], 1.1, MARZIA.centre[2]],
+    target: [-4, 1.5, -1.5],
     anchor: [4.1, 2.35, 0],
     yawLimit: 40,
     pitchLimit: 15,
@@ -153,6 +182,12 @@ export const STATIONS: readonly Station[] = [
 export const DOORWAY = {
   outside: [6.1, 1.65, 5.2] as Vec3,
   inside: [6.1, 1.62, 2.0] as Vec3,
+} as const;
+
+/** The hall's entrance, the same way. */
+export const HALL_DOORWAY = {
+  outside: [-3, 1.65, HALL.maxZ + 1.6] as Vec3,
+  inside: [-3, 1.65, HALL.maxZ - 1.5] as Vec3,
 } as const;
 
 export function stationIndex(id: StationId): number {

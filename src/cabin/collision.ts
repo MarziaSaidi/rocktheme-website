@@ -1,9 +1,12 @@
 import type { Vector3 } from "three";
 
+import { HALL_COLUMNS, PLINTH_SIZE, PLINTHS } from "./hall";
+import { HALL } from "./stations";
+
 /**
  * What the visitor can't walk through, in plan (x, z): the cabin's walls
  * with the door left open, porch rails, chimney, log pile, the furniture
- * inside and the fir trunks. Movement slides along anything it meets.
+ * inside, the steel hall's glass and columns, and the fir trunks. Movement slides along anything it meets.
  */
 type Segment = readonly [number, number, number, number];
 type Circle = readonly [number, number, number];
@@ -30,11 +33,20 @@ const STATIC_SEGMENTS: Segment[] = [
   // Chimney stack outside the north wall, log pile by the west wall.
   ...rect(10.4, -4.25, 11.4, -3.6),
   ...rect(3.42, 2.05, 3.7, 3.6),
-  // Inside: hearth, kitchen run, shelves, desk.
+  // Inside: hearth, bookcases on the north and west walls, desk.
   ...rect(9.75, -3.5, 11.95, -2.62),
-  ...rect(4.0, -3.5, 7.3, -2.75),
-  ...rect(4.0, -2.45, 4.6, -1.35),
+  ...rect(4.0, -3.5, 9.6, -3.02),
+  ...rect(4.0, -3.02, 4.48, 3.3),
   ...rect(10.9, 1.25, 12, 2.95),
+  // The steel hall: glass on three sides, open at the middle of the front.
+  [HALL.minX, HALL.maxZ, HALL.door.from, HALL.maxZ],
+  [HALL.door.to, HALL.maxZ, HALL.maxX, HALL.maxZ],
+  [HALL.maxX, HALL.maxZ, HALL.maxX, HALL.minZ],
+  [HALL.maxX, HALL.minZ, HALL.minX, HALL.minZ],
+  [HALL.minX, HALL.minZ, HALL.minX, HALL.maxZ],
+  ...PLINTHS.flatMap(([x, z]) =>
+    rect(x - PLINTH_SIZE / 2, z - PLINTH_SIZE / 2, x + PLINTH_SIZE / 2, z + PLINTH_SIZE / 2),
+  ),
 ];
 
 const STATIC_CIRCLES: Circle[] = [
@@ -42,9 +54,10 @@ const STATIC_CIRCLES: Circle[] = [
   [11.25, -1.15, 0.5], // armchair
   [9.45, -2.4, 0.45], // tea table
   [10.45, 2.1, 0.3], // desk chair
-  [7.65, -2.95, 0.25], // basket
+  [8.05, -2.45, 0.2], // book stack
   [4.65, 5.35, 0.12], // porch posts
   [8.35, 5.35, 0.12],
+  ...HALL_COLUMNS,
 ];
 
 export type Collider = Readonly<{ resolve: (position: Vector3) => void }>;
