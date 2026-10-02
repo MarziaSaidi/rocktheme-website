@@ -90,10 +90,26 @@ function detour(block: Block, a: Vector3, b: Vector3): Vector3[] {
   return best;
 }
 
+/** Starting up against a building: the nearest step back out of its margin. */
+function stepOut(block: Block, p: Vector3): Vector3 | null {
+  const inside = p.x > block.minX && p.x < block.maxX && p.z > block.minZ && p.z < block.maxZ;
+  if (!inside) return null;
+  const exits: Array<[number, Vector3]> = [
+    [p.x - block.minX, new Vector3(block.minX - 0.1, 0, p.z)],
+    [block.maxX - p.x, new Vector3(block.maxX + 0.1, 0, p.z)],
+    [p.z - block.minZ, new Vector3(p.x, 0, block.minZ - 0.1)],
+    [block.maxZ - p.z, new Vector3(p.x, 0, block.maxZ + 0.1)],
+  ];
+  exits.sort((m, n) => m[0] - n[0]);
+  return exits[0]![1];
+}
+
 /** The points after a on an outdoor walk from a to b, round both buildings. */
 function around(a: Vector3, b: Vector3): Vector3[] {
   let points = [a, b];
   for (const block of [BLOCK, HALL_BLOCK]) {
+    const out = stepOut(block, points[0]!);
+    if (out) points.splice(1, 0, out);
     const next = [points[0]!];
     for (let i = 1; i < points.length; i++)
       next.push(...detour(block, points[i - 1]!, points[i]!), points[i]!);
@@ -126,4 +142,156 @@ export function route(start: Vector3, end: Vector3): Vector3[] {
   const leaving = out.at(-1) ?? a;
   if (!to) return [...out, ...around(leaving, b)];
   return [...out, ...around(leaving, into[0]!), ...into.slice(1), b];
+}
+
+// ------------------------------------------------------------------ doorways
+
+/**
+ * A building's entrance, for the doorway assist: when the visitor heads for
+ * it on their own (keys or scroll), the walk lines them up on its axis and
+ * carries them through, instead of leaving them against the wall beside it.
+ *
+ * Both doors face +z, so a door is its axis (x), its wall (z) and its width.
+ */
+type Door = Readonly<{
+  building: "cabin" | "hall";
+  x: number;
+  /** The facade's outer face, and the inner face seen from the room. */
+  outerZ: number;
+  innerZ: number;
+  /** Where the aim from outside is judged: the porch rail, or the wall. */
+  aimZ: number;
+  /** How far either side of the axis an aim still counts, outside and inside. */
+  catchOutside: number;
+  catchInside: number;
+  /** Close enough to the axis to walk straight in. */
+  onAxis: number;
+  /** On the axis, out front: the line-up point when arriving from an angle. */
+  approachZ: number;
+  /** Through the opening: outside, inside, and the step that ends the entry. */
+  outsideZ: number;
+  insideZ: number;
+  arriveZ: number;
+  /** Inside, a step back from the door: the line-up point for leaving. */
+  leaveFromZ: number;
+  /** Outside, where leaving ends. */
+  departZ: number;
+}>;
+
+const DOORS: readonly Door[] = [
+  {
+    building: "cabin",
+    x: DOORWAY.inside[0],
+    outerZ: ROOM.maxZ + 0.1,
+    innerZ: ROOM.maxZ,
+    aimZ: 5.35,
+    catchOutside: 2.4,
+    catchInside: 1.6,
+    onAxis: 0.22,
+    approachZ: PORCH_FRONT[2],
+    outsideZ: DOORWAY.outside[2],
+    insideZ: DOORWAY.inside[2],
+    arriveZ: 1.0,
+    leaveFromZ: 2.4,
+    departZ: 8.6,
+  },
+  {
+    building: "hall",
+    x: HALL_DOORWAY.inside[0],
+    outerZ: HALL.maxZ,
+    innerZ: HALL.maxZ,
+    aimZ: HALL.maxZ,
+    catchOutside: 4.5,
+    catchInside: 3.0,
+    onAxis: 1.1,
+    approachZ: HALL.maxZ + 3,
+    outsideZ: HALL_DOORWAY.outside[2],
+    insideZ: HALL_DOORWAY.inside[2],
+    arriveZ: HALL.maxZ - 2.8,
+    leaveFromZ: HALL.maxZ - 1.5,
+    departZ: HALL.maxZ + 3.4,
+  },
+];
+
+/** The porch deck, between the cabin wall and its rail. */
+const onPorch = (x: number, z: number) => x > 4.5 && x < 8.5 && z >= ROOM.maxZ && z < 5.35;
+
+const at = (x: number, z: number) => new Vector3(x, 0, z);
+
+/** Walks a door's axis from wherever the visitor is, outside, to just inside. */
+function entering(door: Door, position: Vector3): Vector3[] {
+  const lateral = Math.abs(position.x - door.x);
+  const through = [at(door.x, door.insideZ), at(door.x, door.arriveZ)];
+  // On the porch the rail is in the way of the usual line-up point.
+  if (door.building === "cabin" && onPorch(position.x, position.z)) {
+    return [...(lateral > door.onAxis ? [at(door.x, 4.4)] : []), ...through];
+  }
+  const outside = at(door.x, door.outsideZ);
+  // Already out front and on the axis: straight in.
+  if (lateral <= door.onAxis && position.z > door.outerZ && position.z < door.approachZ)
+    return [outside, ...through];
+  // The hall's front is open snow: line up level with the visitor, not back out.
+  const approachZ =
+    door.building === "hall"
+      ? Math.min(door.approachZ, Math.max(door.outsideZ, position.z))
+      : door.approachZ;
+  const approach = at(door.x, approachZ);
+  return [...around(flat(position), approach), outside, ...through];
+}
+
+/** Walks a door's axis from wherever the visitor is, inside, to out in the open. */
+function leaving(door: Door, position: Vector3): Vector3[] {
+  const lateral = Math.abs(position.x - door.x);
+  const lineUp =
+    lateral <= door.onAxis && position.z > door.leaveFromZ ? [] : [at(door.x, door.leaveFromZ)];
+  const out = [at(door.x, door.outsideZ), at(door.x, door.departZ)];
+  if (door.building === "cabin") out.splice(1, 0, at(door.x, PORCH_FRONT[2]));
+  return [...lineUp, ...out];
+}
+
+/**
+ * When the visitor heads for a door on their own: the walk through it, or
+ * null if they aren't. `heading` is their direction of travel, flat and unit.
+ */
+export function passageFor(position: Vector3, heading: Vector3): Vector3[] | null {
+  const inside = buildingAt(flat(position));
+  for (const door of DOORS) {
+    if (inside === door.building) {
+      // Leaving: heading for the door's wall, near enough the opening.
+      if (heading.z < 0.35) continue;
+      const along = door.innerZ - position.z;
+      if (along < 0.05 || along > 8) continue;
+      const lateral = position.x + (heading.x / heading.z) * along - door.x;
+      if (Math.abs(lateral) <= door.catchInside) return leaving(door, position);
+      continue;
+    }
+    if (inside) continue;
+    if (heading.z > -0.35) continue;
+    // Entering from the porch: aimed at the wall the door is in.
+    const porch = door.building === "cabin" && onPorch(position.x, position.z);
+    const plane = porch ? door.outerZ : door.aimZ;
+    const along = position.z - plane;
+    if (along < 0.05 || along > 10) continue;
+    const lateral = position.x + (heading.x / -heading.z) * along - door.x;
+    if (Math.abs(lateral) <= door.catchOutside) return entering(door, position);
+  }
+  return null;
+}
+
+/**
+ * Outside, pressed against a building: the walk round to its door and in,
+ * or null if no building is that close.
+ */
+export function wayInFrom(position: Vector3): Vector3[] | null {
+  if (buildingAt(flat(position))) return null;
+  for (const door of DOORS) {
+    const block = door.building === "cabin" ? BLOCK : HALL_BLOCK;
+    const near =
+      position.x > block.minX - 0.2 &&
+      position.x < block.maxX + 0.2 &&
+      position.z > block.minZ - 0.2 &&
+      position.z < block.maxZ + 0.2;
+    if (near) return entering(door, position);
+  }
+  return null;
 }

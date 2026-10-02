@@ -14,7 +14,7 @@ import { createCollider } from "./collision";
 import { createExplorer } from "./explorer";
 import { isInHall, isInRoom, ROOM } from "./paths";
 import { buildScenery, groundHeight, type MarziaTheme } from "./scenery";
-import { getStation, MARZIA, STATIONS, type Station, type StationId } from "./stations";
+import { getStation, HALL, MARZIA, STATIONS, type Station, type StationId } from "./stations";
 
 /** Which named place the visitor is nearest, for the keyboard list and MARZIA's toggle. */
 export type CabinState = Readonly<{ current: StationId; travelling: boolean }>;
@@ -37,8 +37,8 @@ type MountOptions = Readonly<{
 
 /** Drags shorter than this are taps, not looks. */
 const DRAG_SLOP = 4;
-/** How far from the middle of the clearing a visitor may wander. */
-const CLEARING = { x: 3, z: 0, radius: 30 } as const;
+/** How far a visitor may wander: the clearing, both buildings and room round them. */
+const CLEARING = { x: -1, z: -5, radius: 32 } as const;
 /** How short of a clicked thing the walk stops, by what it is (metres). */
 const STOP_SHORT: Readonly<Record<string, number>> = {
   marzia: 3.4,
@@ -174,15 +174,17 @@ export async function mountCabinWorld({
       heading,
       -Math.min(shortBy, distance * 0.6),
     );
-    const outsideWall =
-      (kind === "cabin" && !insideHit) ||
-      (kind === "hall" && !isInHall(camera.position.x, camera.position.z));
-    if (outsideWall && hit.face) {
-      // A wall or roof from outside: stand back from it, square on.
-      const outward = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).setY(0);
-      if (outward.lengthSq() < 0.09) outward.copy(heading).negate();
-      outward.normalize();
-      target.set(point.x, 0, point.z).addScaledVector(outward, 2.6);
+    const outsideCabin = kind === "cabin" && !isInRoom(camera.position.x, camera.position.z);
+    const outsideHall = kind === "hall" && !isInHall(camera.position.x, camera.position.z);
+    if (outsideCabin || outsideHall) {
+      // A building's wall or roof from outside means "in there": walk in by
+      // its door and stop inside, near the part that was clicked.
+      const room = outsideCabin ? ROOM : HALL;
+      const margin = outsideCabin ? 0.9 : 1.6;
+      target.x = Math.min(room.maxX - margin, Math.max(room.minX + margin, point.x));
+      target.z = Math.min(room.maxZ - margin, Math.max(room.minZ + margin, point.z));
+      explorer.walkTo(target, null);
+      return;
     }
     if (insideHit) {
       // Something seen through a window or the door: end up in the room with it.
