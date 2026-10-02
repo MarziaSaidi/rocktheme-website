@@ -8,8 +8,8 @@ stills at the keyframes listed below (1440×900, camera stopped), and the frames
 compared against `design/screenshots/stage-13-occlusion-reveal/`,
 `stage-14-screen-reflection/` and `stage-16-survue-refinement/`.
 
-The How I Work and Contact legs after Survue are **not** part of this freeze;
-they are still on the older path and have not been composed.
+The How I Work and Contact legs after Survue are **not** part of this freeze.
+They are described under "The bio's shots" below.
 
 ## Where the values live
 
@@ -123,3 +123,21 @@ Do not add a look-away pan, move Survue, or try to empty the frame between them.
 
 The camera stands still for 0.38 screens (342 px) after the details leave and
 before the departure starts.
+
+## The bio's shots (not frozen)
+
+Both are built by `bioShots()` in `src/webgl/sceneConfig.ts` from the poses
+they join, and run on the same keyframe timeline as the arrival: 11 keys at
+even spacing along the path, a sine ease out of one rest and into the next,
+and the view turning in step with distance travelled.
+
+| Shot          | Scroll (desktop)            | Shape                                                                                                   | Peak turn        |
+| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------- |
+| Survue → bio  | 2.3 screens (150svh runway) | wide right-hand turn over the water, 185°, a 1.4 rise midway                                            | ~13° per 100 px  |
+| bio dwell     | 0.55 screens (`BIO_DWELL`)  | camera still while the sentence goes back into the doorway                                              | 0                |
+| bio → Contact | 1.24 screens                | straight on, rising 1.5 and drifting 2.4 left; the doorway slides out of frame on the right by parallax | ~1.5° per 100 px |
+
+The snow doorway is solid whenever it is in frame: it comes in while the
+camera is still turned away from it and goes once the camera has passed it.
+It can only be stepped through while the camera is at rest before it.
+`scripts/check-scene.ts` holds these shots to 0.2° of turn per scroll pixel.

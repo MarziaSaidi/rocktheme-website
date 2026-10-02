@@ -3,6 +3,11 @@
   z-index: var(--layer-content);
   padding-block: calc(var(--section-spacing) * 1.15);
   /*
+   * A runway before the sentence: the camera comes about from the last stone
+   * in one wide, steady turn over the water, with the scene to itself.
+   */
+  padding-block-start: calc(var(--section-spacing) * 1.15 + 150svh);
+  /*
    * A runway after the sentence: the scene has a stretch of scroll to itself
    * while the camera travels out over the water to Contact, as the hero has
    * on the way to Selected Work.

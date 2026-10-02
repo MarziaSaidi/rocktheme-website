@@ -75,6 +75,15 @@ export type JourneyInput = Readonly<{
    * eased through instead.
    */
   departures?: readonly (readonly ArrivalKeyframe[] | null)[];
+  /**
+   * The bio's two shots as keyframed timelines: from the last stone to the
+   * bio, and from the bio to Contact. Without them the waypoints are eased
+   * through instead.
+   */
+  shots?: Readonly<{
+    toBio: readonly ArrivalKeyframe[];
+    toContact: readonly ArrivalKeyframe[];
+  }>;
 }>;
 
 export type JourneyState = Readonly<{
@@ -308,7 +317,7 @@ export function nearestRest(scroll: number, stops: JourneyStops, stations: numbe
  * chapters it lies between, for the lighting that travels with it.
  */
 export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneyState {
-  const { scroll, stops, arrival, rests, waypoints, stations, departures } = input;
+  const { scroll, stops, arrival, rests, waypoints, stations, departures, shots } = input;
   const arrived = arrivalEnd(stops, stations.length);
   const last = stations[stations.length - 1]?.settle ?? arrival[arrival.length - 1] ?? rests.about;
 
@@ -347,8 +356,10 @@ export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneySt
 
   // ------------------------------ last stone → How I Work, turning away
   if (scroll < stops.about) {
-    const u = smootherstep((scroll - stops.workEnd) / Math.max(1, stops.about - stops.workEnd));
-    sampleLeg(makeLeg([last, ...waypoints.departure, rests.about]), u, out);
+    const progress = clamp01((scroll - stops.workEnd) / Math.max(1, stops.about - stops.workEnd));
+    const u = smootherstep(progress);
+    if (shots) sampleArrival(shots.toBio, progress, out);
+    else sampleLeg(makeLeg([last, ...waypoints.departure, rests.about]), u, out);
     return {
       from: "selected-work",
       to: "about",
@@ -362,7 +373,9 @@ export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneySt
   // The camera stays at the bio a while first, as the sentence goes back
   // into the doorway, then sets off.
   const leave = Math.min(stops.contact, Math.max(stops.about, stops.aboutLeave ?? stops.about));
-  const u = smootherstep((scroll - leave) / Math.max(1, stops.contact - leave));
-  sampleLeg(makeLeg([rests.about, ...(waypoints.passage ?? []), rests.contact]), u, out);
+  const progress = clamp01((scroll - leave) / Math.max(1, stops.contact - leave));
+  const u = smootherstep(progress);
+  if (shots) sampleArrival(shots.toContact, progress, out);
+  else sampleLeg(makeLeg([rests.about, ...(waypoints.passage ?? []), rests.contact]), u, out);
   return { from: "about", to: "footer", blend: u, arrival: null, revealed: stations.length };
 }

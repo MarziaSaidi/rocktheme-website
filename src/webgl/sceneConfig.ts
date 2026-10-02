@@ -1180,6 +1180,147 @@ export function departureKeyframes(
   return viewport === "desktop" ? [null, desktopDeparture] : [];
 }
 
+/*
+ * The bio's two shots, built from the poses they join so they hold for every
+ * layout. Both run on the same keyframe timeline as the frozen journey: even
+ * pacing along the path, a sine ease out of one rest and into the next, and
+ * the view turning at a steady rate as the camera travels rather than all at
+ * once.
+ *
+ * toBio     from the last stone, a wide right-hand turn over the open water:
+ *           the camera comes about, the stones slide away to the left, and it
+ *           settles facing back across the dark toward the bio and its
+ *           doorway. 185° of turn over the whole runway, never a whip.
+ * toContact from the bio straight on out over the water: a gentle rise and a
+ *           drift left, so the doorway slides past on the right and out of
+ *           frame by parallax, then down again into Contact. No turn at all.
+ */
+type ShotShape = Readonly<{
+  /** How far the path keeps each rest's heading before curving, in world units. */
+  reach: number;
+  /** Eye offset at the middle of the shot, in world units, eased in and out. */
+  sway: Vector3Tuple;
+  /** Pitch, in radians, added at the middle of the shot (negative looks down). */
+  tilt: number;
+  /** Distance of the aim ahead of the eye, between the rests. */
+  aim: number;
+}>;
+
+const SHOT_KEYS = 11;
+
+function composeShot(from: PosePoint, to: PosePoint, shape: ShotShape): ArrivalKeyframe[] {
+  const heading = (pose: PosePoint) => {
+    const dx = pose.target[0] - pose.eye[0];
+    const dz = pose.target[2] - pose.eye[2];
+    const length = Math.hypot(dx, dz) || 1;
+    return [dx / length, dz / length] as const;
+  };
+  const pitchOf = (pose: PosePoint) => {
+    const dx = pose.target[0] - pose.eye[0];
+    const dy = pose.target[1] - pose.eye[1];
+    const dz = pose.target[2] - pose.eye[2];
+    return Math.atan2(dy, Math.hypot(dx, dz));
+  };
+  const [sx, sz] = heading(from);
+  const [ex, ez] = heading(to);
+
+  // The ground path: a cubic leaving along the first heading, arriving along the last.
+  const p0 = [from.eye[0], from.eye[2]] as const;
+  const p1 = [p0[0] + sx * shape.reach, p0[1] + sz * shape.reach] as const;
+  const p3 = [to.eye[0], to.eye[2]] as const;
+  const p2 = [p3[0] - ex * shape.reach, p3[1] - ez * shape.reach] as const;
+  const bezier = (t: number) => {
+    const u = 1 - t;
+    return [
+      u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
+      u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
+    ] as const;
+  };
+
+  // Arc length, and the path's own heading, unwrapped, so the turn goes the way it curves.
+  const STEPS = 400;
+  const lengths = [0];
+  const yaws = [Math.atan2(sx, sz)];
+  let previous = bezier(0);
+  for (let step = 1; step <= STEPS; step += 1) {
+    const point = bezier(step / STEPS);
+    lengths.push(lengths[step - 1]! + Math.hypot(point[0] - previous[0], point[1] - previous[1]));
+    const raw = Math.atan2(point[0] - previous[0], point[1] - previous[1]);
+    const last = yaws[step - 1]!;
+    yaws.push(last + (((raw - last + Math.PI * 3) % (Math.PI * 2)) - Math.PI));
+    previous = point;
+  }
+  const total = lengths[STEPS]!;
+  const endYaw = Math.atan2(ex, ez);
+  const startYaw = yaws[0]!;
+  // The path's total turn decides the direction; the rests decide the exact angles.
+  const travelled = yaws[STEPS]! - startYaw;
+  const turn =
+    travelled + (((endYaw - (startYaw + travelled) + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+  const paramAt = (share: number) => {
+    const wanted = share * total;
+    let index = 1;
+    while (index < STEPS && lengths[index]! < wanted) index += 1;
+    const before = lengths[index - 1]!;
+    const span = lengths[index]! - before || 1;
+    return (index - 1 + (wanted - before) / span) / STEPS;
+  };
+
+  const startPitch = pitchOf(from);
+  const endPitch = pitchOf(to);
+  const keys: ArrivalKeyframe[] = [];
+  for (let key = 0; key < SHOT_KEYS; key += 1) {
+    const share = key / (SHOT_KEYS - 1);
+    if (key === 0) {
+      keys.push({ at: 0, speed: 0, ...from });
+      continue;
+    }
+    if (key === SHOT_KEYS - 1) {
+      keys.push({ at: 1, speed: 0, ...to });
+      continue;
+    }
+    const [x, z] = bezier(paramAt(share));
+    const bell = Math.sin(Math.PI * share);
+    const ease = (1 - Math.cos(Math.PI * share)) / 2;
+    const eye: Vector3Tuple = [
+      x + shape.sway[0] * bell,
+      from.eye[1] + (to.eye[1] - from.eye[1]) * ease + shape.sway[1] * bell,
+      z + shape.sway[2] * bell,
+    ];
+    // The view turns with distance travelled, so it turns as steadily as it moves.
+    const yaw = startYaw + turn * share;
+    const pitch = startPitch + (endPitch - startPitch) * share + shape.tilt * bell;
+    const reachOut = Math.cos(pitch) * shape.aim;
+    const target: Vector3Tuple = [
+      eye[0] + Math.sin(yaw) * reachOut,
+      eye[1] + Math.sin(pitch) * shape.aim,
+      eye[2] + Math.cos(yaw) * reachOut,
+    ];
+    // Sine-eased in time: the timeline leaves and arrives at rest and peaks midway.
+    const at = Math.acos(1 - 2 * share) / Math.PI;
+    const speed = total * (Math.PI / 2) * Math.sin(Math.PI * at);
+    keys.push({ at, speed, eye, target, fov: from.fov + (to.fov - from.fov) * ease });
+  }
+  return keys;
+}
+
+export type BioShots = Readonly<{
+  toBio: readonly ArrivalKeyframe[];
+  toContact: readonly ArrivalKeyframe[];
+}>;
+
+export function bioShots(lastSettle: PosePoint, about: PosePoint, contact: PosePoint): BioShots {
+  return {
+    toBio: composeShot(lastSettle, about, { reach: 15, sway: [0, 1.4, 0], tilt: 0, aim: 20 }),
+    toContact: composeShot(about, contact, {
+      reach: 8,
+      sway: [2.4, 1.5, 0],
+      tilt: -0.06,
+      aim: 16,
+    }),
+  };
+}
+
 /** The Selected Work stations for a viewport: desktop, or stacked below it. */
 export function workStations(viewport: SceneViewport): readonly WorkStation[] {
   return monolithConfig.stations[viewport === "desktop" ? "desktop" : "stacked"];

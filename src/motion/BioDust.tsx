@@ -73,7 +73,9 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
       };
       const presence = anchor?.presence ?? (lastDoor ? 0 : 1);
 
-      const visible = box.bottom > 0 && box.top < view;
+      // Only once the sentence is well up the screen: by then the camera has
+      // come about and is settling, so the dust flies to words that are there.
+      const visible = box.bottom > 0 && box.top + box.height / 2 < view * 0.72;
       inViewFor = visible ? inViewFor + Math.min(0.05, delta) : 0;
       if (!dust.formed() && visible && leave < 1) {
         if ((anchor && anchor.presence > 0.6) || inViewFor > DOORLESS_AFTER) dust.form(clock);

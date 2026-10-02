@@ -31,6 +31,7 @@ import { createMonolith, type Monolith } from "../modules/monolith";
 import { createRocks, type Rocks } from "../modules/rocks";
 import {
   arrivalKeyframes,
+  bioShots,
   departureKeyframes,
   chapterFrames,
   chapterRest,
@@ -383,6 +384,13 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   let stations = workStations(viewport);
   let arrival = arrivalKeyframes(viewport);
   let departures = departureKeyframes(viewport);
+  const buildShots = () =>
+    bioShots(
+      stations[stations.length - 1]?.settle ?? arrival[arrival.length - 1]!,
+      rests.about,
+      rests.contact,
+    );
+  let shots = buildShots();
   const waypoints = { departure: journeyWaypoints.departure, passage: journeyWaypoints.passage };
 
   // ------------------------------------------------ lighting that travels
@@ -443,6 +451,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     return Math.atan2(-direction.x, -direction.z);
   };
   const homeTarget = new Vector3();
+  /** The camera stands at the bio, so the doorway can be used. */
+  let doorwayAtRest = false;
 
   /** Places `view` for this frame. The only code that moves the camera. */
   const applyJourney = (deltaSeconds: number) => {
@@ -477,6 +487,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         waypoints,
         stations,
         departures,
+        shots,
       },
       pose,
     );
@@ -500,6 +511,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         waypoints,
         stations,
         departures,
+        shots,
       },
       destination,
     );
@@ -580,16 +592,20 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       along === null ? 0 : 1 - smootherstep((along - 0.45) / 0.4),
     );
 
-    // The snow doorway stands only while the camera is at the bio: it comes
-    // as the camera turns away from the last stone and goes on to Contact.
+    // The snow doorway stands while the camera is at the bio. It comes while
+    // the camera is still turning toward it, out of frame, and stays solid
+    // as the camera sets off, until the camera has passed it and it has slid
+    // out of frame by parallax.
     snowDoorway.setPresence(
       state.to === "about" && state.from !== "about"
-        ? smootherstep((state.blend - 0.35) / 0.5)
+        ? smootherstep((state.blend - 0.3) / 0.4)
         : state.from === "about"
-          ? // Gone as soon as the camera sets off; it never flies past it.
-            1 - smootherstep((state.blend - 0.04) / 0.26)
+          ? 1 - smootherstep((state.blend - 0.5) / 0.2)
           : 0,
     );
+    doorwayAtRest =
+      (state.to === "about" && state.from !== "about" && state.blend >= 0.999) ||
+      (state.from === "about" && state.blend <= 0.001);
   };
 
   // -------------------------------------------------------- orthographic pass
@@ -674,7 +690,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     snowDoorway.update(deltaSeconds, elapsed, getDoorwayInput());
     const doorwayRect = snowDoorway.screenRect(view, width, height);
-    publishDoorwayRect(doorwayRect);
+    // It can only be stepped through while the camera is at rest before it.
+    publishDoorwayRect(doorwayAtRest ? doorwayRect : null);
     // The bio's dust flies to and from the opening wherever it is on screen.
     publishDoorwayAnchor(snowDoorway.screenAnchor(view, width, height));
 
@@ -812,6 +829,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       stations = workStations(viewport);
       arrival = arrivalKeyframes(viewport);
       departures = departureKeyframes(viewport);
+      shots = buildShots();
       lights.resize(camera);
       atmosphere.resize(camera);
       mist.resize(width, camera);

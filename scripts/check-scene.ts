@@ -38,6 +38,7 @@ import {
 import { toWorld } from "../src/webgl/core/chapterFrame";
 import {
   arrivalKeyframes,
+  bioShots,
   chapterFrames,
   departureKeyframes,
   chapterRest,
@@ -547,8 +548,8 @@ console.log("\ncamera journey");
 {
   // Scroll offsets as the page measures them; the work stage pins for its journey.
   const layouts = {
-    desktop: { workStart: 2070, workEnd: 8550, about: 9420, contact: 10110 },
-    mobile: { workStart: 844, workEnd: 6921, about: 7846, contact: 8546 },
+    desktop: { workStart: 2070, workEnd: 8550, about: 10637, aboutLeave: 11132, contact: 12245 },
+    mobile: { workStart: 844, workEnd: 6921, about: 8758, aboutLeave: 9222, contact: 10216 },
   } as const satisfies Record<string, JourneyStops>;
 
   for (const [viewport, stops] of Object.entries(layouts) as [
@@ -559,10 +560,11 @@ console.log("\ncamera journey");
       about: chapterRest("about", viewport),
       contact: chapterRest("footer", viewport),
     };
-    const waypoints = { departure: journeyWaypoints.departure };
+    const waypoints = { departure: journeyWaypoints.departure, passage: journeyWaypoints.passage };
     const arrival = arrivalKeyframes(viewport);
     const departures = departureKeyframes(viewport);
     const stations = workStations(viewport);
+    const shots = bioShots(stations[stations.length - 1]!.settle, rests.about, rests.contact);
     const pivots = monolithConfig.stones.map((stone) => {
       const { position } = resolveResponsiveValue(stone, viewport);
       return new Vector3(position[0], 0, position[2]);
@@ -582,7 +584,10 @@ console.log("\ncamera journey");
 
     const at = (scroll: number) => {
       const pose: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
-      evaluateJourney({ scroll, stops, arrival, rests, waypoints, stations, departures }, pose);
+      evaluateJourney(
+        { scroll, stops, arrival, rests, waypoints, stations, departures, shots },
+        pose,
+      );
       return pose;
     };
     const same = (a: CameraPose, eye: readonly number[]) =>
@@ -633,6 +638,9 @@ console.log("\ncamera journey");
     let previous = at(0);
     let largestStep = 0;
     let largestTurn = 0;
+    // The bio's shots are held to a turning budget near the frozen journey's
+    // (which peaks at about 0.06° a pixel), so no stretch ever whips round.
+    let bioTurn = 0;
     let nearestStone = Number.POSITIVE_INFINITY;
     let nearestRock = Number.POSITIVE_INFINITY;
     for (let scroll = 1; scroll <= stops.contact; scroll += 1) {
@@ -640,7 +648,9 @@ console.log("\ncamera journey");
       const direction = pose.target.clone().sub(pose.eye).normalize();
       const before = previous.target.clone().sub(previous.eye).normalize();
       largestStep = Math.max(largestStep, pose.eye.distanceTo(previous.eye));
-      largestTurn = Math.max(largestTurn, Math.acos(Math.min(1, direction.dot(before))));
+      const turn = Math.acos(Math.min(1, direction.dot(before)));
+      largestTurn = Math.max(largestTurn, turn);
+      if (scroll > stops.workEnd) bioTurn = Math.max(bioTurn, turn);
       pivots.forEach((pivot) => {
         nearestStone = Math.min(
           nearestStone,
@@ -660,6 +670,15 @@ console.log("\ncamera journey");
       `${viewport}: no sudden turn between scroll pixels`,
       (largestTurn * 180) / Math.PI < 2,
       `${((largestTurn * 180) / Math.PI).toFixed(2)}°`,
+    );
+    check(
+      `${viewport}: the bio's shots turn steadily, never a whip`,
+      (bioTurn * 180) / Math.PI < 0.2,
+      `${((bioTurn * 180) / Math.PI).toFixed(3)}° a pixel`,
+    );
+    check(
+      `${viewport}: the camera holds at the bio while the sentence goes`,
+      at(stops.about).eye.distanceTo(at(stops.aboutLeave!).eye) < 1e-9,
     );
     check(
       `${viewport}: the camera keeps clear of both stones`,
