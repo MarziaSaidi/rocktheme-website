@@ -1,0 +1,176 @@
+/*
+ * The navigation stick: a compass instrument in the brand palette, frosted
+ * aubergine glass under hairline moonlit rings, botanical green for north
+ * and the knob's centre. Resting, it steps back; under the mouse it wakes.
+ */
+.stick {
+  position: absolute;
+  inset-block-end: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  inset-inline-end: var(--layout-gutter);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  opacity: 0.72;
+  transition: opacity 0.3s ease;
+  user-select: none;
+}
+
+.stick:hover,
+.stick[data-active] {
+  opacity: 1;
+}
+
+/* Touch has no hover to wake it, so it stays nearly full strength. */
+@media (hover: none), (pointer: coarse) {
+  .stick {
+    opacity: 0.9;
+  }
+}
+
+.dial {
+  position: relative;
+  width: 176px;
+  height: 176px;
+}
+
+.glass {
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand-aubergine) 58%, transparent);
+  backdrop-filter: blur(10px) saturate(1.2);
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  cursor: grab;
+  touch-action: none;
+}
+
+.stick[data-active] .svg {
+  cursor: grabbing;
+}
+
+.major,
+.mid,
+.minor {
+  stroke-linecap: round;
+}
+
+.major {
+  stroke: var(--brand-porcelain);
+  stroke-width: 1.4;
+}
+
+.mid,
+.minor {
+  stroke: color-mix(in srgb, var(--color-text-moonlit) 55%, transparent);
+  stroke-width: 0.75;
+}
+
+.letter,
+.north {
+  font: 500 10px / 1 var(--font-technical);
+  fill: var(--brand-porcelain);
+}
+
+.north {
+  fill: var(--brand-botanical);
+}
+
+.ring,
+.reach {
+  fill: none;
+  stroke-width: 0.75;
+}
+
+.ring {
+  stroke: color-mix(in srgb, var(--color-text-moonlit) 35%, transparent);
+}
+
+.reach {
+  stroke: color-mix(in srgb, var(--color-text-moonlit) 18%, transparent);
+  stroke-dasharray: 2 4;
+}
+
+.arc {
+  fill: none;
+  stroke: var(--color-text-moonlit);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.beam {
+  stroke: var(--brand-botanical);
+  stroke-width: 1;
+}
+
+.cross {
+  stroke: color-mix(in srgb, var(--brand-porcelain) 50%, transparent);
+  stroke-width: 0.75;
+}
+
+.knobRing {
+  fill: color-mix(in srgb, var(--brand-aubergine) 55%, transparent);
+  stroke: var(--brand-porcelain);
+  stroke-width: 1.2;
+}
+
+.knobDot {
+  fill: var(--brand-botanical);
+}
+
+.readout {
+  display: grid;
+  gap: 2px;
+  margin-block-end: var(--space-5);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--brand-aubergine) 55%, transparent);
+  color: var(--brand-porcelain);
+  font: 500 var(--text-micro) / 1.6 var(--font-technical);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(8px);
+}
+
+.label {
+  color: var(--brand-lavender);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stick {
+    transition: none;
+  }
+}
+
+/* Phones: a smaller dial with the readout stacked above it, clear of the home bar. */
+@media (max-width: 767px) {
+  .stick {
+    inset-block-end: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    inset-inline-end: calc(var(--space-3) + env(safe-area-inset-right, 0px));
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .dial {
+    width: 148px;
+    height: 148px;
+  }
+
+  .glass {
+    inset: 18px;
+  }
+
+  .readout {
+    margin-block-end: 0;
+    grid-auto-flow: column;
+    gap: var(--space-3);
+  }
+}

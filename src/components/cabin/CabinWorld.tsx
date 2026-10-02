@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { sectionHref } from "@/config/sections";
 import { STATIONS } from "@/cabin/stations";
 import type { MarziaTheme } from "@/cabin/scenery";
 import type { CabinState, CabinWorld as World } from "@/cabin/world";
 
+import { CabinStick } from "./CabinStick";
 import styles from "./CabinWorld.module.css";
 
 type Status = "loading" | "ready" | "failed" | "lost";
@@ -22,7 +23,8 @@ const EXIT_HINT_MS = 7000;
  * Nothing on screen tells the visitor where to go. They explore like in a
  * game: the view follows the mouse (and keeps turning at the screen's
  * edges), W A S D, the arrow keys or scrolling walk, and a click walks to
- * whatever was clicked. The only control is the × to leave (or Esc).
+ * whatever was clicked. A compass stick in the bottom-right walks and
+ * turns too, on desktop and phones; otherwise the only control is the × to leave (or Esc).
  * Keyboard and screen-reader users get the places and MARZIA's theme as
  * buttons that appear only when focused.
  */
@@ -37,6 +39,7 @@ export function CabinWorld() {
   // Bumped to rebuild the world after the browser drops its GPU context.
   const [attempt, setAttempt] = useState(0);
   const backHref = sectionHref("about");
+  const currentWorld = useCallback(() => world.current, []);
 
   useEffect(() => {
     const container = host.current;
@@ -134,9 +137,9 @@ export function CabinWorld() {
           aria-hidden="true"
         >
           <span className={styles.desktopOnly}>
-            Move the mouse to look · click or W A S D to walk ·{" "}
+            Move the mouse to look · click, W A S D or the stick to walk ·{" "}
           </span>
-          <span className={styles.touchOnly}>Drag to look · tap to walk · </span>
+          <span className={styles.touchOnly}>Drag to look · tap or the stick to walk · </span>
           Esc or × to leave
         </span>
         <Link href={backHref} className={styles.close} aria-label="Leave the cabin">
@@ -148,6 +151,7 @@ export function CabinWorld() {
 
       {status === "ready" && (
         <>
+          <CabinStick world={currentWorld} />
           <nav className={styles.places} aria-label="Places in the cabin world">
             {STATIONS.map((entry) => (
               <button

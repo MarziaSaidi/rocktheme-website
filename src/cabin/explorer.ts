@@ -10,7 +10,8 @@ import { passageFor, route, wayInFrom } from "./paths";
  * Looking follows the cursor. The view leans towards wherever the cursor is,
  * and near the left or right edge it keeps turning that way, so the whole
  * world can be looked round without dragging. Walking is W A S D or the
- * arrow keys, the scroll wheel (forward and back), or a click on any place,
+ * arrow keys, the scroll wheel (forward and back), the on-screen stick
+ * (push up or down to walk, left or right to turn), or a click on any place,
  * which walks there with the view turning to lead the way.
  *
  * Doors help: heading for one on your own lines you up and carries you
@@ -28,6 +29,12 @@ export type Explorer = Readonly<{
   /** Returns true when the key moves the visitor. */
   key: (code: string, pressed: boolean) => boolean;
   wheel: (deltaY: number) => void;
+  /** The on-screen stick, each axis −1…1: x turns (right +), y walks (forward +). */
+  stick: (x: number, y: number) => void;
+  /** Compass heading in degrees, clockwise from north (−z). */
+  readonly heading: number;
+  /** Walking speed, metres per second. */
+  readonly speed: number;
   /** Walk to a point (heights ignored), then turn to face `face` if given. */
   walkTo: (point: Vector3, face?: Vector3 | null) => void;
   update: (delta: number) => void;
@@ -55,6 +62,10 @@ const EDGE = 0.6;
 const EDGE_TURN = MathUtils.degToRad(55);
 const AUTO_TURN = MathUtils.degToRad(160);
 const DRAG_TURN = 0.0045;
+/** A stick pushed fully sideways turns this fast. */
+const STICK_TURN = MathUtils.degToRad(95);
+/** Below this, a stick is at rest. */
+const STICK_DEAD = 0.1;
 const LOOK_DAMPING = 6;
 const BOB_HEIGHT = 0.024;
 const BOB_STRIDE = 1.45;
@@ -85,6 +96,7 @@ export function createExplorer(camera: PerspectiveCamera, options: Options): Exp
   const velocity = new Vector3();
   const pressed = new Set<string>();
   let wheelDistance = 0;
+  const stick = { x: 0, y: 0 };
   let path: Vector3[] = [];
   let face: Vector3 | null = null;
   let faceYaw: number | null = null;
@@ -181,10 +193,23 @@ export function createExplorer(camera: PerspectiveCamera, options: Options): Exp
       ahead += step[1];
     }
     const keysHeld = side !== 0 || ahead !== 0;
+    const stickTurn = Math.abs(stick.x) > STICK_DEAD ? stick.x : 0;
+    const stickWalk = Math.abs(stick.y) > STICK_DEAD ? stick.y : 0;
+    const stickHeld = stickTurn !== 0 || stickWalk !== 0;
     // Going on forward keeps a glide through a door; any other key takes over.
     if (transit && keysHeld && !(ahead > 0 && side === 0)) cancelWalk();
+    if (transit && stickHeld && !(stickWalk > 0 && stickTurn === 0)) cancelWalk();
     let manual = false;
-    if (keysHeld && !transit) {
+    if (stickHeld && !keysHeld && !transit) {
+      cancelWalk();
+      wheelDistance = 0;
+      // Eased, so a light push creeps and a full push walks.
+      const eased = (value: number) => Math.sign(value) * Math.pow(Math.abs(value), 1.4);
+      baseYaw -= eased(stickTurn) * STICK_TURN * delta;
+      forward.set(-Math.sin(baseYaw), 0, -Math.cos(baseYaw));
+      desired.copy(forward).multiplyScalar(eased(stickWalk) * WALK_SPEED);
+      manual = stickWalk !== 0;
+    } else if (keysHeld && !transit) {
       cancelWalk();
       wheelDistance = 0;
       desired
@@ -295,6 +320,12 @@ export function createExplorer(camera: PerspectiveCamera, options: Options): Exp
     get position() {
       return position;
     },
+    get heading() {
+      return MathUtils.euclideanModulo(-MathUtils.radToDeg(baseYaw + leanYaw), 360);
+    },
+    get speed() {
+      return Math.hypot(velocity.x, velocity.z);
+    },
     get moving() {
       return Math.hypot(velocity.x, velocity.z) > 0.15 || path.length > 0;
     },
@@ -320,6 +351,10 @@ export function createExplorer(camera: PerspectiveCamera, options: Options): Exp
       if (transit && deltaY > 0) return;
       cancelWalk();
       wheelDistance = MathUtils.clamp(wheelDistance + deltaY * 0.006, -4, 4);
+    },
+    stick: (x, y) => {
+      stick.x = MathUtils.clamp(x, -1, 1);
+      stick.y = MathUtils.clamp(y, -1, 1);
     },
     walkTo,
     update,

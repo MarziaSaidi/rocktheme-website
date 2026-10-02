@@ -22,6 +22,10 @@ export type CabinState = Readonly<{ current: StationId; travelling: boolean }>;
 export type CabinWorld = Readonly<{
   goTo: (id: Station["id"]) => void;
   setMarziaTheme: (theme: MarziaTheme) => void;
+  /** The on-screen stick, each axis −1…1: x turns (right +), y walks (forward +). */
+  stick: (x: number, y: number) => void;
+  /** Where the visitor faces (degrees from north, clockwise) and how fast they walk. */
+  pose: () => Readonly<{ heading: number; speed: number }>;
   dispose: () => void;
 }>;
 
@@ -314,6 +318,7 @@ export async function mountCabinWorld({
   };
   // Keys held while the window loses focus would otherwise keep walking.
   const onBlur = () => {
+    explorer.stick(0, 0);
     for (const code of [
       "KeyW",
       "KeyA",
@@ -375,6 +380,8 @@ export async function mountCabinWorld({
       explorer.walkTo(place.position, place.face);
     },
     setMarziaTheme,
+    stick: explorer.stick,
+    pose: () => ({ heading: explorer.heading, speed: explorer.speed }),
     dispose: () => {
       renderer.setAnimationLoop(null);
       resizeObserver.disconnect();
