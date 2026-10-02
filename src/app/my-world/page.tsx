@@ -4,11 +4,12 @@ import { CabinWorld } from "@/components/cabin/CabinWorld";
 import { pageLandmarkIds } from "@/config/sections";
 
 export const metadata: Metadata = {
-  title: "The Winter Cabin",
-  description: "A small cabin in the snow, for getting to know Marzia a little better.",
+  title: "My World",
+  description:
+    "A winter clearing with a cabin and an experiment lab, for getting to know Marzia a little better.",
 };
 
-export default function CabinPage() {
+export default function MyWorldPage() {
   return (
     <main id={pageLandmarkIds.main}>
       <CabinWorld />

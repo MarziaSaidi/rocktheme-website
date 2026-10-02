@@ -16,7 +16,7 @@ import styles from "./SnowDoorwayControl.module.css";
 const HOLD_MS = 1400;
 /** The doorway's daylight opening out to fill the screen. */
 const OPEN_MS = 1000;
-const CABIN = "/cabin";
+const MY_WORLD = "/my-world";
 
 /**
  * The way through the snow doorway in the water beside the bio.
@@ -42,7 +42,7 @@ export function SnowDoorwayControl() {
   const warm = useCallback(() => {
     if (warmed.current) return;
     warmed.current = true;
-    router.prefetch(CABIN);
+    router.prefetch(MY_WORLD);
     void import("@/cabin/world");
   }, [router]);
 
@@ -77,7 +77,7 @@ export function SnowDoorwayControl() {
       setOpening(
         rect ? { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 } : { x: 0, y: 0 },
       );
-      window.setTimeout(() => router.push(CABIN), reduced ? 120 : OPEN_MS);
+      window.setTimeout(() => router.push(MY_WORLD), reduced ? 120 : OPEN_MS);
     };
     frame.current = requestAnimationFrame(tick);
   }, [opening, rect, router, warm]);
