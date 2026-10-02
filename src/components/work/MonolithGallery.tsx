@@ -11,9 +11,10 @@ import {
   type RefObject,
 } from "react";
 
+import { addScrollStop, type ScrollStop } from "@/motion/scrollCatch";
 import { emitSoundEvent } from "@/sound/soundEvents";
 import { setSceneFocus } from "@/webgl/sceneFocus";
-import { workMoment, workScreens } from "@/webgl/workJourney";
+import { detailsPoint, workMoment, workScreens } from "@/webgl/workJourney";
 
 import styles from "./MonolithGallery.module.css";
 
@@ -204,6 +205,9 @@ type MonolithGalleryProps = Readonly<{
   children?: ReactNode;
 }>;
 
+/** How long a project's card is held on screen when a fast scroll is caught there. */
+const PROJECT_READ_MS = 1700;
+
 const pad = (value: number) => value.toString().padStart(2, "0");
 
 /**
@@ -300,6 +304,36 @@ export function MonolithGallery({
 
   useEffect(() => {
     if (shown) emitSoundEvent("project:active", { step: active });
+  }, [shown, active]);
+
+  /*
+   * A fast scroll stops at each project's details point and stays until its
+   * card has been on screen long enough to see (scrollCatch.ts). Nothing
+   * about the journey itself changes; it only can't be flown past.
+   */
+  const stopsRef = useRef<ScrollStop[]>([]);
+  useEffect(() => {
+    const runway = runwayRef.current;
+    if (!runway || count === 0) return;
+    const stops = Array.from({ length: count }, (_, station) =>
+      addScrollStop({
+        position: () => {
+          const span = runway.offsetHeight - window.innerHeight;
+          if (span <= 0 || total <= 0) return null;
+          const top = runway.getBoundingClientRect().top + window.scrollY;
+          return Math.round(top + (detailsPoint(station) / total) * span);
+        },
+        readFor: PROJECT_READ_MS,
+      }),
+    );
+    stopsRef.current = stops;
+    return () => {
+      stops.forEach((stop) => stop.remove());
+      stopsRef.current = [];
+    };
+  }, [count, total]);
+  useEffect(() => {
+    stopsRef.current.forEach((stop, station) => stop.setReady(shown && active === station));
   }, [shown, active]);
 
   const current = featured[active];

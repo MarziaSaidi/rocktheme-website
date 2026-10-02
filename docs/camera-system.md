@@ -124,6 +124,18 @@ Do not add a look-away pan, move Survue, or try to empty the frame between them.
 The camera stands still for 0.38 screens (342 px) after the details leave and
 before the departure starts.
 
+### Scroll stops
+
+A fast scroll can't fly past a project or the bio (`src/motion/scrollCatch.ts`).
+When the visitor's own wheel, touch or key scrolling is about to cross a
+project's details point (`detailsPoint`) or the bio rest, the page is placed
+on it and held until the moment has been on screen for its reading time
+(projects 1.7 s after the card shows, bio 3.2 s after the dust starts forming;
+never less than 0.6 s, never more than 6.5 s), and input has paused 180 ms.
+A stop whose moment has already been on screen that long is not caught, so a
+slow reader never feels it. The nav, Home/End and the scrollbar are never
+caught. No camera value changes.
+
 ## The bio's shots (not frozen)
 
 Both are built by `bioShots()` in `src/webgl/sceneConfig.ts` from the poses

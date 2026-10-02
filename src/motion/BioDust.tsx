@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import { BIO_DWELL, getDoorwayAnchor } from "@/webgl/doorwayChannel";
 
+import { addScrollStop, type ScrollStop } from "./scrollCatch";
 import { createBioDust, type BioDust as Dust, type DustDoor } from "./dustRenderer";
 
 /**
@@ -24,6 +25,12 @@ type BioDustProps = Readonly<{
 /** With no doorway to come from (it may be off screen), it forms anyway after this long. */
 const DOORLESS_AFTER = 1.4;
 
+/**
+ * A fast scroll stops on the bio and stays until the sentence has streamed
+ * out of the doorway this long (scrollCatch.ts): most of its words are whole.
+ */
+const BIO_READ_MS = 3200;
+
 export function BioDust({ sectionId, selector }: BioDustProps) {
   useEffect(() => {
     const section = document.getElementById(sectionId);
@@ -32,6 +39,7 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let dust: Dust | null = null;
+    let stop: ScrollStop | null = null;
     let disposed = false;
     let frame = 0;
     let last = 0;
@@ -42,6 +50,8 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
     let lastDoor: DustDoor | null = null;
 
     const giveUp = () => {
+      stop?.remove();
+      stop = null;
       dust?.destroy();
       dust = null;
       delete heading.dataset.dust;
@@ -86,6 +96,8 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
         lastDoor = null;
       }
 
+      stop?.setReady(dust.formed() && leave < 0.5);
+
       dust.update({
         now: clock,
         delta,
@@ -126,6 +138,17 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
       dust = createBioDust(heading, giveUp);
       if (!dust) return;
       heading.dataset.dust = "";
+      // Where the camera rests on the bio: the sentence centred (SceneCanvas.tsx).
+      stop = addScrollStop({
+        position: () => {
+          const box = heading.getBoundingClientRect();
+          const end = document.documentElement.scrollHeight - window.innerHeight;
+          return Math.round(
+            Math.min(end, box.top + window.scrollY + box.height / 2 - window.innerHeight / 2),
+          );
+        },
+        readFor: BIO_READ_MS,
+      });
       observer.observe(section);
       resize.observe(heading);
       wake();
@@ -137,6 +160,7 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
       resize.disconnect();
       window.clearTimeout(resizeTimer);
       cancelAnimationFrame(frame);
+      stop?.remove();
       dust?.destroy();
       delete heading.dataset.dust;
     };
