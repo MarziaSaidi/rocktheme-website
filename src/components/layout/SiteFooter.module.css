@@ -291,3 +291,72 @@
     padding-block: var(--space-3);
   }
 }
+
+/* ---------------------------------------------------------- arrival motion */
+
+/*
+ * The footer copy follows its headline's ripple (src/motion/RippleHeading):
+ * hidden while the ripple is armed, played from the moment it starts, and
+ * replayed each time the invitation comes back into view. Without the ripple
+ * (no JavaScript, no WebGL, reduced motion) nothing is published and the copy
+ * simply stands. Timing lives in src/motion/motion.css.
+ */
+.footer:has([data-ripple="pending"])
+  :is(.lead, .primary, .plane, .copyright, .socialItem, .backToTop) {
+  opacity: 0;
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"])
+  :is(.lead, .primary, .plane, .copyright, .socialItem, .backToTop) {
+  animation-name: var(--motion-keyframes-copy);
+  animation-duration: var(--motion-small-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: backwards;
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .lead {
+  animation-duration: var(--motion-lead-duration);
+  animation-delay: var(--motion-footer-lead-at);
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .primary {
+  animation-delay: var(--motion-footer-primary-at);
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .plane {
+  animation-duration: var(--motion-lead-duration);
+  animation-delay: var(--motion-footer-plane-at);
+}
+
+/* The waveform draws itself across the plane once the plane has settled. */
+.footer:has([data-ripple="pending"]) .waveform {
+  clip-path: inset(-20% 100% -20% 0);
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .waveform {
+  animation-name: var(--motion-keyframes-wipe);
+  animation-duration: var(--motion-footer-wave-duration);
+  animation-timing-function: var(--motion-ease-reveal);
+  animation-fill-mode: backwards;
+  animation-delay: var(--motion-footer-wave-at);
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .copyright {
+  animation-delay: var(--motion-footer-baseline-at);
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .socialItem:nth-child(1) {
+  animation-delay: calc(var(--motion-footer-baseline-at) + var(--motion-footer-stagger));
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .socialItem:nth-child(2) {
+  animation-delay: calc(var(--motion-footer-baseline-at) + 2 * var(--motion-footer-stagger));
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .socialItem:nth-child(3) {
+  animation-delay: calc(var(--motion-footer-baseline-at) + 3 * var(--motion-footer-stagger));
+}
+
+.footer:has([data-ripple="playing"], [data-ripple="done"]) .backToTop {
+  animation-delay: calc(var(--motion-footer-baseline-at) + 4 * var(--motion-footer-stagger));
+}

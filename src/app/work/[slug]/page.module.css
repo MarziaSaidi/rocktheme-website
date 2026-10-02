@@ -41,3 +41,12 @@
     padding-block-start: var(--header-height-phone);
   }
 }
+
+/* Closes the case-study opening. Timing lives in src/motion/motion.css. */
+.back {
+  animation-name: var(--motion-keyframes-copy);
+  animation-duration: var(--motion-small-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: backwards;
+  animation-delay: var(--motion-case-back-at);
+}

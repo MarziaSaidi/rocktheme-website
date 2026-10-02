@@ -215,8 +215,8 @@ function ProjectFacts({ project, info }: { project: Project; info?: CaseStudyInf
 
   return (
     <dl className={styles.facts}>
-      {facts.map(([label, value]) => (
-        <div key={label} className={styles.fact}>
+      {facts.map(([label, value], index) => (
+        <div key={label} className={styles.fact} style={{ "--i": index } as React.CSSProperties}>
           <dt>{label}</dt>
           <dd>{value}</dd>
         </div>
@@ -458,7 +458,11 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       onBlurCapture={() => setKeyboardFocus(false)}
     >
       <header className={styles.mobileHeader}>
-        <h1>{project.title}</h1>
+        <h1>
+          <span className={styles.titleMask}>
+            <span className={styles.titleInner}>{project.title}</span>
+          </span>
+        </h1>
         <p>
           {project.role.join(" + ")} · {info?.timeline ?? project.year}
         </p>
@@ -476,7 +480,11 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
 
       <aside className={styles.rail} aria-label="Project information">
         <p className={styles.railLabel}>Project</p>
-        <h1>{project.title}</h1>
+        <h1>
+          <span className={styles.titleMask}>
+            <span className={styles.titleInner}>{project.title}</span>
+          </span>
+        </h1>
         <p className={styles.projectDescription}>{project.shortDescription}</p>
         <ProjectFacts project={project} info={info} />
         {info?.externalUrl ? (
@@ -558,9 +566,14 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             <ArrowGlyph direction="right" className={styles.controlGlyph} />
           </button>
         </div>
-        {story.caption ? <p className={styles.caption}>{story.caption}</p> : null}
+        {story.caption ? (
+          <p key={`caption-${storyKey}`} className={styles.caption}>
+            {story.caption}
+          </p>
+        ) : null}
         {story.visual?.type === "image" && story.visual.zoomable ? (
           <a
+            key={`zoom-${storyKey}`}
             className={styles.zoomLink}
             href={story.visual.media.src}
             target="_blank"
@@ -645,10 +658,11 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
 
       <nav ref={navRef} className={styles.stageNav} aria-label="Case study stages">
         <span className={styles.stageIndicator} aria-hidden="true" />
-        {stages.map((item) => (
+        {stages.map((item, index) => (
           <button
             key={item.id}
             data-stage-id={item.id}
+            style={{ "--i": index } as React.CSSProperties}
             aria-current={item.id === stage.id ? "step" : undefined}
             onClick={() => {
               if (item.id !== stage.id) show(item.id, 0, "push");

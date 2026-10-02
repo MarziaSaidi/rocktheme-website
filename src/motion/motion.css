@@ -29,6 +29,7 @@
   --motion-keyframes-plane: motionPlaneSettle;
   --motion-keyframes-dissolve: motionDissolve;
   --motion-keyframes-speckle: motionSpeckle;
+  --motion-keyframes-wipe: motionWipeIn;
 
   /* ------------------------------------------------------------- easing */
   /* Interface: navigation, labels, underlines, cursor states. */
@@ -152,6 +153,35 @@
   --motion-details-exit-index-at: 160ms;
   --motion-details-exit-title-at: 200ms;
   --motion-details-exit-panel-at: 260ms;
+
+  /* ------------------------------------- footer: follows its own ripple */
+  /*
+   * Counted from the headline's ripple starting, so the invitation is read
+   * in the same order as the hero: headline, lead, action, then the plane
+   * and its waveform drawing left to right, then the baseline.
+   */
+  --motion-footer-lead-at: 620ms;
+  --motion-footer-primary-at: 780ms;
+  --motion-footer-plane-at: 880ms;
+  --motion-footer-wave-at: 1080ms;
+  --motion-footer-wave-duration: 1400ms;
+  --motion-footer-baseline-at: 1200ms;
+  --motion-footer-stagger: 70ms;
+
+  /* ------------------------------------------- case study: the opening */
+  /*
+   * Counted from the page becoming interactive. The title rises out of its
+   * mask like every display line; the rail then reads top to bottom, while
+   * the stage list arrives alongside so the structure is visible early.
+   */
+  --motion-case-label-at: 80ms;
+  --motion-case-title-at: 160ms;
+  --motion-case-body-at: 520ms;
+  --motion-case-facts-at: 620ms;
+  --motion-case-fact-stagger: 55ms;
+  --motion-case-nav-at: 420ms;
+  --motion-case-nav-stagger: 45ms;
+  --motion-case-back-at: 980ms;
 }
 
 /* ---------------------------------------------------------------- keyframes */
@@ -258,6 +288,16 @@
   }
 }
 
+/* A line drawn left to right, uncovered rather than moved. */
+@keyframes motionWipeIn {
+  from {
+    clip-path: inset(-20% 100% -20% 0);
+  }
+  to {
+    clip-path: inset(-20% 0 -20% 0);
+  }
+}
+
 /* ----------------------------------------------------------- reduced motion */
 
 /*
@@ -321,5 +361,14 @@
     --motion-details-panel-duration: 200ms;
     --motion-details-title-duration: 200ms;
     --motion-details-step: 0.5;
+
+    --motion-case-label-at: 0ms;
+    --motion-case-title-at: 0ms;
+    --motion-case-body-at: 60ms;
+    --motion-case-facts-at: 90ms;
+    --motion-case-fact-stagger: 0ms;
+    --motion-case-nav-at: 60ms;
+    --motion-case-nav-stagger: 0ms;
+    --motion-case-back-at: 90ms;
   }
 }

@@ -760,3 +760,88 @@ video.visualMedia[data-fit="cover"] {
     transition: none;
   }
 }
+
+/* ======================================================== opening motion */
+
+/*
+ * The case study opens in reading order: the title rises out of its mask like
+ * every display line on the site, the rail follows top to bottom, and the
+ * stage list arrives alongside so the structure is visible early. Behind the
+ * entry doorway the page is inert and these wait (SiteEntry pauses them).
+ * Timing lives in src/motion/motion.css; reduced motion turns each into a
+ * short fade there.
+ */
+.titleMask {
+  display: block;
+  overflow: hidden;
+  /* Keeps descenders inside the clip without changing the line rhythm. */
+  padding-block-end: 0.12em;
+  margin-block-end: -0.12em;
+}
+
+.titleInner {
+  display: block;
+  transform-origin: bottom center;
+  animation-name: var(--motion-keyframes-display);
+  animation-duration: var(--motion-display-duration);
+  animation-timing-function: var(--motion-ease-reveal);
+  animation-fill-mode: backwards;
+  animation-delay: var(--motion-case-title-at);
+}
+
+.railLabel,
+.projectDescription,
+.fact,
+.liveLink,
+.mobileHeader > p,
+.infoDisclosure,
+.stageNav button,
+.caption,
+.zoomLink {
+  animation-name: var(--motion-keyframes-copy);
+  animation-duration: var(--motion-small-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: backwards;
+}
+
+.railLabel {
+  animation-delay: var(--motion-case-label-at);
+}
+
+.projectDescription,
+.mobileHeader > p {
+  animation-delay: var(--motion-case-body-at);
+}
+
+.fact {
+  animation-delay: calc(
+    var(--motion-case-facts-at) + var(--i, 0) * var(--motion-case-fact-stagger)
+  );
+}
+
+.liveLink,
+.infoDisclosure {
+  animation-delay: calc(var(--motion-case-facts-at) + 8 * var(--motion-case-fact-stagger));
+}
+
+.stageNav button {
+  animation-delay: calc(var(--motion-case-nav-at) + var(--i, 0) * var(--motion-case-nav-stagger));
+}
+
+/* The indicator is placed with `translate`, so it only fades. */
+.stageIndicator {
+  animation: indicator-in var(--motion-small-duration) var(--motion-ease-interface) backwards;
+  animation-delay: var(--motion-case-nav-at);
+}
+
+@keyframes indicator-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Captions belong to the story; they arrive with each one, after its visual. */
+.caption,
+.zoomLink {
+  animation-delay: var(--motion-case-body-at);
+}
