@@ -251,18 +251,10 @@ async function buildSky() {
       .webp({ quality: 80 })
       .toFile(backdrop);
   }
-  // A light copy for the homepage doorway, which shows this sky through the arch.
-  const portal = join(folder, "portal.webp");
-  if (force || !(await exists(portal))) {
-    await sharp(photo, { limitInputPixels: false })
-      .resize(2048, 1024)
-      .webp({ quality: 72 })
-      .toFile(portal);
-  }
   return {
     id: SKY,
     sun: await measureSun(photo),
-    bytes: (await stat(hdrTarget)).size + (await stat(backdrop)).size + (await stat(portal)).size,
+    bytes: (await stat(hdrTarget)).size + (await stat(backdrop)).size,
   };
 }
 

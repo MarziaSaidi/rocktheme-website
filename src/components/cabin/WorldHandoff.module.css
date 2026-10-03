@@ -1,0 +1,7 @@
+/* Over everything, homepage and /my-world alike, until the live world has it. */
+.handoff {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}

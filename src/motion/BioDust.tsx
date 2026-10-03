@@ -3,13 +3,13 @@
 import { useEffect } from "react";
 
 import { stableViewportHeight } from "@/config/viewport";
-import { BIO_DWELL, getDoorwayAnchor } from "@/webgl/doorwayChannel";
+import { BIO_DWELL, getRiftAnchor } from "@/webgl/riftChannel";
 
 import { addScrollStop, type ScrollStop } from "./scrollCatch";
 import { createBioDust, type BioDust as Dust, type DustDoor } from "./dustRenderer";
 
 /**
- * Plays the bio's dust: the sentence streams out of the snow doorway when the
+ * Plays the bio's dust: the sentence streams out of the rift when the
  * bio arrives, and crumbles back into it as the visitor scrolls on.
  *
  * The heading carries `data-dust` while this runs; the stylesheet masks each
@@ -23,12 +23,12 @@ type BioDustProps = Readonly<{
   selector: string;
 }>;
 
-/** With no doorway to come from (it may be off screen), it forms anyway after this long. */
+/** With no rift to come from (it may be off screen), it forms anyway after this long. */
 const DOORLESS_AFTER = 1.4;
 
 /**
  * A fast scroll stops on the bio and stays until every word has come out of
- * the doorway and stands whole, then long enough to read the whole sentence
+ * the rift and stands whole, then long enough to read the whole sentence
  * (scrollCatch.ts). The streaming takes about 4 s after the camera turns in,
  * so the backstop sits well past it: the hold never lets go mid-sentence.
  */
@@ -50,7 +50,7 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
     let clock = 0;
     let near = false;
     let inViewFor = 0;
-    /** Where the doorway was last seen, so the dust still knows the way home. */
+    /** Where the rift was last seen, so the dust still knows the way home. */
     let lastDoor: DustDoor | null = null;
 
     const giveUp = () => {
@@ -77,7 +77,7 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
       const steady = stableViewportHeight();
       const leave = (steady / 2 - centre) / (BIO_DWELL * steady * 0.85);
 
-      const anchor = getDoorwayAnchor();
+      const anchor = getRiftAnchor();
       if (anchor) lastDoor = anchor;
       const door = lastDoor ?? {
         // Off the right edge, at the sentence's height.
@@ -95,7 +95,7 @@ export function BioDust({ sectionId, selector }: BioDustProps) {
       if (!dust.formed() && visible && leave < 1) {
         if ((anchor && anchor.presence > 0.6) || inViewFor > DOORLESS_AFTER) dust.form(clock);
       }
-      // Back up above the bio, with the doorway gone: ready to form again.
+      // Back up above the bio, with the rift gone: ready to form again.
       if (dust.formed() && box.top > view * 1.1 && !anchor) {
         dust.reset();
         lastDoor = null;

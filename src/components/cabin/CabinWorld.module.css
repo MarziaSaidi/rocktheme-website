@@ -28,8 +28,8 @@
   transition: opacity 1.4s ease;
 }
 
-/* The world fades up out of the white-out that brought the visitor here. */
-.stage[data-status="ready"] .canvas {
+/* The world fades up once it has drawn its first frame. */
+.stage[data-live="true"] .canvas {
   opacity: 1;
 }
 
@@ -216,4 +216,19 @@
   .close {
     transition: none;
   }
+}
+
+/*
+ * Through the rift, the picture of this same view is still over the page
+ * (WorldHandoff); the world is drawn at once beneath it, and the picture
+ * fades away from over it.
+ */
+.stage[data-arrival="rift"] .canvas {
+  opacity: 1;
+  transition: none;
+}
+
+/* The capture script photographs the world alone. */
+.stage[data-arrival="capture"] > :not(.host) {
+  display: none;
 }

@@ -3,11 +3,17 @@
  *
  * The sentence is sampled into grains, one for every few lit pixels of its
  * glyphs, each knowing its word and where in that word it sits. The grains
- * live in the snow doorway. When the bio arrives they stream out of it in
+ * live in the rift. When the bio arrives they stream out of it in
  * reading order, ribbon by ribbon, and settle onto their letters, and the
  * real words fade in under them from the bottom up. When the visitor scrolls
  * on, the words crumble from the bottom edge, last word first, and the dust
  * drifts down, gathers into wisps and goes slowly back into the dark.
+ *
+ * The rift's plume is where they come from: it climbs the mountain and, near
+ * the peak, thins into specks, and the grains leave from there. A few more
+ * break away from it all the time (more while the visitor is near or holding
+ * on), drift a little way towards the sentence and fade: the same grains,
+ * drawn by the same pass, before and after the sentence has formed.
  *
  * The page's text stays the text: this only draws a canvas over it and sets
  * `--whole` on each word, which the stylesheet turns into a mask.
@@ -15,7 +21,20 @@
  * Returns null when WebGL is unavailable; the sentence then simply stays.
  */
 
-export type DustDoor = Readonly<{ x: number; y: number; width: number; height: number }>;
+export type DustDoor = Readonly<{
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /**
+   * Where the rift's plume dissolves near the peak, on screen. When given,
+   * every grain leaves from (and goes back to) its own point among these,
+   * and idle grains break away from them all the while.
+   */
+  path?: readonly Readonly<{ x: number; y: number }>[];
+  /** How much is flowing through the rift: 0 at rest, up to 2 fully held. */
+  energy?: number;
+}>;
 
 export type DustFrame = Readonly<{
   /** Seconds since the dust began. */
@@ -26,16 +45,16 @@ export type DustFrame = Readonly<{
   top: number;
   /** The opening the dust flies from and back to. */
   door: DustDoor;
-  /** How visible the doorway is; grains inside it fade with it. */
+  /** How visible the rift is; grains inside it fade with it. */
   doorPresence: number;
   /** 0 → 1 as the visitor scrolls the sentence away; below 0 it stays whole. */
   leave: number;
 }>;
 
 export type BioDust = Readonly<{
-  /** Starts the sentence streaming out of the doorway. */
+  /** Starts the sentence streaming out of the rift. */
   form: (now: number) => void;
-  /** Puts every grain back in the doorway and hides the words. */
+  /** Puts every grain back in the rift and hides the words. */
   reset: () => void;
   formed: () => boolean;
   /** Whether every word of the sentence has all but landed: it reads whole. */
@@ -56,9 +75,16 @@ const LEAVING = 3;
 /** Grains per lit pixel of the glyphs, and the most there may be. */
 const DENSITY = 0.3;
 const MAX_GRAINS = 15000;
+/**
+ * Idle grains: the few that break away from the plume all the while, and how
+ * many a second at rest and fully held.
+ */
+const IDLE_GRAINS = 120;
+const IDLE_RATE = { rest: 1.4, full: 22 } as const;
+
 /** Stagger between words as the sentence forms, in seconds. */
 const WORD_STAGGER = 0.11;
-/** Flight out of the doorway, and back into it (slower), in seconds. */
+/** Flight out of the rift, and back into it (slower), in seconds. */
 const FORM_SECONDS: readonly [number, number] = [1.5, 2.4];
 const LEAVE_SECONDS: readonly [number, number] = [3.2, 4.8];
 /** A landed grain fades into its letter over this long. */
@@ -70,21 +96,34 @@ const VERTEX = `attribute vec2 aPos;
 attribute float aSize;
 attribute float aAlpha;
 attribute float aWarm;
+attribute vec2 aTint;
 uniform vec2 uResolution;
 varying float vAlpha;
 varying float vWarm;
+varying vec2 vTint;
 void main() {
   vec2 clip = aPos / uResolution * 2.0 - 1.0;
   gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
   gl_PointSize = aSize;
   vAlpha = aAlpha;
   vWarm = aWarm;
+  vTint = aTint;
 }`;
 
-/* Brand colours only: lavender in flight, moonlit, porcelain at the burning edge. */
+/*
+ * Brand colours where the grains are the words: lavender in flight, moonlit,
+ * porcelain at the burning edge. Where they have just left the rift's
+ * vapour they still carry its colour (vTint: how much, and which), and
+ * settle into the brand's as they fly.
+ */
 const FRAGMENT = `precision mediump float;
 varying float vAlpha;
 varying float vWarm;
+varying vec2 vTint;
+const vec3 BLUE = vec3(0.36, 0.64, 1.0);
+const vec3 CYAN = vec3(0.42, 0.95, 1.0);
+const vec3 PINK = vec3(1.0, 0.55, 0.88);
+const vec3 VIOLET = vec3(0.62, 0.42, 1.0);
 const vec3 LAVENDER = vec3(0.718, 0.576, 0.824);
 const vec3 MOONLIT = vec3(0.769, 0.667, 0.941);
 const vec3 PORCELAIN = vec3(0.957, 0.933, 0.98);
@@ -94,7 +133,12 @@ void main() {
   // A hard bright core in a soft halo, so where grains gather they glow.
   float core = exp(-d * d * 14.0) + exp(-d * d * 3.0) * 0.28;
   vec3 colour = mix(mix(LAVENDER, MOONLIT, smoothstep(0.0, 0.5, vWarm)), PORCELAIN, smoothstep(0.5, 1.0, vWarm));
-  float a = core * vAlpha;
+  float h = vTint.y;
+  vec3 vapour = h < 0.33 ? mix(BLUE, CYAN, h * 3.0) : h < 0.66 ? mix(CYAN, PINK, (h - 0.33) * 3.0) : mix(PINK, VIOLET, (h - 0.66) * 3.0);
+  // A white-hot centre on the vapour's colour.
+  vapour = mix(vapour, vec3(1.0), exp(-d * d * 20.0) * 0.6);
+  colour = mix(colour, vapour, vTint.x);
+  float a = core * vAlpha * (1.0 + vTint.x * 0.4);
   gl_FragColor = vec4(colour * a, a);
 }`;
 
@@ -130,6 +174,7 @@ function compile(gl: WebGLRenderingContext, type: number, source: string) {
 export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust | null {
   const canvas = document.createElement("canvas");
   canvas.setAttribute("aria-hidden", "true");
+  canvas.dataset.bioDust = "";
   Object.assign(canvas.style, {
     position: "fixed",
     inset: "0",
@@ -159,7 +204,7 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
 
   const buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  const STRIDE = 5;
+  const STRIDE = 7;
   const attribute = (name: string, size: number, offset: number) => {
     const location = gl.getAttribLocation(program, name);
     gl.enableVertexAttribArray(location);
@@ -169,6 +214,7 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
   attribute("aSize", 1, 2);
   attribute("aAlpha", 1, 3);
   attribute("aWarm", 1, 4);
+  attribute("aTint", 2, 5);
   const resolution = gl.getUniformLocation(program, "uResolution");
   gl.enable(gl.BLEND);
   // Added light: where the wisps gather they glow.
@@ -184,6 +230,9 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
 
   // ------------------------------------------------------------- the grains
   let count = 0;
+  /** The sentence's middle, relative to its box, for the idle grains' heading. */
+  let sentenceX = 0;
+  let sentenceY = 0;
   let homeX = new Float32Array(0);
   let homeY = new Float32Array(0);
   let word = new Uint16Array(0);
@@ -289,6 +338,8 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
     }
 
     count = xs.length;
+    sentenceX = xs.reduce((sum, value) => sum + value, 0) / Math.max(1, xs.length);
+    sentenceY = ys.reduce((sum, value) => sum + value, 0) / Math.max(1, ys.length);
     homeX = Float32Array.from(xs);
     homeY = Float32Array.from(ys);
     word = Uint16Array.from(ws);
@@ -308,7 +359,7 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
     strandOf = new Float32Array(count);
     doorU = new Float32Array(count);
     doorV = new Float32Array(count);
-    vertices = new Float32Array(count * STRIDE);
+    vertices = new Float32Array((count + IDLE_GRAINS) * STRIDE);
     wordTotal = new Uint32Array(words);
     wordSettled = new Uint32Array(words);
     wordWhole = new Float32Array(words);
@@ -332,6 +383,15 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
   };
 
   const doorPoint = (index: number, door: DustDoor, out: { x: number; y: number }) => {
+    // From the plume's dissolving top: each grain its own speck of it.
+    const path = door.path;
+    if (path && path.length > 0) {
+      const pick =
+        path[Math.min(path.length - 1, Math.floor(((doorU[index]! + 1) / 2) * path.length))]!;
+      out.x = pick.x + doorV[index]! * 7;
+      out.y = pick.y + doorU[index]! * 5;
+      return;
+    }
     out.x = door.x + doorU[index]! * door.width * 0.3;
     out.y = door.y + door.height * 0.08 + doorV[index]! * door.height * 0.32;
   };
@@ -346,6 +406,78 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
 
   sample();
   for (let w = 0; w < words; w++) writeWhole(w, 0);
+
+  // ------------------------------------------------------------- idle grains
+  const idle = {
+    alive: new Uint8Array(IDLE_GRAINS),
+    x: new Float32Array(IDLE_GRAINS),
+    y: new Float32Array(IDLE_GRAINS),
+    toX: new Float32Array(IDLE_GRAINS),
+    toY: new Float32Array(IDLE_GRAINS),
+    age: new Float32Array(IDLE_GRAINS),
+    life: new Float32Array(IDLE_GRAINS),
+    seed: new Float32Array(IDLE_GRAINS),
+  };
+  let idleDue = 0;
+  let idleCount = 0;
+
+  /**
+   * Breaks a few grains away from the plume's top, drifts them a little way
+   * towards the sentence, and draws them. Returns the next free vertex.
+   */
+  const updateIdle = (frame: DustFrame, dt: number, ratio: number, drawn: number) => {
+    const path = frame.door.path;
+    if (path && path.length > 0 && frame.doorPresence > 0.3 && frame.leave < 0.5) {
+      const energy = Math.min(2, frame.door.energy ?? 0);
+      idleDue += dt * (IDLE_RATE.rest + (IDLE_RATE.full - IDLE_RATE.rest) * (energy / 2));
+      while (idleDue >= 1) {
+        idleDue -= 1;
+        const slot = idle.alive.indexOf(0);
+        if (slot < 0) break;
+        const from = path[Math.floor(Math.random() * path.length)]!;
+        idle.alive[slot] = 1;
+        idle.x[slot] = from.x + (Math.random() - 0.5) * 10;
+        idle.y[slot] = from.y + (Math.random() - 0.5) * 8;
+        // A short way towards the sentence: a hint of where they are going.
+        const reach = 0.12 + Math.random() * 0.28;
+        idle.toX[slot] = idle.x[slot]! + (frame.left + sentenceX - idle.x[slot]!) * reach;
+        idle.toY[slot] = idle.y[slot]! + (frame.top + sentenceY - idle.y[slot]!) * reach;
+        idle.age[slot] = 0;
+        idle.life[slot] = 2.2 + Math.random() * 1.8;
+        idle.seed[slot] = Math.random();
+      }
+    }
+    idleCount = 0;
+    for (let k = 0; k < IDLE_GRAINS; k++) {
+      if (!idle.alive[k]) continue;
+      idle.age[k] = idle.age[k]! + dt;
+      const p = idle.age[k]! / idle.life[k]!;
+      if (p >= 1) {
+        idle.alive[k] = 0;
+        continue;
+      }
+      idleCount++;
+      // Up out of the plume first, then drifting towards the words.
+      const e = smooth(p);
+      const lift = Math.sin(Math.PI * Math.min(1, p * 1.6)) * (18 + idle.seed[k]! * 22);
+      const x =
+        idle.x[k]! + (idle.toX[k]! - idle.x[k]!) * e + Math.sin(p * 6 + idle.seed[k]! * 20) * 4;
+      const y = idle.y[k]! + (idle.toY[k]! - idle.y[k]!) * e - lift;
+      const alpha = smooth(p / 0.15) * (1 - smooth((p - 0.55) / 0.45)) * 0.9 * frame.doorPresence;
+      // Still the vapour's colour, cooling as they drift.
+      drawn = write(
+        drawn,
+        x,
+        y,
+        (1.3 + idle.seed[k]! * 1.1) * ratio * 2.6,
+        alpha,
+        0.15 + idle.seed[k]! * 0.3,
+        1 - smooth((p - 0.4) / 0.6) * 0.5,
+        idle.seed[k]!,
+      );
+    }
+    return drawn;
+  };
 
   // ------------------------------------------------------------- the frame
   const door = { x: 0, y: 0 };
@@ -470,6 +602,14 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
       let alpha: number;
       let warm: number;
       let size: number;
+      // Straight out of the vapour a grain still carries its colour; by the
+      // words it is the brand's again. Going back, it takes the colour on.
+      const tint =
+        fromDoor[i] || !forming
+          ? forming
+            ? 1 - smooth(progress / 0.55)
+            : smooth((progress - 0.45) / 0.55)
+          : 0;
       if (forming) {
         alpha = smooth(progress / 0.12) * (fromDoor[i] ? smooth(frame.doorPresence * 1.5) : 1);
         warm = 0.25 + progress * 0.65;
@@ -489,8 +629,19 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
           t[i] = 0;
         }
       }
-      drawn = write(drawn, x, y, size * ratio * 2.6, alpha * 0.85, warm);
+      drawn = write(
+        drawn,
+        x,
+        y,
+        size * ratio * 2.6 * (1 + tint * 0.3),
+        alpha * 0.85,
+        warm,
+        tint,
+        seedB[i]!,
+      );
     }
+
+    drawn = updateIdle(frame, dt, ratio, drawn);
 
     // The words under the dust: whole where their grains have landed.
     const rate = 1 - Math.exp(-dt * 9);
@@ -511,7 +662,16 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
     }
   };
 
-  function write(at: number, x: number, y: number, size: number, alpha: number, warm: number) {
+  function write(
+    at: number,
+    x: number,
+    y: number,
+    size: number,
+    alpha: number,
+    warm: number,
+    tint = 0,
+    hue = 0,
+  ) {
     if (alpha <= 0.004) return at;
     const offset = at * STRIDE;
     vertices[offset] = x;
@@ -519,6 +679,8 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
     vertices[offset + 2] = size;
     vertices[offset + 3] = alpha;
     vertices[offset + 4] = warm;
+    vertices[offset + 5] = tint;
+    vertices[offset + 6] = hue;
     return at + 1;
   }
 
@@ -540,7 +702,7 @@ export function createBioDust(heading: HTMLElement, onLost: () => void): BioDust
     },
     formed: () => formStart !== null,
     whole: () => formStart !== null && wordWhole.every((value) => value >= 0.9),
-    busy: () => inFlight > 0,
+    busy: () => inFlight > 0 || idleCount > 0,
     resample: () => {
       const formed = formStart !== null;
       sample();

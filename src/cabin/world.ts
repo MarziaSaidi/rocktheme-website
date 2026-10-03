@@ -11,6 +11,7 @@ import {
 import { WebGPURenderer } from "three/webgpu";
 
 import { createCollider } from "./collision";
+import { ARRIVAL, cabinFov, WORLD_CAPTURE } from "./worldCapture";
 import { createExplorer } from "./explorer";
 import { isInHall, isInRoom, ROOM } from "./paths";
 import { buildScenery, groundHeight, type MarziaTheme } from "./scenery";
@@ -37,6 +38,20 @@ type MountOptions = Readonly<{
   onMarziaTheme: (theme: MarziaTheme) => void;
   /** The browser dropped the GPU context while the cabin was open. */
   onLost: () => void;
+  /**
+   * How the visitor got here, if not by the front door.
+   *
+   * "rift": through the homepage's rift. The view starts where
+   * the capture was taken (behind and above the arrival point), at the zoom
+   * the bridge picture has drifted to by the first frame, and settles from
+   * there into the arrival.
+   *
+   * "capture": development only. Holds that starting pose still, at the
+   * capture's wide lens, for `npm run capture:my-world` to photograph.
+   */
+  arrival?: Readonly<{ kind: "rift"; zoom: () => number }> | Readonly<{ kind: "capture" }>;
+  /** The first frame has been drawn. */
+  onFirstFrame?: () => void;
 }>;
 
 /** Drags shorter than this are taps, not looks. */
@@ -85,7 +100,10 @@ export async function mountCabinWorld({
   onExit,
   onMarziaTheme,
   onLost,
+  arrival: entry,
+  onFirstFrame,
 }: MountOptions): Promise<CabinWorld> {
+  const capture = entry?.kind === "capture";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // The WebGL2 backend: the MARZIA canvas is copied to the GPU every frame,
@@ -146,14 +164,16 @@ export async function mountCabinWorld({
   };
 
   // ---------------------------------------------------------------- size
+  let lens = 56;
   const resize = () => {
     const parent = canvas.parentElement ?? canvas;
     const width = parent.clientWidth;
     const height = parent.clientHeight;
     renderer.setSize(width, height, false);
-    camera.aspect = width / Math.max(height, 1);
+    camera.aspect = capture ? WORLD_CAPTURE.aspect : width / Math.max(height, 1);
     // Narrow screens see more of the world rather than a sliver of it.
-    camera.fov = camera.aspect < 0.8 ? 70 : 56;
+    lens = capture ? WORLD_CAPTURE.fov : cabinFov(camera.aspect);
+    camera.fov = lens;
     camera.updateProjectionMatrix();
   };
   const resizeObserver = new ResizeObserver(resize);
@@ -345,14 +365,37 @@ export async function mountCabinWorld({
 
   // ---------------------------------------------------------------- loop
   let last = performance.now();
+  let frames = 0;
+  // The arrival out of the rift: -1 once settled (or never begun).
+  let descentAge = (entry?.kind === "rift" && !reducedMotion) || capture ? 0 : -1;
+  let startZoom = 1;
   const loop = () => {
     const now = performance.now();
     const delta = Math.min(0.05, (now - last) / 1000);
     last = now;
     explorer.update(delta);
+    if (descentAge >= 0) {
+      if (frames === 0 && entry?.kind === "rift") startZoom = entry.zoom();
+      // From the bridge picture's pose and zoom, easing into the arrival.
+      const t = capture ? 0 : Math.min(1, descentAge / ARRIVAL.seconds);
+      const remaining = 1 - t * t * t * (t * (t * 6 - 15) + 10);
+      const yaw = camera.rotation.y;
+      camera.position.x += Math.sin(yaw) * ARRIVAL.back * remaining;
+      camera.position.z += Math.cos(yaw) * ARRIVAL.back * remaining;
+      camera.position.y += ARRIVAL.rise * remaining;
+      camera.rotation.x -= ARRIVAL.pitch * remaining;
+      const zoom = 1 + (startZoom - 1) * remaining;
+      camera.fov = (360 / Math.PI) * Math.atan(Math.tan((lens * Math.PI) / 360) / zoom);
+      camera.updateProjectionMatrix();
+      if (!capture) descentAge = remaining > 0 ? descentAge + delta : -1;
+    }
     world.update(camera, now);
     publish();
     renderer.render(world.scene, camera);
+    frames += 1;
+    if (frames === 1) onFirstFrame?.();
+    // The capture script waits for the world to have drawn a while.
+    if (capture && frames === 90) canvas.dataset.captureReady = "true";
   };
 
   const onVisibility = () => {

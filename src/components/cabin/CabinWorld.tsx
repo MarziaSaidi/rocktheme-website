@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { sectionHref } from "@/config/sections";
 import { STATIONS } from "@/cabin/stations";
+import { bridgeZoom } from "@/cabin/worldCapture";
+import { getHandoff, releaseHandoff } from "@/cabin/worldHandoff";
 import type { MarziaTheme } from "@/cabin/scenery";
 import type { CabinState, CabinWorld as World } from "@/cabin/world";
 
@@ -16,6 +18,35 @@ type Status = "loading" | "ready" | "failed" | "lost";
 
 /** How long the how-to-move hint stays before only the × remains. */
 const EXIT_HINT_MS = 7000;
+/*
+ * How this visit began, read once per mount: "rift:<time>" straight out of
+ * the homepage's rift (its picture is still over the page, see
+ * src/cabin/worldHandoff.ts), "capture" for the capture script (development
+ * only), or "" for the front door. Cached so letting the picture go doesn't
+ * change it mid-visit.
+ */
+let arrivalCache: string | null = null;
+
+function readArrival(): string {
+  if (arrivalCache !== null) return arrivalCache;
+  arrivalCache = "";
+  try {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      new URLSearchParams(window.location.search).get("capture") === "arrival"
+    ) {
+      arrivalCache = "capture";
+      return arrivalCache;
+    }
+    const handoff = getHandoff();
+    if (handoff && !handoff.leaving) arrivalCache = `rift:${handoff.at}`;
+  } catch {
+    // No storage: the front door.
+  }
+  return arrivalCache;
+}
+
+const noSubscription = () => () => {};
 
 /**
  * The "know me better" cabin.
@@ -40,6 +71,19 @@ export function CabinWorld() {
   const [attempt, setAttempt] = useState(0);
   const backHref = sectionHref("about");
   const currentWorld = useCallback(() => world.current, []);
+  const arrival = useSyncExternalStore(noSubscription, readArrival, () => "");
+  const handoffAt = arrival.startsWith("rift:") ? Number(arrival.slice(5)) : null;
+  const capture = arrival === "capture";
+  // The live world has drawn its first frame.
+  const [live, setLive] = useState(false);
+
+  // A later visit reads its own arrival afresh.
+  useEffect(
+    () => () => {
+      arrivalCache = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     const container = host.current;
@@ -70,6 +114,18 @@ export function CabinWorld() {
           onLost: () => {
             if (!disposed) setStatus("lost");
           },
+          arrival:
+            handoffAt !== null
+              ? { kind: "rift", zoom: () => bridgeZoom(Date.now() - handoffAt) }
+              : capture
+                ? { kind: "capture" }
+                : undefined,
+          onFirstFrame: () => {
+            if (disposed) return;
+            setLive(true);
+            // The live world shows the picture's view: the picture can go.
+            releaseHandoff();
+          },
         }),
       )
       .then((instance) => {
@@ -83,6 +139,8 @@ export function CabinWorld() {
       })
       .catch((error: unknown) => {
         console.error("Cabin: could not start the 3D world", error);
+        // Uncover the page, so the way back shows.
+        releaseHandoff();
         if (!disposed) setStatus("failed");
       });
 
@@ -92,7 +150,7 @@ export function CabinWorld() {
       world.current = null;
       canvas.remove();
     };
-  }, [router, backHref, attempt]);
+  }, [router, backHref, attempt, handoffAt, capture]);
 
   // Once the world is up, the hint shows for a moment and then leaves only the ×.
   useEffect(() => {
@@ -106,11 +164,16 @@ export function CabinWorld() {
       className={styles.stage}
       data-cabin-page=""
       data-status={status}
+      data-live={live ? "true" : "false"}
+      data-arrival={handoffAt !== null ? "rift" : capture ? "capture" : undefined}
       aria-label="Winter cabin"
     >
       <div ref={host} className={styles.host} />
 
-      {status === "loading" && <p className={styles.notice}>Building the cabin…</p>}
+      {/* The way in carries its own picture across; it never shows a loading line. */}
+      {status === "loading" && handoffAt === null && !capture && (
+        <p className={styles.notice}>Building the cabin…</p>
+      )}
       {status === "lost" && (
         <div className={styles.notice} role="alert">
           <p>The 3D view was interrupted by the browser.</p>

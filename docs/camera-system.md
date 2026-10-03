@@ -146,8 +146,8 @@ progress, and its momentum, can't be cancelled from events.
   `svh`. A phone's browser bars sliding in and out no longer move the page or
   the camera.
 - The bio on tablet and phone uses `narrowBioCamera` (`sceneConfig.ts`): the
-  same eye, aimed 1.5 right and pitched up 13°, so the snow doorway stands in
-  the lower right under the sentence instead of off the right edge.
+  same eye, aimed 1.5 right and pitched up 13°, so the rift stands in the
+  lower right under the sentence instead of off the right edge.
 - Below the desktop layout (< 1024 px) the journey is cut to what each shot
   has to show: `NARROW_WORK_STRETCHES` = approach 1.3, hold 1.1, travel 1.8
   screens (desktop 1.7 / 1.25 / 3, unchanged), and the bio's runways are
@@ -166,13 +166,21 @@ they join, and run on the same keyframe timeline as the arrival: 11 keys at
 even spacing along the path, a sine ease out of one rest and into the next,
 and the view turning in step with distance travelled.
 
-| Shot          | Scroll (desktop)            | Shape                                                                                                   | Peak turn        |
-| ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------- |
-| Survue → bio  | 2.3 screens (150svh runway) | wide right-hand turn over the water, 185°, a 1.4 rise midway                                            | ~13° per 100 px  |
-| bio dwell     | 0.55 screens (`BIO_DWELL`)  | camera still while the sentence goes back into the doorway                                              | 0                |
-| bio → Contact | 1.24 screens                | straight on, rising 1.5 and drifting 2.4 left; the doorway slides out of frame on the right by parallax | ~1.5° per 100 px |
+| Shot          | Scroll (desktop)            | Shape                                                                                                | Peak turn        |
+| ------------- | --------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------- |
+| Survue → bio  | 2.3 screens (150svh runway) | wide right-hand turn over the water, 185°, a 1.4 rise midway                                         | ~13° per 100 px  |
+| bio dwell     | 0.55 screens (`BIO_DWELL`)  | camera still while the sentence goes back into the rift                                              | 0                |
+| bio → Contact | 1.24 screens                | straight on, rising 1.5 and drifting 2.4 left; the rift slides out of frame on the right by parallax | ~1.5° per 100 px |
 
-The snow doorway is solid whenever it is in frame: it comes in while the
-camera is still turned away from it and goes once the camera has passed it.
-It can only be stepped through while the camera is at rest before it.
+The rift (`src/webgl/modules/rift.ts`), the optional way into /my-world, is
+a split mountain standing in the water right of the sentence, with floating
+stones round it and the real /my-world showing through the split. It is
+there whenever the bio is in frame: it comes in while the camera is still
+turned away from it and goes once the camera has passed it. It can only be
+crossed while the camera is at rest before it, and only by a completed hold
+on its opening; until then it never moves the camera (beyond a 3.5 % lean
+while held), holds the scroll or changes the journey. Crossing steers the
+camera itself: a curved flight through the widest part of the split,
+ending just short of the opening's plane with the other world filling the
+view at /my-world's own framing (see `src/cabin/worldCapture.ts`).
 `scripts/check-scene.ts` holds these shots to 0.2° of turn per scroll pixel.

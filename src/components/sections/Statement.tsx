@@ -72,7 +72,7 @@ function readingWords(text: string, terms: readonly string[]): ReactNode {
  *
  * The calm scene. The thesis is read, not played: its words light in order as
  * the page scrolls through the section, and the emphasised terms settle in
- * lavender. It comes out of the snow doorway as dust and goes back into it
+ * lavender. It comes out of the rift as dust and goes back into it
  * as the visitor moves on. The text is ordinary, selectable, semantic text
  * throughout.
  */

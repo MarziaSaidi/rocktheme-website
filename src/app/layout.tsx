@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Anton, Archivo, Geist, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SkipLink } from "@/components/layout/SkipLink";
+import { WorldHandoff } from "@/components/cabin/WorldHandoff";
 import { SiteEntry } from "@/components/entry/SiteEntry";
 import { pageLandmarkIds } from "@/config/sections";
 import { CustomCursor } from "@/motion/CustomCursor";
@@ -74,6 +75,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <SiteHeader />
           {children}
         </SiteEntry>
+        {/* Carries the way into /my-world across the route change. */}
+        <WorldHandoff />
       </body>
     </html>
   );

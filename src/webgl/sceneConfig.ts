@@ -235,7 +235,7 @@ export const heroParticleConfig: ParticleConfig = { ...particleConfig, presence:
 
 /*
  * The bio has no stream either: its only particles are the sentence's own
- * dust, coming out of the snow doorway and going back into it.
+ * dust, coming out of the rift and going back into it.
  */
 export const aboutParticleConfig: ParticleConfig = { ...particleConfig, presence: 0 };
 
@@ -881,10 +881,12 @@ const camera = { desktop: cameraConfig } as const;
 
 /*
  * The bio on a narrow screen. From the landscape camera's eye a phone sees
- * only about 25° across, and the snow doorway, 14° right of the line of
- * sight, stood off the right edge with the dust streaming in from nowhere.
- * Same eye, turned a little right and up: the doorway stands in the lower
- * right of the frame under the sentence, so the words visibly come out of it.
+ * only about 25° across, and anything 14° right of the line of sight stands
+ * off the right edge, with the dust streaming in from nowhere. Same eye,
+ * turned a little right and up, so the lower right of the frame under the
+ * sentence is open water: the rift stands there (rift.ts, further out and
+ * nearer the middle on narrow screens) and the words visibly come out of
+ * it.
  */
 const NARROW_BIO_AIM = { x: 1.5, pitch: (13 * Math.PI) / 180 };
 const narrowBioCamera: Partial<CameraComposition> = {

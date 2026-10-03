@@ -25,8 +25,13 @@ import {
 } from "../modules/particleField";
 import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflectiveFloor";
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
-import { createSnowDoorway, type SnowDoorway } from "../modules/snowDoorway";
-import { getDoorwayInput, publishDoorwayAnchor, publishDoorwayRect } from "../doorwayChannel";
+import { createRift, type Rift } from "../modules/rift";
+import {
+  announceRiftMoment,
+  publishRiftAnchor,
+  publishRiftRect,
+  readRiftInput,
+} from "../riftChannel";
 import { createMonolith, type Monolith } from "../modules/monolith";
 import { createRocks, type Rocks } from "../modules/rocks";
 import {
@@ -295,8 +300,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   );
   heroLandscape.resize(width);
 
-  // The second doorway, beside the bio: the way into the winter cabin.
-  const snowDoorway: SnowDoorway = createSnowDoorway(worldScene);
+  // The patch of water beside the bio that looks down into the winter cabin's world.
+  // The split mountain beside the bio: the way into /my-world.
+  const rift: Rift = createRift(worldScene, options.reducedMotion);
+  rift.setViewport(width, height, cappedRatio());
 
   const monolith: Monolith = createMonolith(worldScene, monolithConfig, {
     onFailure: (asset) => {
@@ -382,6 +389,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     contact: chapterRest("footer", viewport),
   });
   let rests = buildRests();
+  rift.setViewer(rests.about.eye, viewport !== "desktop");
   let stations = workStations(viewport);
   let arrival = arrivalKeyframes(viewport);
   let departures = departureKeyframes(viewport);
@@ -452,8 +460,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     return Math.atan2(-direction.x, -direction.z);
   };
   const homeTarget = new Vector3();
-  /** The camera stands at the bio, so the doorway can be used. */
-  let doorwayAtRest = false;
+  /** The camera stands at the bio, so the rift can be used. */
+  let riftAtRest = false;
+  /** The page's input to the rift, read once per frame. */
+  let riftInput = readRiftInput();
 
   /** Places `view` for this frame. The only code that moves the camera. */
   const applyJourney = (deltaSeconds: number) => {
@@ -552,6 +562,15 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       entryAge = remaining > 0 ? entryAge + deltaSeconds : -1;
     }
 
+    /*
+     * Through the rift. Only a completed hold starts the crossing, and only
+     * while the camera rests at the bio; from then on the rift steers the
+     * camera, starting from wherever the journey had it.
+     */
+    riftInput = readRiftInput();
+    if (riftInput.cross && riftAtRest && !options.reducedMotion) rift.cross();
+    rift.steer(pose);
+
     view.fov = pose.fov;
     view.aspect = width / height;
     view.near = initialCamera.near;
@@ -597,18 +616,17 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       along === null ? 0 : 1 - smootherstep((along - 0.45) / 0.4),
     );
 
-    // The snow doorway stands while the camera is at the bio. It comes while
-    // the camera is still turning toward it, out of frame, and stays solid
-    // as the camera sets off, until the camera has passed it and it has slid
-    // out of frame by parallax.
-    snowDoorway.setPresence(
+    // The rift is there while the camera is at the bio. It comes while the
+    // camera is still turning toward it, out of frame, and stays as the
+    // camera sets off, until it has slid out of frame by parallax.
+    rift.setPresence(
       state.to === "about" && state.from !== "about"
         ? smootherstep((state.blend - 0.3) / 0.4)
         : state.from === "about"
           ? 1 - smootherstep((state.blend - 0.5) / 0.2)
           : 0,
     );
-    doorwayAtRest =
+    riftAtRest =
       (state.to === "about" && state.from !== "about" && state.blend >= 0.999) ||
       (state.from === "about" && state.blend <= 0.001);
   };
@@ -662,6 +680,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     settings = next;
     renderer.setPixelRatio(cappedRatio());
     renderer.setSize(width, height, false);
+    rift.setViewport(width, height, cappedRatio());
     particles.setCount(particleCountFor(next, width * height));
     particles.resize(width, height, cappedRatio());
     floor.setReflectionSize(next.reflectionSize);
@@ -693,12 +712,21 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     const normalisedX = pointer && width > 0 ? (pointer.x / width) * 2 - 1 : 0;
     const normalisedY = pointer && height > 0 ? (pointer.y / height) * 2 - 1 : 0;
 
-    snowDoorway.update(deltaSeconds, elapsed, getDoorwayInput());
-    const doorwayRect = snowDoorway.screenRect(view, width, height);
-    // It can only be stepped through while the camera is at rest before it.
-    publishDoorwayRect(doorwayAtRest ? doorwayRect : null);
-    // The bio's dust flies to and from the opening wherever it is on screen.
-    publishDoorwayAnchor(snowDoorway.screenAnchor(view, width, height));
+    rift.update(deltaSeconds, {
+      camera: view,
+      engaged: riftInput.engaged,
+      pointer:
+        pointer?.active && pointer.inside && !options.reducedMotion
+          ? { x: pointer.x, y: pointer.y }
+          : null,
+      hold: riftAtRest ? riftInput.hold : 0,
+      atRest: riftAtRest,
+      onMoment: announceRiftMoment,
+    });
+    // It can only be crossed while the camera is at rest at the bio.
+    publishRiftRect(riftAtRest ? rift.screenRect(view) : null);
+    // The bio's dust streams out of the other world through the rift, and back.
+    publishRiftAnchor(rift.screenAnchor(view));
 
     heroLandscape.update(deltaSeconds, {
       pointer: pointer?.active && pointer.inside ? { x: normalisedX, y: -normalisedY } : null,
@@ -738,7 +766,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     renderer.clear();
     renderer.render(worldScene, view);
     renderer.clearDepth();
-    renderer.render(particles.scene, particles.camera);
+    // Once the camera is on its way through, the drifting particles stay behind.
+    if (rift.departure() < 0.3) renderer.render(particles.scene, particles.camera);
     drawFrontLayer();
   };
 
@@ -831,6 +860,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       applyCamera();
       viewport = sceneViewportForWidth(width);
       rests = buildRests();
+      rift.setViewer(rests.about.eye, viewport !== "desktop");
+      rift.setViewport(width, height, cappedRatio());
       stations = workStations(viewport);
       arrival = arrivalKeyframes(viewport);
       departures = departureKeyframes(viewport);
@@ -954,8 +985,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       particles.destroy();
       rocks.destroy();
       heroLandscape.destroy();
-      snowDoorway.destroy();
-      publishDoorwayRect(null);
+      rift.destroy();
+      publishRiftRect(null);
+      publishRiftAnchor(null);
       monolith.destroy();
       lights.destroy();
       atmosphere.destroy();

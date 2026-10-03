@@ -7,7 +7,7 @@ import { stableViewportHeight } from "@/config/viewport";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
-import { BIO_DWELL } from "./doorwayChannel";
+import { BIO_DWELL } from "./riftChannel";
 import { afterDoorway, subscribeEntryArrival } from "./entryChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { JourneyStops } from "./core/cameraJourney";
