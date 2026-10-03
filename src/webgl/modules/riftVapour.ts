@@ -86,7 +86,8 @@ const LANE_SHARE: Readonly<Record<Lane, number>> = {
 const COUNT = { wide: 460, compact: 180 } as const;
 const GLITTER = { wide: 320, compact: 110 } as const;
 const SHAFTS = { wide: 9, compact: 0 } as const;
-const MIST = { wide: 14, compact: 6 } as const;
+const MIST = { wide: 22, compact: 9 } as const;
+const MOTES = { wide: 260, compact: 90 } as const;
 
 // ------------------------------------------------------------------ shaders
 const NOISE = /* glsl */ `
@@ -194,8 +195,10 @@ attribute float aTwinkle;
 uniform float uTime;
 uniform float uSize;
 varying float vAlpha;
+varying float vHue;
 void main() {
   vec4 view = modelViewMatrix * vec4(position, 1.0);
+  vHue = aTwinkle;
   float twinkle = pow(0.5 + 0.5 * sin(uTime * (2.0 + aTwinkle * 5.0) + aTwinkle * 40.0), 4.0);
   vAlpha = twinkle;
   gl_PointSize = uSize * (0.6 + twinkle * 1.2);
@@ -247,11 +250,55 @@ varying vec2 vUv;
 ${NOISE}
 void main() {
   vec2 p = vUv * 2.0 - 1.0;
-  float r = length(p * vec2(1.0, 2.2));
-  float cloud = fbm(vUv * vec2(3.0, 1.6) + vec2(uTime * 0.04 + uSeed, uSeed * 2.0));
-  float a = (1.0 - smoothstep(0.3, 1.0, r)) * smoothstep(0.35, 0.75, cloud) * uStrength;
-  vec3 colour = mix(vec3(0.78, 0.74, 0.96), vec3(0.8, 0.88, 1.0), cloud);
-  gl_FragColor = vec4(colour * a, a * 0.7);
+  // Long and low on the water, hugging it: stronger at the bottom edge.
+  float r = length(p * vec2(1.0, 1.6));
+  float drift = uTime * 0.05;
+  vec2 q = vUv * vec2(4.5, 2.2) + vec2(drift + uSeed, uSeed * 2.0);
+  float cloud = fbm(q + vec2(fbm(q * 0.6 + uSeed), 0.0) * 1.4);
+  float wisps = smoothstep(0.45, 0.8, cloud);
+  float a = (1.0 - smoothstep(0.2, 1.0, r)) * (1.0 - smoothstep(-0.2, 1.0, p.y)) * wisps * uStrength;
+  // The aurora's colours, settling on the water: violet, ice, a little pink.
+  float h = fbm(q * 0.4 + 7.0);
+  vec3 colour = mix(vec3(0.55, 0.38, 1.0), vec3(0.45, 0.72, 1.0), smoothstep(0.35, 0.6, h));
+  colour = mix(colour, vec3(1.0, 0.55, 0.85), smoothstep(0.62, 0.8, h) * 0.6);
+  gl_FragColor = vec4(colour * a, a * 0.25);
+}
+`;
+
+/*
+ * The threshold: where the other world's bright ground meets the dark
+ * water there would be a hard line. A bank of glowing fog sits on that
+ * seam (a curtain standing in the opening's floor, and a pool lying on the
+ * water in front of it), so the day beyond dissolves into mist and the mist
+ * into the night, with no edge anywhere.
+ */
+const THRESHOLD_FRAGMENT = /* glsl */ `
+uniform float uTime;
+uniform float uStrength;
+uniform float uFlat;
+varying vec2 vUv;
+${NOISE}
+void main() {
+  vec2 p = vUv;
+  float wisps = fbm(vec2(p.x * 5.0 + uTime * 0.05, p.y * 2.5 - uTime * 0.03));
+  wisps = 0.75 + 0.25 * smoothstep(0.3, 0.75, wisps);
+  // Every edge broken by drifting noise, so nothing reads as a line.
+  float ragged = fbm(vec2(p.x * 7.0 - uTime * 0.04, p.y * 4.0 + uTime * 0.02)) - 0.5;
+  float sides = smoothstep(0.0, 0.32, p.x + ragged * 0.18) * smoothstep(0.0, 0.32, 1.0 - p.x + ragged * 0.18);
+  float shape;
+  if (uFlat > 0.5) {
+    // On the water: thickest at the opening (v = 1), gone out in the dark.
+    float v = clamp(p.y + ragged * 0.25, 0.0, 1.0);
+    shape = pow(smoothstep(0.0, 1.0, v), 1.4) * (1.0 - smoothstep(0.9, 1.0, p.y) * 0.5);
+  } else {
+    // The curtain: dense on the seam, thinning upwards into the world beyond.
+    // Densest a little above the waterline, right over the seam.
+    float v = p.y + ragged * 0.2;
+    shape = 1.0 - smoothstep(0.1, 1.0, v);
+  }
+  float a = shape * sides * wisps * uStrength;
+  vec3 colour = mix(vec3(0.62, 0.5, 0.95), vec3(0.86, 0.88, 1.0), shape * 0.8);
+  gl_FragColor = vec4(colour * a, min(1.0, a * (uFlat > 0.5 ? 0.55 : 0.95)));
 }
 `;
 
@@ -500,17 +547,102 @@ export function createRiftVapour(rows: Rows, compact: boolean): RiftVapour {
       blendDst: OneMinusSrcAlphaFactor,
     });
     const mist = new Mesh(mistGeometry, material);
+    // Along the whole foot of the mountain, where the rock meets the water,
+    // thickest round the opening.
     const spread = (m / Math.max(1, mistCount - 1) - 0.5) * 2;
+    const nearOpening = 1 - Math.abs(spread);
     mist.position.set(
-      (floorLeft + floorRight) / 2 + spread * 0.28,
-      0.012 + random() * 0.02,
-      0.04 + random() * 0.32,
+      (floorLeft + floorRight) / 2 + spread * 0.46,
+      0.01 + random() * 0.012,
+      0.12 + (1 - Math.abs(spread)) * 0.16 + random() * 0.1,
     );
-    mist.scale.set(0.18 + random() * 0.16, 0.05 + random() * 0.03, 1);
+    mist.scale.set(0.16 + random() * 0.14, 0.05 + nearOpening * 0.035, 1);
     mist.renderOrder = 5;
     group.add(mist);
     mistMaterials.push(material);
   }
+
+  // ---------------------------------------------------------------- threshold
+  const thresholdMaterials: ShaderMaterial[] = [];
+  const thresholdGeometry = new PlaneGeometry(1, 1);
+  thresholdGeometry.translate(0, 0.5, 0);
+  const floorWidth = floorRight - floorLeft;
+  const floorMiddle = (floorLeft + floorRight) / 2;
+  for (const flat of [false, true]) {
+    const material = new ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uStrength: { value: 1 }, uFlat: { value: flat ? 1 : 0 } },
+      vertexShader: SHAFT_VERTEX,
+      fragmentShader: THRESHOLD_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      blending: CustomBlending,
+      blendSrc: OneFactor,
+      blendDst: OneMinusSrcAlphaFactor,
+    });
+    const mesh = new Mesh(thresholdGeometry, material);
+    if (flat) {
+      // Lying on the water, reaching out from the opening towards the viewer.
+      // Turned so its thick end (v = 1) is at the opening and it thins
+      // out across the water towards the viewer.
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(floorMiddle, 0.004, 0.5);
+      mesh.scale.set(floorWidth * 3.2, 0.48, 1);
+    } else {
+      // Standing in the opening's floor, across the seam.
+      mesh.position.set(floorMiddle, 0.0, 0.05);
+      mesh.scale.set(floorWidth * 2.1, 0.16, 1);
+    }
+    mesh.renderOrder = 6;
+    group.add(mesh);
+    thresholdMaterials.push(material);
+  }
+
+  // ---------------------------------------------------------------- motes
+  // Glowing dust drifting low over the water along the mountain's foot,
+  // in the aurora's colours, rising a little and fading.
+  const moteCount = compact ? MOTES.compact : MOTES.wide;
+  const motePosition = new Float32Array(moteCount * 3);
+  const moteHome = new Float32Array(moteCount * 3);
+  const moteSeed = new Float32Array(moteCount);
+  for (let k = 0; k < moteCount; k += 1) {
+    const spread = random() * 2 - 1;
+    moteHome.set(
+      [
+        (floorLeft + floorRight) / 2 + spread * 0.5,
+        0.004 + random() * 0.05,
+        0.08 + (1 - Math.abs(spread)) * 0.2 + random() * 0.2,
+      ],
+      k * 3,
+    );
+    moteSeed[k] = random();
+  }
+  const moteGeometry = new BufferGeometry();
+  const moteAttribute = new BufferAttribute(motePosition, 3);
+  moteGeometry.setAttribute("position", moteAttribute);
+  moteGeometry.setAttribute("aTwinkle", new BufferAttribute(moteSeed, 1));
+  const moteMaterial = new ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uSize: { value: compact ? 4 : 5 }, uStrength: { value: 0.6 } },
+    vertexShader: GLITTER_VERTEX,
+    fragmentShader: /* glsl */ `
+      uniform float uStrength;
+      varying float vAlpha;
+      varying float vHue;
+      void main() {
+        float d = length(gl_PointCoord - 0.5);
+        float glow = smoothstep(0.5, 0.0, d);
+        vec3 colour = mix(vec3(0.6, 0.45, 1.0), vec3(0.5, 0.85, 1.0), vHue);
+        colour = mix(colour, vec3(1.0, 0.6, 0.9), step(0.8, vHue) * 0.7);
+        float a = glow * (0.35 + vAlpha * 0.65) * uStrength;
+        gl_FragColor = vec4(colour * a, a);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+  });
+  const motes = new Points(moteGeometry, moteMaterial);
+  motes.frustumCulled = false;
+  motes.renderOrder = 7;
+  group.add(motes);
 
   // ---------------------------------------------------------------- the simulation
   const sources: Vector3[] = [];
@@ -624,9 +756,23 @@ export function createRiftVapour(rows: Rows, compact: boolean): RiftVapour {
       material.uniforms.uTime!.value = time;
       material.uniforms.uStrength!.value = (0.1 + energy * 0.06) * (1 - go * 0.5);
     }
+    for (let k = 0; k < moteCount; k += 1) {
+      const seedK = moteSeed[k]!;
+      const lifeT = (time * (0.04 + seedK * 0.05) + seedK) % 1;
+      motePosition[k * 3] = moteHome[k * 3]! + Math.sin(time * 0.3 + seedK * 40) * 0.03;
+      motePosition[k * 3 + 1] = moteHome[k * 3 + 1]! + lifeT * 0.09;
+      motePosition[k * 3 + 2] = moteHome[k * 3 + 2]! + Math.cos(time * 0.25 + seedK * 20) * 0.02;
+    }
+    moteAttribute.needsUpdate = true;
+    moteMaterial.uniforms.uTime!.value = time;
+    moteMaterial.uniforms.uStrength!.value = (0.8 + energy * 0.4) * (1 - go);
+    for (const material of thresholdMaterials) {
+      material.uniforms.uTime!.value = time;
+      material.uniforms.uStrength!.value = (0.9 + energy * 0.15) * (1 - go);
+    }
     for (const material of mistMaterials) {
       material.uniforms.uTime!.value = time;
-      material.uniforms.uStrength!.value = (0.32 + energy * 0.12) * (1 - go);
+      material.uniforms.uStrength!.value = (0.95 + energy * 0.35) * (1 - go);
     }
   };
 
@@ -645,6 +791,10 @@ export function createRiftVapour(rows: Rows, compact: boolean): RiftVapour {
       shaftGeometry.dispose();
       shaftMaterials.forEach((material) => material.dispose());
       mistGeometry.dispose();
+      moteGeometry.dispose();
+      thresholdGeometry.dispose();
+      thresholdMaterials.forEach((material) => material.dispose());
+      moteMaterial.dispose();
       mistMaterials.forEach((material) => material.dispose());
     },
   };

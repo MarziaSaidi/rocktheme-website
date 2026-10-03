@@ -44,6 +44,7 @@ import { buildCabinExterior, DECK, PIT_CHAIRS } from "./cabinExterior";
 import { buildFlames } from "./flames";
 import { buildHall, buildHallSign } from "./hall";
 import { buildMarziaPanel } from "./marziaPanel";
+import { buildSkyline } from "./skyline";
 import { HALL, MARZIA, type Vec3 } from "./stations";
 import {
   applyWorldUVs,
@@ -300,6 +301,10 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
     occluders,
   );
   scene.add(firs.group);
+
+  // ------------------------------------------------------------ the mountain
+  // A real snowy peak on the horizon beyond the hall; the world opens on it.
+  scene.add(await buildSkyline(keep));
 
   // ------------------------------------------------------------ MARZIA
   // The old site followed the system theme; a visitor's choice on the sign wins.

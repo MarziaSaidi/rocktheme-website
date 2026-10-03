@@ -29,7 +29,18 @@ export const WORLD_CAPTURE = {
  * it takes. The capture is taken from this pose. It sits behind the arrival
  * point because the homepage camera was moving forward through the rift.
  */
-export const ARRIVAL = { back: 3.2, rise: 0.9, pitch: 0.1, seconds: 2.6 } as const;
+export const ARRIVAL = { back: 1.6, rise: 0.7, pitch: 0.08, seconds: 2.6 } as const;
+
+/**
+ * Where the visitor stands on coming through the rift: by the fire pit off
+ * the cabin's deck, looking out past the firs to the mountain. The capture
+ * the rift shows is taken from here (offset by ARRIVAL), so the view through
+ * the crack is the place the visitor lands.
+ */
+export const RIFT_ARRIVAL = {
+  position: [-5.56, 0, 24.6] as const,
+  lookAt: [13.44, 4.6, 11.4] as const,
+};
 
 /** The cabin camera's vertical field of view for a screen shape. */
 export function cabinFov(aspect: number) {

@@ -215,6 +215,21 @@ export function CabinWorld() {
       {status === "ready" && (
         <>
           <CabinStick world={currentWorld} />
+          {/* The mountain on the horizon is a CC BY photograph: its credit must be visible. */}
+          <p className={styles.credit}>
+            Mountain:{" "}
+            <a
+              href="https://commons.wikimedia.org/wiki/File:Himalayas,_Ama_Dablam,_Nepal.jpg"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Vyacheslav Argenberg
+            </a>
+            ,{" "}
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+              CC BY 4.0
+            </a>
+          </p>
           <nav className={styles.places} aria-label="Places in the cabin world">
             {STATIONS.map((entry) => (
               <button

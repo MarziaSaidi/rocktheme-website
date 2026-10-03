@@ -232,3 +232,18 @@
 .stage[data-arrival="capture"] > :not(.host) {
   display: none;
 }
+
+/* Photo credit for the mountain, required by its licence: small, out of the way. */
+.credit {
+  position: absolute;
+  inset-block-end: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  inset-inline-start: var(--layout-gutter);
+  margin: 0;
+  color: color-mix(in srgb, var(--brand-aubergine) 70%, transparent);
+  font: 500 10px / 1 var(--font-technical);
+  letter-spacing: 0.08em;
+}
+
+.credit a {
+  color: inherit;
+}

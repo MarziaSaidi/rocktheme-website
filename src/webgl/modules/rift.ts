@@ -102,8 +102,8 @@ const PLACEMENT = {
   compact: { position: [4.9, 0, -31], height: 9.5, sink: 0.35 },
 } as const;
 
-/** The point of the capture that shows through the opening: the hall and the cabin. */
-const WORLD_BEHIND = { x: 0.56, y: 0.43 } as const;
+/** The point of the capture that shows through the opening: the fire pit and the peak beyond it. */
+const WORLD_BEHIND = { x: 0.4, y: 0.33 } as const;
 
 /** Heavier downloads wait until the hero has had the network to itself. */
 const LOAD_AFTER_MS = 4500;
@@ -172,7 +172,14 @@ void main() {
     : vec3(0.78, 0.85, 0.93);
   // Bright air where the other world's daylight pours through.
   world += vec3(0.85, 0.9, 1.0) * uGlow * 0.12;
-  gl_FragColor = vec4(world, uPresence);
+  // Its ground melts into lavender mist towards the waterline, so the day
+  // beyond never ends in a hard edge against the dark water.
+  float low = 1.0 - smoothstep(0.0, 0.9, vHeight);
+  world = mix(world, vec3(0.72, 0.68, 0.92), low * 0.75);
+  // And it thins away over the last stretch above the water, so the bright
+  // world fades into the mist instead of ending on a line.
+  float fade = uMirror > 0.5 || uFull > 0.5 ? 1.0 : smoothstep(0.0, 0.7, vHeight);
+  gl_FragColor = vec4(world, uPresence * fade);
 }
 `;
 
@@ -319,6 +326,8 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
   };
   let stones: Mesh | null = null;
   let plume: RiftVapour | null = null;
+  /** Points inside the opening, in the mountain's units: the dust's way in and out. */
+  const crackPoints: Vector3[] = [];
 
   // ---------------------------------------------------------------- loading
   const load = async () => {
@@ -361,6 +370,14 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
     // The opening, as measured: left edges up, right edges down, a little
     // wider so the rock overlaps it everywhere, and on below the waterline.
     const rows = outline.rows;
+    // Where the bio's dust comes from and returns to: inside the opening,
+    // across its width, from low down to two-thirds of the way up.
+    for (let k = 0; k < 24; k += 1) {
+      const t = (k + 0.5) / 24;
+      const row = rows[Math.floor(rows.length * (0.08 + t * 0.6))]!;
+      const across = ((k * 0.618) % 1) * 0.7 + 0.15;
+      crackPoints.push(new Vector3(row[1] + (row[2] - row[1]) * across, row[0], 0.02));
+    }
     const grow = 0.012;
     const shape = new Shape();
     shape.moveTo(rows[0]![1] - grow, -0.06);
@@ -621,7 +638,9 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
       // ------------------------------------------------------------ the world beyond
       const size = bridgeSize(viewport.width, viewport.height);
       const progress = flightProgress();
-      const zoom = MathUtils.lerp(0.92, 1, smootherstep(progress));
+      // At rest the far world is seen whole, small through the gap; crossing,
+      // it grows to exactly /my-world's own framing.
+      const zoom = MathUtils.lerp(0.42, 1, smootherstep(progress));
       const ratio = viewport.ratio;
       frameData.set(
         (viewport.width * ratio) / 2,
@@ -745,12 +764,13 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
     },
 
     screenAnchor: (camera) => {
-      if (!loaded || presence < 0.002 || !plume) return null;
-      // The bio's dust comes from where the plume dissolves near the peak.
+      if (!loaded || presence < 0.002) return null;
+      // The bio's dust comes out of the crack itself, and goes back into it:
+      // points spread through the opening, low to high, inside its edges.
       const path: { x: number; y: number }[] = [];
       let sumX = 0;
       let sumY = 0;
-      for (const point of plume.sourcePoints()) {
+      for (const point of crackPoints) {
         const screen = project(camera, model.localToWorld(point.clone()));
         if (screen.behind) continue;
         path.push({ x: screen.x, y: screen.y });

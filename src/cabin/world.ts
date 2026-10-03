@@ -11,7 +11,7 @@ import {
 import { WebGPURenderer } from "three/webgpu";
 
 import { createCollider } from "./collision";
-import { ARRIVAL, cabinFov, WORLD_CAPTURE } from "./worldCapture";
+import { ARRIVAL, cabinFov, RIFT_ARRIVAL, WORLD_CAPTURE } from "./worldCapture";
 import { createExplorer } from "./explorer";
 import { isInHall, isInRoom, ROOM } from "./paths";
 import { buildScenery, groundHeight, type MarziaTheme } from "./scenery";
@@ -128,9 +128,14 @@ export async function mountCabinWorld({
   const camera = new PerspectiveCamera(56, 1, 0.08, 400);
 
   const arrival = getStation("arrival");
+  // Through the rift (or for its capture), the visitor lands by the fire pit
+  // facing the mountain: the view the rift showed. Otherwise, the clearing's edge.
+  const throughRift = entry !== undefined;
   const explorer = createExplorer(camera, {
-    start: new Vector3(...(arrival.mode === "look" ? arrival.position : arrival.target)),
-    lookAt: new Vector3(...arrival.target),
+    start: throughRift
+      ? new Vector3(...RIFT_ARRIVAL.position)
+      : new Vector3(...(arrival.mode === "look" ? arrival.position : arrival.target)),
+    lookAt: throughRift ? new Vector3(...RIFT_ARRIVAL.lookAt) : new Vector3(...arrival.target),
     heightAt: groundHeight,
     collider: createCollider(world.trees),
     reducedMotion,

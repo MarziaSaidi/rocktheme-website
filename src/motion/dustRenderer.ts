@@ -9,9 +9,8 @@
  * on, the words crumble from the bottom edge, last word first, and the dust
  * drifts down, gathers into wisps and goes slowly back into the dark.
  *
- * The rift's plume is where they come from: it climbs the mountain and, near
- * the peak, thins into specks, and the grains leave from there. A few more
- * break away from it all the time (more while the visitor is near or holding
+ * The rift is where they come from: they stream out of the crack itself and
+ * go back into it. A few more break away from it all the time (more while the visitor is near or holding
  * on), drift a little way towards the sentence and fade: the same grains,
  * drawn by the same pass, before and after the sentence has formed.
  *
