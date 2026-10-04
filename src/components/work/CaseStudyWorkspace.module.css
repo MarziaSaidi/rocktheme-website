@@ -992,6 +992,10 @@ video.visualMedia[data-fit="cover"] {
   outline: 1px solid #aaaab0;
   outline-offset: 4px;
 }
+.assetSample img[src$="/cyclist.png"] {
+  transform: rotate(90deg);
+}
+
 .assetSample img {
   display: block;
   object-fit: contain;

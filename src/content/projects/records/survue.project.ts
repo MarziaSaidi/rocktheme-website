@@ -421,8 +421,8 @@ export const survueProject = {
                 item("Help", foundationAsset("help", "Green help icon.", 24, 24)),
                 item("Warning", foundationAsset("warning", "Yellow warning triangle.", 24, 24)),
                 item(
-                  "Warning outline",
-                  foundationAsset("warning-outline", "Small yellow warning triangle.", 21, 19),
+                  "Red warning",
+                  foundationAsset("warning-red", "Red warning triangle.", 24, 24),
                 ),
                 item("Battery", foundationAsset("battery", "Green battery status symbol.", 32, 29)),
                 item("Cyclist", foundationAsset("cyclist", "White cyclist symbol.", 38, 44)),
