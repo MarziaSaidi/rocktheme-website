@@ -14,7 +14,7 @@ import {
 import { sceneMediaQueries } from "@/config/responsive";
 import { sectionAnchors } from "@/config/sections";
 import { stableViewportHeight } from "@/config/viewport";
-import { addScrollStop, type ScrollStop } from "@/motion/scrollCatch";
+import { ProjectStepper } from "@/motion/projectStepper";
 import { emitSoundEvent } from "@/sound/soundEvents";
 import { setSceneFocus } from "@/webgl/sceneFocus";
 import {
@@ -28,28 +28,6 @@ import {
 
 import styles from "./MonolithGallery.module.css";
 import { rememberWorkReturn, takeWorkReturn } from "./workReturn";
-
-/**
- * Whether the scene's camera stands still. The scene publishes it on the root
- * element as `data-camera-settled` while it drives the journey
- * (`data-journey`); without the scene there is no camera to wait for.
- */
-function useCameraSettled(): boolean {
-  const [settled, setSettled] = useState(true);
-  useEffect(() => {
-    const root = document.documentElement;
-    const read = () =>
-      setSettled(!root.hasAttribute("data-journey") || root.hasAttribute("data-camera-settled"));
-    read();
-    const observer = new MutationObserver(read);
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-journey", "data-camera-settled"],
-    });
-    return () => observer.disconnect();
-  }, []);
-  return settled;
-}
 
 /**
  * Whether the page is in the desktop layout, which has the desktop journey;
@@ -264,19 +242,11 @@ export function MonolithGallery({
   const runwayRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [swap, setSwap] = useState<{ from: number; to: number; direction: number } | null>(null);
-  const swappingRef = useRef(false);
-  const readySinceRef = useRef<number | null>(null);
-  const lastGestureRef = useRef(-Infinity);
-  const touchStartRef = useRef<number | null>(null);
-  /** Whether the scroll stands in a project's details window. */
+  /** Whether the visitor is in a controlled project visit. */
   const [inWindow, setInWindow] = useState(false);
-  const settled = useCameraSettled();
-  /*
-   * The details belong on screen only when both hold: the scroll is in the
-   * project's window and the camera has actually come to rest there. A scroll
-   * position alone does not mean the spring has finished carrying the camera.
-   */
-  const shown = swap !== null || (inWindow && settled);
+  // Once a visit starts, camera motion cannot hide the cards between swaps.
+  // The controller still waits for the camera before accepting the next gesture.
+  const shown = inWindow;
 
   // The journey currently features two project composition stations.
   const featured = projects.slice(0, 2);
@@ -289,160 +259,121 @@ export function MonolithGallery({
     setSceneFocus(null);
   }, []);
 
-  // Journey progress from the runway's position. Listens only while on screen.
+  // This controller lives for the gallery's lifetime, not for one render or
+  // one visit. Only it selects projects while the visitor is in the gallery.
   useEffect(() => {
     const runway = runwayRef.current;
     if (!runway || count === 0) return;
-
-    let frame = 0;
-    const sync = () => {
-      frame = 0;
-      const box = runway.getBoundingClientRect();
-      const span = box.height - stableViewportHeight();
-      const screens = span > 0 ? Math.min(1, Math.max(0, -box.top / span)) * total : 0;
-      const moment = workMoment(screens, count, stretches);
-      if (!swappingRef.current) {
-        setActive(moment.project);
-        setInWindow(moment.details);
-      }
-    };
-    const schedule = () => {
-      if (frame === 0) frame = requestAnimationFrame(sync);
-    };
-
-    let listening = false;
-    const listen = (on: boolean) => {
-      if (on === listening) return;
-      listening = on;
-      if (on) {
-        window.addEventListener("scroll", schedule, { passive: true });
-        window.addEventListener("resize", schedule);
-        sync();
-      } else {
-        window.removeEventListener("scroll", schedule);
-        window.removeEventListener("resize", schedule);
-        if (frame !== 0) cancelAnimationFrame(frame);
-        frame = 0;
-        setInWindow(false);
-      }
-    };
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry) listen(entry.isIntersecting);
-    });
-    observer.observe(runway);
-
-    return () => {
-      observer.disconnect();
-      listen(false);
-    };
-  }, [count, total, stretches]);
-
-  useEffect(() => {
-    if (shown) emitSoundEvent("project:active", { step: active });
-  }, [shown, active]);
-
-  /*
-   * A fast scroll stops at each project's details point and stays until its
-   * card has been on screen long enough to see (scrollCatch.ts). Nothing
-   * about the journey itself changes; it only can't be flown past.
-   */
-  const stopsRef = useRef<ScrollStop[]>([]);
-  useEffect(() => {
-    const runway = runwayRef.current;
-    if (!runway || count === 0) return;
-    const stops = Array.from({ length: count }, (_, station) =>
-      addScrollStop({
-        position: () => stationOffset(runway, station, total, stretches),
-        readFor: PROJECT_READ_MS,
-        repeatOnCrossing: true,
-      }),
-    );
-    stopsRef.current = stops;
-    return () => {
-      stops.forEach((stop) => stop.remove());
-      stopsRef.current = [];
-    };
-  }, [count, total, stretches]);
-  useEffect(() => {
-    stopsRef.current.forEach((stop, station) => stop.setReady(shown && active === station));
-  }, [shown, active]);
-
-  useEffect(() => {
-    readySinceRef.current = shown && !swap ? performance.now() : null;
-  }, [shown, active, swap]);
-
-  // Capture before the general reading stops. Momentum belongs to the current
-  // gesture, never to the next project. Navigation and scrollbar jumps stay native.
-  useEffect(() => {
-    const runway = runwayRef.current;
-    if (!runway) return;
-    let timer = 0;
+    const stepper = new ProjectStepper(count, PROJECT_READ_MS);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const step = (direction: number, event: Event) => {
-      const now = performance.now();
-      const quiet = now - lastGestureRef.current > 220;
-      lastGestureRef.current = now;
-      if (swappingRef.current) {
-        event.preventDefault();
-        return;
-      }
-      // React's last render can still describe the previous station after a
-      // native scroll leaves the stage. Read the actual position before taking
-      // over input, especially when returning upward from the footer.
-      const box = runway.getBoundingClientRect();
-      const span = box.height - stableViewportHeight();
-      const screens = span > 0 ? Math.min(1, Math.max(0, -box.top / span)) * total : 0;
-      const moment = workMoment(screens, count, stretches);
-      if (!moment.details) return;
-      if (moment.project !== active || !inWindow) {
-        event.preventDefault();
-        setActive(moment.project);
-        setInWindow(true);
-        const entryY = stationOffset(runway, moment.project, total, stretches);
-        if (entryY !== null) window.scrollTo({ top: entryY, behavior: "instant" });
-        return;
-      }
-      if (!shown) {
-        event.preventDefault();
-        return;
-      }
-      const next = active + direction;
-      const ready = readySinceRef.current;
-      if (!quiet || ready === null || now - ready < PROJECT_READ_MS) {
-        event.preventDefault();
-        return;
-      }
-      if (next < 0 || next >= count) return;
-      const y = stationOffset(runway, next, total, stretches);
-      if (y === null) return;
-      event.preventDefault();
-      swappingRef.current = true;
-      setSwap({ from: active, to: next, direction });
-      // The existing camera spring follows its new station beneath the DOM swap.
+    let previousY = window.scrollY;
+    let expectedY = previousY;
+    let lastUserInput = -Infinity;
+    let recentFor = 450;
+    let touchY: number | null = null;
+    let touchUsed = false;
+    let timer = 0;
+    let correcting = false;
+    let jumping = false;
+    const root = document.documentElement;
+    const position = (station: number) => stationOffset(runway, station, total, stretches);
+    const cameraReady = () =>
+      !root.hasAttribute("data-journey") || root.hasAttribute("data-camera-settled");
+    const updateReady = () => stepper.ready(cameraReady(), performance.now());
+    const movePage = (y: number) => {
+      expectedY = y;
+      previousY = y;
+      correcting = true;
       window.scrollTo({ top: y, behavior: "instant" });
+      correcting = false;
+    };
+    const enter = (station: number) => {
+      const y = position(station);
+      if (y === null) return;
+      stepper.enter(station, performance.now());
+      setActive(station);
+      setSwap(null);
+      setInWindow(true);
+      movePage(y);
+      updateReady();
+    };
+    const leave = () => {
+      window.clearTimeout(timer);
+      stepper.leave();
+      setSwap(null);
+      setInWindow(false);
+    };
+    const crossing = (from: number, to: number) => {
+      const first = position(0);
+      const last = position(count - 1);
+      if (first === null || last === null) return null;
+      if (from < first - 1 && to >= first) return 0;
+      if (from > last + 1 && to <= last) return count - 1;
+      return null;
+    };
+    const input = (direction: number, distance: number, event: Event) => {
+      if (event.defaultPrevented) return;
+      jumping = false;
+      lastUserInput = performance.now();
+      if (stepper.station === null) {
+        const station = crossing(window.scrollY, window.scrollY + direction * distance);
+        // Let the About reading stop handle its own chapter first. A later
+        // scroll into the work runway catches the gallery's last project.
+        const bottom = runway.getBoundingClientRect().bottom + window.scrollY;
+        if (station !== null && !(direction < 0 && window.scrollY > bottom)) {
+          event.preventDefault();
+          enter(station);
+        }
+        return;
+      }
+      updateReady();
+      const action = stepper.input(direction, lastUserInput);
+      if (action === "exit") {
+        setInWindow(false);
+        return;
+      }
+      if (action === "native") return;
+      event.preventDefault();
+      if (action !== "swap" || !stepper.transition) return;
+      const transition = stepper.transition;
+      const y = position(transition.to);
+      if (y === null) {
+        leave();
+        return;
+      }
+      setSwap(transition);
+      movePage(y);
       timer = window.setTimeout(
         () => {
-          setActive(next);
-          setInWindow(true);
+          stepper.complete();
+          setActive(transition.to);
           setSwap(null);
-          swappingRef.current = false;
+          updateReady();
         },
         reduced.matches ? 0 : PROJECT_SWAP_MS,
       );
     };
     const wheel = (event: WheelEvent) => {
-      if (event.ctrlKey || event.defaultPrevented || Math.abs(event.deltaY) < 2) return;
-      step(Math.sign(event.deltaY), event);
+      if (event.ctrlKey || event.deltaY === 0) return;
+      recentFor = 450;
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stableViewportHeight() : 1;
+      input(Math.sign(event.deltaY), Math.abs(event.deltaY * unit), event);
     };
     const key = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
       if (
         target instanceof HTMLElement &&
-        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(target.tagName))
+        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
       )
         return;
+      if (target instanceof HTMLButtonElement && event.key === " ") return;
+      if (event.key === "Home" || event.key === "End") {
+        jumping = true;
+        lastUserInput = -Infinity;
+        leave();
+        return;
+      }
       const direction = ["ArrowDown", "PageDown", " "].includes(event.key)
         ? event.shiftKey
           ? -1
@@ -450,33 +381,107 @@ export function MonolithGallery({
         : ["ArrowUp", "PageUp"].includes(event.key)
           ? -1
           : 0;
-      if (direction) step(direction, event);
+      if (!direction) return;
+      recentFor = 450;
+      input(direction, event.key.startsWith("Arrow") ? 40 : stableViewportHeight(), event);
     };
     const touchStart = (event: TouchEvent) => {
-      touchStartRef.current = event.touches.length === 1 ? event.touches[0]!.clientY : null;
+      touchY = event.touches.length === 1 ? event.touches[0]!.clientY : null;
+      touchUsed = false;
+      recentFor = 2000;
+      lastUserInput = performance.now();
     };
     const touchMove = (event: TouchEvent) => {
-      if (touchStartRef.current === null || event.touches.length !== 1) return;
-      const delta = touchStartRef.current - event.touches[0]!.clientY;
+      if (touchY === null || event.touches.length !== 1) return;
+      const delta = touchY - event.touches[0]!.clientY;
       if (Math.abs(delta) < 12) return;
-      if (event.cancelable) step(Math.sign(delta), event);
+      if (touchUsed && stepper.station !== null) {
+        if (event.cancelable) event.preventDefault();
+        lastUserInput = performance.now();
+        return;
+      }
+      if (event.cancelable) {
+        input(Math.sign(delta), Math.abs(delta), event);
+        if (event.defaultPrevented) touchUsed = true;
+      }
     };
+    const scroll = () => {
+      const y = window.scrollY;
+      const from = previousY;
+      previousY = y;
+      if (correcting || jumping) return;
+      const userScrolling = performance.now() - lastUserInput < recentFor;
+      if (stepper.station !== null) {
+        if (Math.abs(y - expectedY) <= 1) return;
+        if (userScrolling) movePage(expectedY);
+        else leave(); // Explicit navigation or scrollbar dragging stays available.
+        return;
+      }
+      if (userScrolling) {
+        const station = crossing(from, y);
+        if (station !== null) enter(station);
+      } else {
+        // The case study back link restores an exact station after mounting.
+        // It is a new visit too, with the same controller as a wheel arrival.
+        for (let station = 0; station < count; station += 1) {
+          const target = position(station);
+          if (target !== null && Math.abs(y - target) <= 1) {
+            enter(station);
+            break;
+          }
+        }
+      }
+    };
+    const navigate = (event: MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest("a[href]")) {
+        jumping = true;
+        lastUserInput = -Infinity;
+        leave();
+      }
+    };
+    const resize = () => {
+      if (stepper.station !== null) {
+        const y = position(stepper.transition?.to ?? stepper.station);
+        if (y !== null) movePage(y);
+      }
+    };
+    // Restore a case-study return or a browser-restored project position.
+    const box = runway.getBoundingClientRect();
+    const span = box.height - stableViewportHeight();
+    const moment = workMoment(
+      span > 0 ? Math.min(1, Math.max(0, -box.top / span)) * total : 0,
+      count,
+      stretches,
+    );
+    if (moment.details) enter(moment.project);
+    const observer = new MutationObserver(updateReady);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-journey", "data-camera-settled"],
+    });
     window.addEventListener("wheel", wheel, { passive: false, capture: true });
     window.addEventListener("keydown", key, true);
     window.addEventListener("touchstart", touchStart, { passive: true });
     window.addEventListener("touchmove", touchMove, { passive: false, capture: true });
+    window.addEventListener("scroll", scroll, { passive: true });
+    window.addEventListener("click", navigate, true);
+    window.addEventListener("resize", resize);
     return () => {
-      window.clearTimeout(timer);
-      if (swappingRef.current) {
-        swappingRef.current = false;
-        setSwap(null);
-      }
+      leave();
+      observer.disconnect();
       window.removeEventListener("wheel", wheel, true);
       window.removeEventListener("keydown", key, true);
       window.removeEventListener("touchstart", touchStart);
       window.removeEventListener("touchmove", touchMove, true);
+      window.removeEventListener("scroll", scroll);
+      window.removeEventListener("click", navigate, true);
+      window.removeEventListener("resize", resize);
     };
-  }, [active, shown, inWindow, count, total, stretches]);
+  }, [count, total, stretches]);
+
+  useEffect(() => {
+    if (shown && !swap) emitSoundEvent("project:active", { step: active });
+  }, [shown, active, swap]);
 
   /*
    * Arriving at the gallery by a link (the case study's back link, the nav's

@@ -11,7 +11,7 @@
     "validate:content": "node --import tsx scripts/validate-content.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "validate": "npm run format:check && npm run lint && npm run validate:content && npm run validate:scene && npm run typecheck && npm run build",
+    "validate": "npm run format:check && npm run lint && npm run validate:content && npm run validate:scene && npm run validate:scroll && npm run typecheck && npm run build",
     "validate:scene": "node --import tsx scripts/check-scene.ts",
     "prepare:rocks": "node scripts/prepare-rocks.mjs",
     "prepare:selected-work": "node scripts/prepare-rocks.mjs --selected-work assets-src/selected-work",
@@ -21,7 +21,8 @@
     "capture:my-world": "node scripts/capture-my-world.mjs",
     "check:my-world": "node scripts/check-my-world.mjs",
     "prepare:rift": "node scripts/prepare-rift.mjs",
-    "prepare:cabin": "node scripts/prepare-cabin-assets.mjs"
+    "prepare:cabin": "node scripts/prepare-cabin-assets.mjs",
+    "validate:scroll": "node --import tsx --test scripts/check-project-stepper.ts scripts/check-scroll-catch.ts"
   },
   "dependencies": {
     "next": "16.3.5",
