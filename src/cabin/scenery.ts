@@ -15,7 +15,6 @@ import {
   Euler,
   Fog,
   Group,
-  InstancedMesh,
   MathUtils,
   Mesh,
   MeshBasicMaterial,
@@ -25,12 +24,12 @@ import {
   Quaternion,
   Scene,
   SRGBColorSpace,
-  TextureLoader,
+  ImageBitmapLoader,
   Vector3,
   type Material,
   type Object3D,
   type PerspectiveCamera,
-  type Texture,
+  Texture,
 } from "three";
 import { HDRLoader } from "three/addons/loaders/HDRLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -44,7 +43,6 @@ import { buildCabinExterior, DECK, PIT_CHAIRS } from "./cabinExterior";
 import { buildFlames } from "./flames";
 import { buildHall, buildHallSign } from "./hall";
 import { buildMarziaPanel } from "./marziaPanel";
-import { buildSkyline } from "./skyline";
 import { HALL, MARZIA, type Vec3 } from "./stations";
 import {
   applyWorldUVs,
@@ -96,6 +94,21 @@ export type SceneryOptions = Readonly<{
   maxAnisotropy: number;
 }>;
 
+/**
+ * The sky photo, decoded off the main thread. It is 6144 pixels wide: left
+ * as an image, the browser decodes it on the main thread when it first goes
+ * to the GPU, stalling the page.
+ */
+async function loadBackdrop(url: string) {
+  const loader = new ImageBitmapLoader();
+  loader.setOptions({ imageOrientation: "flipY" });
+  const texture = new Texture(await loader.loadAsync(url));
+  // The bitmap is already flipped; the GPU upload must not flip it again.
+  texture.flipY = false;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): Promise<Scenery> {
   const scene = new Scene();
   const disposables = new Set<{ dispose: () => void }>();
@@ -112,7 +125,7 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
     fetch(`${ASSETS}/manifest.json`).then((response) => response.json() as Promise<Manifest>),
     loadSurfaces(maxAnisotropy),
     new HDRLoader().loadAsync(`${ASSETS}/sky/lighting.hdr`),
-    new TextureLoader().loadAsync(`${ASSETS}/sky/backdrop.webp`),
+    loadBackdrop(`${ASSETS}/sky/backdrop.webp`),
     loadProps(gltf),
   ]);
   surfaces.forEach((set) => Object.values(set).forEach((t: Texture) => keep(t)));
@@ -301,10 +314,6 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
     occluders,
   );
   scene.add(firs.group);
-
-  // ------------------------------------------------------------ the mountain
-  // A real snowy peak on the horizon beyond the hall; the world opens on it.
-  scene.add(await buildSkyline(keep));
 
   // ------------------------------------------------------------ MARZIA
   // The old site followed the system theme; a visitor's choice on the sign wins.
@@ -978,22 +987,29 @@ function buildLibrary(keep: <T extends { dispose: () => void }>(item: T) => T) {
     library.add(mesh);
   }
 
-  // One material, one atlas: each spine colour is its own instanced box.
+  // One material, one atlas, one mesh: every book is a box picking its spine
+  // colour out of the atlas. Merged rather than instanced per colour: three
+  // compiles an instanced mesh's shaders for it alone, and a dozen-odd spine
+  // colours cost a dozen-odd shaders (and as many shadow ones) on arrival.
   const atlas = keep(new CanvasTexture(paintSpines()));
   atlas.colorSpace = SRGBColorSpace;
-  const material = keep(
-    new MeshStandardMaterial({ map: atlas, roughness: 0.82, metalness: 0, envMapIntensity: 0.4 }),
-  );
+  const books: BufferGeometry[] = [];
   placed.forEach((matrices, index) => {
     if (matrices.length === 0) return;
-    const mesh = new InstancedMesh(keep(spineGeometry(index)), material, matrices.length);
-    matrices.forEach((matrix, k) => mesh.setMatrixAt(k, matrix));
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.computeBoundingSphere();
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    library.add(mesh);
+    const spine = spineGeometry(index);
+    for (const matrix of matrices) books.push(spine.clone().applyMatrix4(matrix));
+    spine.dispose();
   });
+  const spines = new Mesh(
+    keep(mergeGeometries(books)),
+    keep(
+      new MeshStandardMaterial({ map: atlas, roughness: 0.82, metalness: 0, envMapIntensity: 0.4 }),
+    ),
+  );
+  books.forEach((book) => book.dispose());
+  spines.castShadow = true;
+  spines.receiveShadow = true;
+  library.add(spines);
 
   return library;
 }

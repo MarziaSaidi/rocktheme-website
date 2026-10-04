@@ -19,6 +19,7 @@
     "prepare:intro-arch": "node scripts/prepare-rocks.mjs --intro-arch assets-src/intro",
     "prepare:monolith-screens": "node scripts/prepare-monolith-screens.mjs",
     "capture:my-world": "node scripts/capture-my-world.mjs",
+    "check:my-world": "node scripts/check-my-world.mjs",
     "prepare:rift": "node scripts/prepare-rift.mjs",
     "prepare:cabin": "node scripts/prepare-cabin-assets.mjs"
   },

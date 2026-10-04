@@ -144,7 +144,10 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
 
     // The doorway is the first thing seen: its bytes start downloading now,
     // alongside the code that will draw it, not after it.
-    const modelBytes = fetch(door.source).then((response) => {
+    // A reload after entering mounts the gate for a single render before it
+    // goes; leaving takes the half-finished download with it.
+    const download = new AbortController();
+    const modelBytes = fetch(door.source, { signal: download.signal }).then((response) => {
       if (!response.ok) throw new Error(`doorway model: ${response.status}`);
       return response.arrayBuffer();
     });
@@ -792,6 +795,7 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
 
     return () => {
       cancelled = true;
+      download.abort();
       enter.current = () => crossed.current();
       dispose();
     };

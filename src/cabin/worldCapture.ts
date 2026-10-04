@@ -33,7 +33,7 @@ export const ARRIVAL = { back: 1.6, rise: 0.7, pitch: 0.08, seconds: 2.6 } as co
 
 /**
  * Where the visitor stands on coming through the rift: by the fire pit off
- * the cabin's deck, looking out past the firs to the mountain. The capture
+ * the cabin's deck, looking out past the firs. The capture
  * the rift shows is taken from here (offset by ARRIVAL), so the view through
  * the crack is the place the visitor lands.
  */

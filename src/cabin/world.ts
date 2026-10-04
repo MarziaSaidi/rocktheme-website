@@ -118,6 +118,8 @@ export async function mountCabinWorld({
 
   // The WebGL2 backend: the MARZIA canvas is copied to the GPU every frame,
   // and WebGL does that copy on a fast path WebGPU lacks in browsers today.
+  // Phase marks, read by `npm run check:my-world`.
+  performance.mark("cabin:module");
   const renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: true });
   await renderer.init();
   // A context the browser takes away mid-visit; tearing down sets this aside.
@@ -133,13 +135,15 @@ export async function mountCabinWorld({
   renderer.shadowMap.type = PCFSoftShadowMap;
 
   const mobile = window.matchMedia("(pointer: coarse), (max-width: 767px)").matches;
+  performance.mark("cabin:renderer");
   const world = await buildScenery({ mobile, maxAnisotropy: renderer.getMaxAnisotropy() });
+  performance.mark("cabin:assets");
   onMarziaTheme(world.marzia.theme);
   const camera = new PerspectiveCamera(56, 1, 0.08, 400);
 
   const arrival = getStation("arrival");
   // Through the rift (or for its capture), the visitor lands by the fire pit
-  // facing the mountain: the view the rift showed. Otherwise, the clearing's edge.
+  // looking out past the firs: the view the rift showed. Otherwise, the clearing's edge.
   const throughRift = entry !== undefined;
   const explorer = createExplorer(camera, {
     start: throughRift
@@ -408,7 +412,10 @@ export async function mountCabinWorld({
     publish();
     renderer.render(world.scene, camera);
     frames += 1;
-    if (frames === 1) onFirstFrame?.();
+    if (frames === 1) {
+      performance.mark("cabin:frame");
+      onFirstFrame?.();
+    }
     // The capture script waits for the world to have drawn a while.
     if (capture && frames === 90) canvas.dataset.captureReady = "true";
   };
@@ -460,6 +467,7 @@ export async function mountCabinWorld({
   world.update(camera, performance.now());
   renderer.render(world.scene, camera);
   if (lit) lit.node.visible = false;
+  performance.mark("cabin:sky");
   await nextTask();
   for (const { node } of drawables) {
     if (signal?.aborted) break;
@@ -477,6 +485,7 @@ export async function mountCabinWorld({
     node.frustumCulled = culled;
   }
 
+  performance.mark("cabin:warm");
   const onVisibility = () => {
     if (document.hidden) {
       renderer.setAnimationLoop(null);
