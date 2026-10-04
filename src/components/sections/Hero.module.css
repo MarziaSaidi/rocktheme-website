@@ -289,3 +289,10 @@
   animation-fill-mode: both;
   animation-delay: var(--motion-cue-delay);
 }
+
+.role {
+  margin-block-start: var(--space-5);
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical);
+  font-size: var(--text-small);
+}

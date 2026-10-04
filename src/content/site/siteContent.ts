@@ -12,7 +12,7 @@ export type NavigationItem = SiteLink &
 export const siteContent = {
   name: "Marzia Saidi",
   role: "Design engineer and product designer",
-  introduction: "I move between design, code, and AI to explore, prototype, and ship.",
+  introduction: "I design product experiences and build the interfaces behind them.",
   availability: {
     label: "Available 2026",
     isPlaceholder: true,
@@ -49,10 +49,10 @@ export const siteContent = {
   },
   statement: {
     paragraphs: [
-      "I explore how to shape AI-era workflows with craft and taste, building the next generation of digital products.",
+      "I turn complex product tasks into clear interfaces, from reviewing a spreadsheet to understanding approaching traffic.",
     ],
     /** Words that settle in lavender as the sentence is read. */
-    emphasis: ["AI-era", "craft", "taste"],
+    emphasis: ["clear", "interfaces"],
   },
   contact: {
     displayLines: ["Let’s create", "the unexpected."],

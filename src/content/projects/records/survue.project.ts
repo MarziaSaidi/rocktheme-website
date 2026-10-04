@@ -170,12 +170,12 @@ export const survueProject = {
             eyebrow: "Founding product designer",
             title: "Make approaching traffic easier to interpret.",
             description:
-              "Survue connects a rear-facing device with a cycling app for vehicle awareness and recordings. As founding product designer, I shaped the app structure, interaction flows, components, and prototype using the founder's palette and Helvetica Neue typography. The central design question was how to communicate changing traffic conditions without making the rider decode a new interface each time.",
+              "Survue connects a rear-facing device with a cycling app for vehicle awareness and recordings. As founding product designer, I shaped the app structure, interaction flows, components, and prototype using the founder's palette and Helvetica Neue typography. A rider cannot study a screen while moving. Traffic information needed to be understandable at a glance, without asking the rider to decode a new interface each time.",
             decision: "Keep the road view familiar while the warning state changes.",
             supportingPoints: [
-              "Device discovery and pairing",
-              "Vehicle position and warning states",
-              "Recordings reviewed separately from the ride",
+              "Before the ride → discover and pair the device",
+              "During the ride → monitor vehicle position and warnings",
+              "After the ride → review recordings in Gallery",
             ],
             visual: { type: "video", media: prototype, fit: "contain", playback: "controls" },
           },
@@ -201,7 +201,7 @@ export const survueProject = {
       },
       {
         id: "wireframes",
-        label: "Wireframes",
+        label: "Ride flow",
         stories: [
           {
             id: "whole-system",
@@ -306,11 +306,11 @@ export const survueProject = {
       },
       {
         id: "foundations",
-        label: "System design",
+        label: "Interface system",
         stories: [
           {
             id: "color",
-            eyebrow: "System design / founder-defined palette",
+            eyebrow: "Interface system / founder-defined palette",
             title: "Apply the brand palette to interface roles.",
             description:
               "The founder defined the colors and typography. I applied those foundations to the app's surfaces, controls, and vehicle-awareness states. Black and off-white anchor the themes; green represents safe passage, mustard yellow marks level-one risk, and red marks the red warning state.",
@@ -335,8 +335,7 @@ export const survueProject = {
             title: "Build hierarchy within Helvetica Neue.",
             description:
               "Helvetica Neue was the founder's chosen typeface. I used it across navigation, controls, and status messaging. The examples show how the same family supports a screen title, an action, and a warning without introducing another typeface.",
-            caption:
-              "Helvetica Neue across screen titles, actions, and status messages.",
+            caption: "Helvetica Neue across screen titles, actions, and status messages.",
             visual: {
               type: "typography",
               family: "Helvetica Neue",
@@ -403,8 +402,7 @@ export const survueProject = {
             title: "Pair recognizable symbols with clear labels.",
             description:
               "I selected icons through the Iconify Figma plugin for navigation and common actions, alongside ride and device-status symbols. Icons are paired with labels in navigation and settings to make their meaning clear.",
-            caption:
-              "Navigation, media controls, and ride-status symbols used throughout Survue.",
+            caption: "Navigation, media controls, and ride-status symbols used throughout Survue.",
             visual: {
               type: "assets",
               layout: "icons",

@@ -24,6 +24,8 @@ type StopOptions = Readonly<{
   position: () => number | null;
   /** How long the moment needs to have been on screen, in ms, before letting go. */
   readFor: number;
+  /** Catch every return crossing, even after this stop was read on an earlier pass. */
+  repeatOnCrossing?: boolean;
   /**
    * The longest this stop may hold, in ms, if its moment never shows. Only a
    * backstop: set it well past the moment's own length, or the hold can let
@@ -78,7 +80,7 @@ function crossed(from: number, to: number): { stop: Stop; y: number } | null {
   const down = to > from;
   let best: { stop: Stop; y: number } | null = null;
   stops.forEach((stop) => {
-    if (seen(stop, at)) return;
+    if (!stop.repeatOnCrossing && seen(stop, at)) return;
     const y = stop.position();
     if (y === null) return;
     const meets = down ? from < y - 1 && to >= y : from > y + 1 && to <= y;
@@ -143,7 +145,7 @@ function editable(target: EventTarget | null) {
 
 function onWheel(event: WheelEvent) {
   // A pinch on a trackpad arrives as a ctrl-wheel: that is zoom, not scroll.
-  if (event.ctrlKey) return;
+  if (event.ctrlKey || event.defaultPrevented) return;
   const at = now();
   lastInput = at;
   if (hold) {
@@ -184,7 +186,7 @@ function onTouchMove(event: TouchEvent) {
   const at = now();
   lastTouch = at;
   // Pinch zoom (two fingers) stays the visitor's.
-  if (!hold || event.touches.length > 1) return;
+  if (event.defaultPrevented || !hold || event.touches.length > 1) return;
   // A scroll already under way can't be cancelled; the freeze holds it then.
   if (event.cancelable) event.preventDefault();
   hold.lastInput = at;

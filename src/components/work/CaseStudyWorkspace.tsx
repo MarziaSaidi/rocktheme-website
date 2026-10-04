@@ -541,19 +541,15 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       }}
       onBlurCapture={() => setKeyboardFocus(false)}
     >
-      <header className={styles.mobileHeader}>
+      <header className={`${styles.rail} ${styles.mobileHeader}`}>
         <h1>
           <span className={styles.titleMask}>
             <span className={styles.titleInner}>{project.title}</span>
           </span>
         </h1>
-        <p>
-          {project.role.join(" + ")} · {info?.timelineLabel ? `${info.timelineLabel}: ` : ""}
-          {info?.timeline ?? project.year}
-        </p>
-        <details className={styles.infoDisclosure}>
+        <details className={styles.infoDisclosure} open={!mobile}>
           <summary>Project info</summary>
-          <p>{project.shortDescription}</p>
+          <p className={styles.projectDescription}>{project.shortDescription}</p>
           <ProjectFacts project={project} info={info} />
           {info?.externalUrl ? (
             <a className={styles.liveLink} href={info.externalUrl}>
@@ -562,22 +558,6 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
           ) : null}
         </details>
       </header>
-
-      <aside className={styles.rail} aria-label="Project information">
-        <p className={styles.railLabel}>Project</p>
-        <h1>
-          <span className={styles.titleMask}>
-            <span className={styles.titleInner}>{project.title}</span>
-          </span>
-        </h1>
-        <p className={styles.projectDescription}>{project.shortDescription}</p>
-        <ProjectFacts project={project} info={info} />
-        {info?.externalUrl ? (
-          <a className={styles.liveLink} href={info.externalUrl}>
-            {info.externalLabel ?? "View live project"} <span aria-hidden="true">↗</span>
-          </a>
-        ) : null}
-      </aside>
 
       <section
         ref={viewerRef}

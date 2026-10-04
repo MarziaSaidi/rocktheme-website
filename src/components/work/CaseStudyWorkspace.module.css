@@ -593,8 +593,15 @@ video.visualMedia[data-fit="cover"] {
   outline-offset: -0.75rem;
 }
 
-.mobileHeader {
-  display: none;
+.infoDisclosure summary {
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+@media (min-width: 75rem) {
+  .infoDisclosure summary {
+    display: none;
+  }
 }
 
 @media (max-width: 74.99rem) {
@@ -606,7 +613,9 @@ video.visualMedia[data-fit="cover"] {
     max-height: none;
   }
   .rail {
-    display: none;
+    grid-row: auto;
+    border-inline-end: 0;
+    border-block-end: var(--border-hairline);
   }
   .mobileHeader {
     display: grid;

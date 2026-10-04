@@ -235,6 +235,7 @@ type MonolithGalleryProps = Readonly<{
 
 /** How long a project's card is held on screen when a fast scroll is caught there. */
 const PROJECT_READ_MS = 1700;
+const PROJECT_SWAP_MS = 1200;
 
 /** The page offset of a project's details point, measured fresh; null when unmeasurable. */
 function stationOffset(
@@ -251,21 +252,7 @@ function stationOffset(
 
 const pad = (value: number) => value.toString().padStart(2, "0");
 
-/**
- * Selected Work gallery.
- *
- * Every project has its own composition station in the landscape, and the
- * page scroll walks the camera from one to the next: far view, approach,
- * settle, details, details gone, travel on. The stage pins for that whole
- * walk; its runway is as long as the journey table in workJourney.ts says.
- *
- * Nothing here takes over the scroll. The stage reads how far through its
- * runway the page is, and the same table the camera follows tells it which
- * project is in view and whether its details belong on screen. So the card can
- * only be present while the camera stands still at its station, scrolling
- * back reverses everything, and every input (wheel, touch, keyboard,
- * scrollbar, the nav) behaves as it does on the rest of the page.
- */
+/** Selected Work: existing compositions, with one completed horizontal swap per gesture. */
 export function MonolithGallery({
   projects,
   headingId,
@@ -276,6 +263,11 @@ export function MonolithGallery({
 }: MonolithGalleryProps) {
   const runwayRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const [swap, setSwap] = useState<{ from: number; to: number; direction: number } | null>(null);
+  const swappingRef = useRef(false);
+  const readySinceRef = useRef<number | null>(null);
+  const lastGestureRef = useRef(-Infinity);
+  const touchStartRef = useRef<number | null>(null);
   /** Whether the scroll stands in a project's details window. */
   const [inWindow, setInWindow] = useState(false);
   const settled = useCameraSettled();
@@ -284,7 +276,7 @@ export function MonolithGallery({
    * project's window and the camera has actually come to rest there. A scroll
    * position alone does not mean the spring has finished carrying the camera.
    */
-  const shown = inWindow && settled;
+  const shown = swap !== null || (inWindow && settled);
 
   // The journey currently features two project composition stations.
   const featured = projects.slice(0, 2);
@@ -309,8 +301,10 @@ export function MonolithGallery({
       const span = box.height - stableViewportHeight();
       const screens = span > 0 ? Math.min(1, Math.max(0, -box.top / span)) * total : 0;
       const moment = workMoment(screens, count, stretches);
-      setActive(moment.project);
-      setInWindow(moment.details);
+      if (!swappingRef.current) {
+        setActive(moment.project);
+        setInWindow(moment.details);
+      }
     };
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(sync);
@@ -361,6 +355,7 @@ export function MonolithGallery({
       addScrollStop({
         position: () => stationOffset(runway, station, total, stretches),
         readFor: PROJECT_READ_MS,
+        repeatOnCrossing: true,
       }),
     );
     stopsRef.current = stops;
@@ -372,6 +367,116 @@ export function MonolithGallery({
   useEffect(() => {
     stopsRef.current.forEach((stop, station) => stop.setReady(shown && active === station));
   }, [shown, active]);
+
+  useEffect(() => {
+    readySinceRef.current = shown && !swap ? performance.now() : null;
+  }, [shown, active, swap]);
+
+  // Capture before the general reading stops. Momentum belongs to the current
+  // gesture, never to the next project. Navigation and scrollbar jumps stay native.
+  useEffect(() => {
+    const runway = runwayRef.current;
+    if (!runway) return;
+    let timer = 0;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const step = (direction: number, event: Event) => {
+      const now = performance.now();
+      const quiet = now - lastGestureRef.current > 220;
+      lastGestureRef.current = now;
+      if (swappingRef.current) {
+        event.preventDefault();
+        return;
+      }
+      // React's last render can still describe the previous station after a
+      // native scroll leaves the stage. Read the actual position before taking
+      // over input, especially when returning upward from the footer.
+      const box = runway.getBoundingClientRect();
+      const span = box.height - stableViewportHeight();
+      const screens = span > 0 ? Math.min(1, Math.max(0, -box.top / span)) * total : 0;
+      const moment = workMoment(screens, count, stretches);
+      if (!moment.details) return;
+      if (moment.project !== active || !inWindow) {
+        event.preventDefault();
+        setActive(moment.project);
+        setInWindow(true);
+        const entryY = stationOffset(runway, moment.project, total, stretches);
+        if (entryY !== null) window.scrollTo({ top: entryY, behavior: "instant" });
+        return;
+      }
+      if (!shown) {
+        event.preventDefault();
+        return;
+      }
+      const next = active + direction;
+      const ready = readySinceRef.current;
+      if (!quiet || ready === null || now - ready < PROJECT_READ_MS) {
+        event.preventDefault();
+        return;
+      }
+      if (next < 0 || next >= count) return;
+      const y = stationOffset(runway, next, total, stretches);
+      if (y === null) return;
+      event.preventDefault();
+      swappingRef.current = true;
+      setSwap({ from: active, to: next, direction });
+      // The existing camera spring follows its new station beneath the DOM swap.
+      window.scrollTo({ top: y, behavior: "instant" });
+      timer = window.setTimeout(
+        () => {
+          setActive(next);
+          setInWindow(true);
+          setSwap(null);
+          swappingRef.current = false;
+        },
+        reduced.matches ? 0 : PROJECT_SWAP_MS,
+      );
+    };
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.defaultPrevented || Math.abs(event.deltaY) < 2) return;
+      step(Math.sign(event.deltaY), event);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(target.tagName))
+      )
+        return;
+      const direction = ["ArrowDown", "PageDown", " "].includes(event.key)
+        ? event.shiftKey
+          ? -1
+          : 1
+        : ["ArrowUp", "PageUp"].includes(event.key)
+          ? -1
+          : 0;
+      if (direction) step(direction, event);
+    };
+    const touchStart = (event: TouchEvent) => {
+      touchStartRef.current = event.touches.length === 1 ? event.touches[0]!.clientY : null;
+    };
+    const touchMove = (event: TouchEvent) => {
+      if (touchStartRef.current === null || event.touches.length !== 1) return;
+      const delta = touchStartRef.current - event.touches[0]!.clientY;
+      if (Math.abs(delta) < 12) return;
+      if (event.cancelable) step(Math.sign(delta), event);
+    };
+    window.addEventListener("wheel", wheel, { passive: false, capture: true });
+    window.addEventListener("keydown", key, true);
+    window.addEventListener("touchstart", touchStart, { passive: true });
+    window.addEventListener("touchmove", touchMove, { passive: false, capture: true });
+    return () => {
+      window.clearTimeout(timer);
+      if (swappingRef.current) {
+        swappingRef.current = false;
+        setSwap(null);
+      }
+      window.removeEventListener("wheel", wheel, true);
+      window.removeEventListener("keydown", key, true);
+      window.removeEventListener("touchstart", touchStart);
+      window.removeEventListener("touchmove", touchMove, true);
+    };
+  }, [active, shown, inWindow, count, total, stretches]);
 
   /*
    * Arriving at the gallery by a link (the case study's back link, the nav's
@@ -419,11 +524,9 @@ export function MonolithGallery({
     >
       <div className={styles.stage}>
         {children}
-        <header className={styles.intro}>
-          <h2 id={headingId} className={styles.heading}>
-            {heading}
-          </h2>
-        </header>
+        <h2 id={headingId} className={styles.hidden}>
+          {heading}
+        </h2>
 
         {/*
          * The chapter's title as the camera crosses the water toward the first
@@ -440,82 +543,93 @@ export function MonolithGallery({
           ))}
         </p>
 
-        <div
-          className={styles.project}
-          role="group"
-          aria-roledescription="carousel"
-          aria-label={galleryLabel}
-          // The second composition is the calmer shot; its details take a beat longer.
-          data-pace={active % 2 === 1 ? "calm" : undefined}
-        >
-          <div className={styles.depthScene}>
-            {/* The glass is the rear physical plane. It contains copy only. */}
-            <div className={styles.card} data-shown={shown ? "" : undefined} inert={!shown}>
-              {/* The thickness of the glass edge catching light (CSS only). */}
-              <span className={styles.glassEdge} aria-hidden="true" />
-              {current ? (
-                <article key={current.slug} aria-label={`${pad(active + 1)} of ${pad(count)}`}>
-                  <p className={styles.index} aria-hidden="true">
-                    <span>{pad(active + 1)}</span> / {pad(count)}
-                  </p>
-                  <h3 className={styles.title}>
-                    <span className={styles.titleInner}>{current.title}</span>
-                  </h3>
-                  <p className={styles.role}>{current.role}</p>
-                  <p className={styles.description}>{current.description}</p>
-                  {current.meta.length > 0 ? (
-                    <p className={styles.meta}>{current.meta.join(" · ")}</p>
+        {featured.map((current, station) => {
+          const visible = swap ? station === swap.from || station === swap.to : station === active;
+          if (!visible) return null;
+          return (
+            <div
+              key={current.slug}
+              className={styles.project}
+              data-swap={swap ? (station === swap.from ? "out" : "in") : undefined}
+              style={swap ? ({ "--swap-direction": swap.direction } as CSSProperties) : undefined}
+              aria-hidden={swap ? station !== swap.to : !shown}
+              inert={!!swap || !shown}
+              role="group"
+              aria-roledescription="carousel"
+              aria-label={galleryLabel}
+              // The second composition is the calmer shot; its details take a beat longer.
+              data-pace={station % 2 === 1 ? "calm" : undefined}
+            >
+              <div className={styles.depthScene}>
+                {/* The glass is the rear physical plane. It contains copy only. */}
+                <div className={styles.card} data-shown={shown ? "" : undefined} inert={!shown}>
+                  {/* The thickness of the glass edge catching light (CSS only). */}
+                  <span className={styles.glassEdge} aria-hidden="true" />
+                  {current ? (
+                    <article key={current.slug} aria-label={`${pad(station + 1)} of ${pad(count)}`}>
+                      <h3 className={styles.title}>
+                        <span className={styles.titleInner}>{current.title}</span>
+                      </h3>
+                      <p className={styles.role}>{current.role}</p>
+                      <p className={styles.description}>{current.description}</p>
+                      {current.meta.length > 0 ? (
+                        <p className={styles.meta}>{current.meta.join(" · ")}</p>
+                      ) : null}
+                      <Link
+                        className={styles.view}
+                        href={current.href}
+                        onClick={() => {
+                          rememberWorkReturn(current.slug);
+                          emitSoundEvent("project:open");
+                        }}
+                      >
+                        {viewLabel}
+                        <span className={styles.hidden}>: {current.title}</span>
+                        <span className={styles.arrow} aria-hidden="true">
+                          →
+                        </span>
+                      </Link>
+                    </article>
                   ) : null}
-                  <Link
-                    className={styles.view}
-                    href={current.href}
-                    onClick={() => {
-                      rememberWorkReturn(current.slug);
-                      emitSoundEvent("project:open");
-                    }}
-                  >
-                    {viewLabel}
-                    <span className={styles.hidden}>: {current.title}</span>
-                    <span className={styles.arrow} aria-hidden="true">
-                      →
-                    </span>
-                  </Link>
-                </article>
-              ) : null}
-            </div>
+                </div>
 
-            {/*
-             * Project media is a foreground sibling, never part of the glass
-             * plane: each piece floats at its own depth in front of it. The
-             * pieces stay mounted so the assembly can reverse when the details
-             * leave; `data-shown` drives it (MonolithGallery.module.css).
-             */}
-            {current?.mainVisual ? (
-              <div
-                key={current.slug}
-                ref={visualLayerRef}
-                className={styles.visualLayer}
-                data-project={current.slug}
-                data-shown={shown ? "" : undefined}
-                aria-hidden={!shown}
-              >
-                {current.supportingVisuals?.map((visual) => (
-                  <Piece
-                    key={visual.src}
-                    visual={visual}
-                    placement={visual.placement}
-                    sizes="(min-width: 1024px) 18vw, 0px"
-                  />
-                ))}
-                <Piece
-                  visual={current.mainVisual}
-                  placement="main"
-                  sizes="(min-width: 1024px) 24vw, 0px"
-                />
+                {/*
+                 * Project media is a foreground sibling, never part of the glass
+                 * plane: each piece floats at its own depth in front of it. The
+                 * pieces stay mounted so the assembly can reverse when the details
+                 * leave; `data-shown` drives it (MonolithGallery.module.css).
+                 */}
+                {current?.mainVisual ? (
+                  <div
+                    key={current.slug}
+                    ref={station === active ? visualLayerRef : undefined}
+                    className={styles.visualLayer}
+                    data-project={current.slug}
+                    data-shown={shown ? "" : undefined}
+                    aria-hidden={!shown}
+                  >
+                    {current.supportingVisuals?.map((visual) => (
+                      <Piece
+                        key={visual.src}
+                        visual={visual}
+                        placement={visual.placement}
+                        sizes="(min-width: 1024px) 18vw, 0px"
+                      />
+                    ))}
+                    <Piece
+                      visual={current.mainVisual}
+                      placement="main"
+                      sizes="(min-width: 1024px) 24vw, 0px"
+                    />
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-        </div>
+            </div>
+          );
+        })}
+        <span className={styles.hidden} aria-live="polite" aria-atomic="true">
+          {shown && !swap ? `${featured[active]?.title}, ${active + 1} of ${count}` : ""}
+        </span>
       </div>
     </div>
   );

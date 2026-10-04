@@ -143,7 +143,7 @@ export const quillAndPigeonProject = {
             eyebrow: "The starting point",
             title: "A contact list needs more than an upload button.",
             description:
-              "Recipient setup includes individual entry and spreadsheet import. For an existing list, the challenge was bringing many contacts into the product without asking people to trust the file blindly. They needed a checkpoint between selecting a spreadsheet and committing its contents.",
+              "Entering contacts individually repeats work when a recipient list already exists in a spreadsheet. Bulk import avoids that repetition, but a readable file can still contain incorrect contact data. I designed a checkpoint where people can inspect and correct those values before saving.",
             constraint:
               "The file can contain values that need correction, even when its contents can be read.",
             decision:
@@ -210,6 +210,21 @@ export const quillAndPigeonProject = {
             outcome:
               "The review preserves the surrounding contact data and shows where to focus next.",
             visual: { type: "image", media: media.errors, fit: "contain", zoomable: true },
+          },
+          {
+            id: "frontend-boundary",
+            eyebrow: "Design + development / interface responsibilities",
+            title: "The review is a state, not a preview image.",
+            description:
+              "My frontend work connects the selected file, an editable contact table, field-level validation feedback, and a confirmation of saved contacts. The interface has to preserve the user's context across those states: uploading the file and saving the reviewed contacts are separate actions.",
+            supportingPoints: [
+              "Selected file → upload → editable review",
+              "Review → field feedback → correction in context",
+              "Final import action → saved-contact confirmation",
+            ],
+            decision:
+              "Keep the review and correction steps inside the import workflow, before the final save.",
+            visual: { type: "image", media: media.review, fit: "contain", zoomable: true },
           },
         ],
       },

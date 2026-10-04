@@ -109,18 +109,6 @@
     transform: translateY(calc((1 - var(--in) + var(--out)) * var(--motion-mask-travel)));
     opacity: calc(var(--in) * (1 - var(--out)));
   }
-
-  /*
-   * Once the camera is on the water the stage label is not pinned to a corner:
-   * the chapter title has named the place. It stays for assistive technology.
-   */
-  :global(:root[data-journey]) .intro {
-    clip-path: inset(50%);
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    white-space: nowrap;
-  }
 }
 
 /* ---------------------------------------------------------------- project */
@@ -1222,5 +1210,49 @@
 
   .view {
     margin-block-start: var(--space-4);
+  }
+}
+
+/* Move the whole existing composition; its internal poses stay unchanged. */
+.project[data-swap] {
+  pointer-events: none;
+  animation-duration: 1200ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.project[data-swap="out"] {
+  animation-name: projectExit;
+}
+
+.project[data-swap="in"] {
+  animation-name: projectEnter;
+}
+
+@keyframes projectExit {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(calc(var(--swap-direction) * -110vw));
+    opacity: 0;
+  }
+}
+
+@keyframes projectEnter {
+  from {
+    transform: translateX(calc(var(--swap-direction) * 110vw));
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project[data-swap] {
+    animation: none;
   }
 }
