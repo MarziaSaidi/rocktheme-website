@@ -269,11 +269,13 @@ export function MonolithGallery({
     let previousY = window.scrollY;
     let expectedY = previousY;
     let lastUserInput = -Infinity;
+    let lastDirection = 0;
     let recentFor = 450;
     let touchY: number | null = null;
     let touchUsed = false;
     let timer = 0;
     let pendingTimer = 0;
+    let arrivalTimer = 0;
     let pendingScroll = { direction: 0, distance: 0 };
     let correcting = false;
     let jumping = false;
@@ -285,10 +287,23 @@ export function MonolithGallery({
       window.scrollTo({ top: y, behavior: "instant" });
       correcting = false;
     };
-    const enter = (station: number) => {
+    // Only the gesture that crosses into the gallery is consumed. This
+    // boundary guard does not reset the display deadline or discard a later
+    // gesture's pending request.
+    const finishArrivalGesture = () => {
+      window.clearTimeout(arrivalTimer);
+      stepper.finishArrivalGesture();
+    };
+    const continueArrivalGesture = () => {
+      window.clearTimeout(arrivalTimer);
+      arrivalTimer = window.setTimeout(finishArrivalGesture, 180);
+    };
+    const enter = (station: number, userArrival = false) => {
       const y = position(station);
       if (y === null) return;
-      stepper.enter(station, performance.now());
+      stepper.enter(station, performance.now(), userArrival);
+      if (userArrival) continueArrivalGesture();
+      else finishArrivalGesture();
       pendingScroll = { direction: 0, distance: 0 };
       setActive(station);
       setSwap(null);
@@ -298,6 +313,7 @@ export function MonolithGallery({
     const leave = () => {
       window.clearTimeout(timer);
       window.clearTimeout(pendingTimer);
+      window.clearTimeout(arrivalTimer);
       pendingScroll = { direction: 0, distance: 0 };
       stepper.leave();
       setSwap(null);
@@ -357,7 +373,18 @@ export function MonolithGallery({
     const input = (direction: number, distance: number, event: Event) => {
       if (event.defaultPrevented) return;
       jumping = false;
-      lastUserInput = performance.now();
+      const at = performance.now();
+      const separateGesture = at - lastUserInput >= 180 || direction !== lastDirection;
+      lastUserInput = at;
+      lastDirection = direction;
+      if (stepper.arrivalGestureActive) {
+        if (separateGesture) finishArrivalGesture();
+        else {
+          event.preventDefault();
+          continueArrivalGesture();
+          return;
+        }
+      }
       if (stepper.station === null) {
         const station = crossing(window.scrollY, window.scrollY + direction * distance);
         // Let the About reading stop handle its own chapter first. A later
@@ -365,7 +392,7 @@ export function MonolithGallery({
         const bottom = runway.getBoundingClientRect().bottom + window.scrollY;
         if (station !== null && !(direction < 0 && window.scrollY > bottom)) {
           event.preventDefault();
-          enter(station);
+          enter(station, true);
         }
         return;
       }
@@ -419,9 +446,11 @@ export function MonolithGallery({
           : 0;
       if (!direction) return;
       recentFor = 450;
+      if (!event.repeat) finishArrivalGesture();
       input(direction, event.key.startsWith("Arrow") ? 40 : stableViewportHeight(), event);
     };
     const touchStart = (event: TouchEvent) => {
+      finishArrivalGesture();
       touchY = event.touches.length === 1 ? event.touches[0]!.clientY : null;
       touchUsed = false;
       recentFor = 2000;
@@ -434,12 +463,18 @@ export function MonolithGallery({
       if (touchUsed && stepper.station !== null) {
         if (event.cancelable) event.preventDefault();
         lastUserInput = performance.now();
+        if (stepper.arrivalGestureActive) continueArrivalGesture();
         return;
       }
       if (event.cancelable) {
         input(Math.sign(delta), Math.abs(delta), event);
         if (event.defaultPrevented) touchUsed = true;
       }
+    };
+    const touchEnd = () => {
+      touchY = null;
+      touchUsed = false;
+      finishArrivalGesture();
     };
     const scroll = () => {
       const y = window.scrollY;
@@ -455,7 +490,7 @@ export function MonolithGallery({
       }
       if (userScrolling) {
         const station = crossing(from, y);
-        if (station !== null) enter(station);
+        if (station !== null) enter(station, true);
       } else {
         // The case study back link restores an exact station after mounting.
         // It is a new visit too, with the same controller as a wheel arrival.
@@ -494,6 +529,8 @@ export function MonolithGallery({
     window.addEventListener("keydown", key, true);
     window.addEventListener("touchstart", touchStart, { passive: true });
     window.addEventListener("touchmove", touchMove, { passive: false, capture: true });
+    window.addEventListener("touchend", touchEnd, { passive: true });
+    window.addEventListener("touchcancel", touchEnd, { passive: true });
     window.addEventListener("scroll", scroll, { passive: true });
     window.addEventListener("click", navigate, true);
     window.addEventListener("resize", resize);
@@ -503,6 +540,8 @@ export function MonolithGallery({
       window.removeEventListener("keydown", key, true);
       window.removeEventListener("touchstart", touchStart);
       window.removeEventListener("touchmove", touchMove, true);
+      window.removeEventListener("touchend", touchEnd);
+      window.removeEventListener("touchcancel", touchEnd);
       window.removeEventListener("scroll", scroll);
       window.removeEventListener("click", navigate, true);
       window.removeEventListener("resize", resize);

@@ -97,3 +97,28 @@ test("navigation cancels pending input and any transition before the next visit"
   gallery.complete();
   assert.equal(gallery.station, null);
 });
+
+test("an upward arrival fling stops at Survue without queuing Quill", () => {
+  const gallery = new ProjectStepper(2, 1700);
+  gallery.enter(1, 0, true);
+  for (let now = 20; now < 2000; now += 20) {
+    assert.equal(gallery.input(-1, now), "hold");
+    assert.equal(gallery.pendingDelay(now), null);
+  }
+  gallery.finishArrivalGesture();
+  assert.equal(gallery.advance(3000), "hold");
+  assert.equal(gallery.station, 1);
+  assert.equal(gallery.transition, null);
+  assert.equal(gallery.input(-1, 3100), "swap");
+});
+
+test("a separate early gesture after arrival is still remembered", () => {
+  const gallery = new ProjectStepper(2, 1700);
+  gallery.enter(1, 0, true);
+  gallery.input(-1, 40); // Remaining momentum from the crossing.
+  gallery.finishArrivalGesture();
+  assert.equal(gallery.input(-1, 300), "hold");
+  assert.equal(gallery.pendingDelay(300), 1400);
+  assert.equal(gallery.advance(1700), "swap");
+  assert.deepEqual(gallery.transition, { from: 1, to: 0, direction: -1 });
+});

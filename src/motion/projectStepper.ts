@@ -4,23 +4,33 @@ export class ProjectStepper {
   transition: { from: number; to: number; direction: number } | null = null;
   private availableAt = Infinity;
   private pendingDirection: number | null = null;
+  private consumingArrival = false;
 
   constructor(
     private readonly count: number,
     private readonly displayMs: number,
   ) {}
 
-  enter(station: number, now: number) {
+  enter(station: number, now: number, consumeArrivalGesture = false) {
     this.station = station;
     this.transition = null;
     this.pendingDirection = null;
     this.availableAt = now + this.displayMs;
+    this.consumingArrival = consumeArrivalGesture;
+  }
+
+  get arrivalGestureActive() {
+    return this.consumingArrival;
+  }
+
+  finishArrivalGesture() {
+    this.consumingArrival = false;
   }
 
   input(direction: number, now: number): "native" | "hold" | "swap" | "exit" {
     if (this.station === null) return "native";
     // The remainder of a fling cannot queue another step during the swap.
-    if (this.transition) return "hold";
+    if (this.consumingArrival || this.transition) return "hold";
     this.pendingDirection = direction;
     return this.advance(now);
   }
@@ -58,5 +68,6 @@ export class ProjectStepper {
     this.transition = null;
     this.pendingDirection = null;
     this.availableAt = Infinity;
+    this.consumingArrival = false;
   }
 }
