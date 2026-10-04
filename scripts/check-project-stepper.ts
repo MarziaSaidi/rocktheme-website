@@ -2,63 +2,98 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ProjectStepper } from "../src/motion/projectStepper";
 
-const settle = (gallery: ProjectStepper, now: number) => {
-  gallery.ready(true, now);
-  return now + 1800;
-};
-
 test("every visit uses the same forward and reverse swaps", () => {
   const gallery = new ProjectStepper(2, 1700);
   let now = 0;
   for (let visit = 0; visit < 4; visit++) {
     gallery.enter(0, now);
-    now = settle(gallery, now);
+    now += 1800;
     assert.equal(gallery.input(1, now), "swap");
     assert.deepEqual(gallery.transition, { from: 0, to: 1, direction: 1 });
     gallery.complete();
-    now = settle(gallery, now + 1200);
+    now += 1800;
     assert.equal(gallery.input(1, now), "exit");
     assert.equal(gallery.station, null);
 
-    gallery.enter(1, now + 5000);
-    now = settle(gallery, now + 5000);
+    now += 5000;
+    gallery.enter(1, now);
+    now += 1800;
     assert.equal(gallery.input(-1, now), "swap");
     assert.deepEqual(gallery.transition, { from: 1, to: 0, direction: -1 });
     gallery.complete();
-    now = settle(gallery, now + 1200);
+    now += 1800;
     assert.equal(gallery.input(-1, now), "exit");
     assert.equal(gallery.station, null);
     now += 5000;
   }
 });
 
-test("a fling cannot select another project during a swap or while the camera settles", () => {
+test("continuous upward input cannot indefinitely reset the display hold", () => {
   const gallery = new ProjectStepper(2, 1700);
-  gallery.enter(0, 0);
-  gallery.ready(true, 0);
-  assert.equal(gallery.input(1, 1800), "swap");
-  for (let now = 1810; now < 3000; now += 10) {
-    assert.equal(gallery.input(1, now), "hold");
-    assert.equal(gallery.input(-1, now), "hold");
-    assert.equal(gallery.station, 0);
+  gallery.enter(1, 0);
+  let swaps = 0;
+  for (let now = 100; now <= 6000; now += 100) {
+    const action = gallery.input(-1, now);
+    if (now < 1700) assert.equal(action, "hold");
+    if (action === "swap") swaps++;
   }
-  gallery.complete();
-  gallery.ready(false, 3000);
-  assert.equal(gallery.input(1, 5000), "hold");
-  gallery.ready(true, 5100);
-  assert.equal(gallery.input(1, 5200), "hold");
-  assert.equal(gallery.input(1, 7000), "exit");
+  assert.equal(swaps, 1);
+  assert.deepEqual(gallery.transition, { from: 1, to: 0, direction: -1 });
 });
 
-test("leaving through navigation clears a pending transition before the next visit", () => {
+test("one early upward request runs when the hold ends, without another gesture", () => {
+  const gallery = new ProjectStepper(2, 1700);
+  gallery.enter(1, 0);
+  assert.equal(gallery.input(-1, 100), "hold");
+  assert.equal(gallery.pendingDelay(100), 1600);
+  assert.equal(gallery.advance(1699), "hold");
+  assert.equal(gallery.advance(1700), "swap");
+  assert.deepEqual(gallery.transition, { from: 1, to: 0, direction: -1 });
+});
+
+test("a fling during the swap cannot queue another advance", () => {
+  const gallery = new ProjectStepper(2, 1700);
+  gallery.enter(1, 0);
+  assert.equal(gallery.input(-1, 1800), "swap");
+  for (let now = 1810; now < 3000; now += 10) {
+    assert.equal(gallery.input(-1, now), "hold");
+    assert.equal(gallery.pendingDelay(now), null);
+  }
+  gallery.complete();
+  assert.equal(gallery.advance(6000), "hold");
+  assert.equal(gallery.station, 0);
+});
+
+test("the next upward request exits after the remaining display time, without mouse movement", () => {
+  const gallery = new ProjectStepper(2, 1700);
+  gallery.enter(1, 0);
+  gallery.input(-1, 1800);
+  gallery.complete(); // 1200 ms horizontal transition finishes at 3000.
+  assert.equal(gallery.input(-1, 3050), "hold");
+  assert.equal(gallery.pendingDelay(3050), 450);
+  assert.equal(gallery.advance(3500), "exit");
+  assert.equal(gallery.station, null);
+});
+
+test("a pending request keeps only the latest requested direction", () => {
   const gallery = new ProjectStepper(2, 1700);
   gallery.enter(0, 0);
-  gallery.ready(true, 0);
-  gallery.input(1, 1800);
+  gallery.input(1, 100);
+  gallery.input(-1, 200);
+  assert.equal(gallery.advance(1700), "exit");
+});
+
+test("navigation cancels pending input and any transition before the next visit", () => {
+  const gallery = new ProjectStepper(2, 1700);
+  gallery.enter(1, 0);
+  gallery.input(-1, 100);
+  gallery.leave();
+  assert.equal(gallery.pendingDelay(1700), null);
+  assert.equal(gallery.advance(1700), "native");
+  gallery.enter(0, 2000);
+  assert.equal(gallery.advance(4000), "hold");
+  assert.equal(gallery.input(1, 4000), "swap");
   gallery.leave();
   gallery.complete();
   assert.equal(gallery.station, null);
-  gallery.enter(1, 6000);
-  gallery.ready(true, 6000);
-  assert.equal(gallery.input(-1, 8000), "swap");
 });

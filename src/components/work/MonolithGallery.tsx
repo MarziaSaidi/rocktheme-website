@@ -245,7 +245,7 @@ export function MonolithGallery({
   /** Whether the visitor is in a controlled project visit. */
   const [inWindow, setInWindow] = useState(false);
   // Once a visit starts, camera motion cannot hide the cards between swaps.
-  // The controller still waits for the camera before accepting the next gesture.
+  // Input waits only for the composition's display time and horizontal swap.
   const shown = inWindow;
 
   // The journey currently features two project composition stations.
@@ -273,13 +273,11 @@ export function MonolithGallery({
     let touchY: number | null = null;
     let touchUsed = false;
     let timer = 0;
+    let pendingTimer = 0;
+    let pendingScroll = { direction: 0, distance: 0 };
     let correcting = false;
     let jumping = false;
-    const root = document.documentElement;
     const position = (station: number) => stationOffset(runway, station, total, stretches);
-    const cameraReady = () =>
-      !root.hasAttribute("data-journey") || root.hasAttribute("data-camera-settled");
-    const updateReady = () => stepper.ready(cameraReady(), performance.now());
     const movePage = (y: number) => {
       expectedY = y;
       previousY = y;
@@ -291,14 +289,16 @@ export function MonolithGallery({
       const y = position(station);
       if (y === null) return;
       stepper.enter(station, performance.now());
+      pendingScroll = { direction: 0, distance: 0 };
       setActive(station);
       setSwap(null);
       setInWindow(true);
       movePage(y);
-      updateReady();
     };
     const leave = () => {
       window.clearTimeout(timer);
+      window.clearTimeout(pendingTimer);
+      pendingScroll = { direction: 0, distance: 0 };
       stepper.leave();
       setSwap(null);
       setInWindow(false);
@@ -310,6 +310,49 @@ export function MonolithGallery({
       if (from < first - 1 && to >= first) return 0;
       if (from > last + 1 && to <= last) return count - 1;
       return null;
+    };
+    const startSwap = () => {
+      const transition = stepper.transition;
+      if (!transition) return;
+      const y = position(transition.to);
+      if (y === null) {
+        leave();
+        return;
+      }
+      window.clearTimeout(pendingTimer);
+      pendingScroll = { direction: 0, distance: 0 };
+      setSwap(transition);
+      movePage(y);
+      timer = window.setTimeout(
+        () => {
+          stepper.complete();
+          setActive(transition.to);
+          setSwap(null);
+        },
+        reduced.matches ? 0 : PROJECT_SWAP_MS,
+      );
+    };
+    const schedulePending = () => {
+      window.clearTimeout(pendingTimer);
+      const delay = stepper.pendingDelay(performance.now());
+      if (delay === null) return;
+      pendingTimer = window.setTimeout(
+        () => {
+          const action = stepper.advance(performance.now());
+          if (action === "swap") startSwap();
+          else if (action === "exit") {
+            setInWindow(false);
+            // Apply the held request once. Upward exits keep its full distance;
+            // downward exits stop within a screen to preserve the About arrival.
+            const distance =
+              pendingScroll.direction < 0
+                ? pendingScroll.distance
+                : Math.max(48, Math.min(pendingScroll.distance, stableViewportHeight()));
+            movePage(Math.max(0, window.scrollY + pendingScroll.direction * distance));
+          } else schedulePending();
+        },
+        Math.max(1, delay),
+      );
     };
     const input = (direction: number, distance: number, event: Event) => {
       if (event.defaultPrevented) return;
@@ -326,32 +369,25 @@ export function MonolithGallery({
         }
         return;
       }
-      updateReady();
       const action = stepper.input(direction, lastUserInput);
       if (action === "exit") {
+        window.clearTimeout(pendingTimer);
         setInWindow(false);
         return;
       }
       if (action === "native") return;
       event.preventDefault();
-      if (action !== "swap" || !stepper.transition) return;
-      const transition = stepper.transition;
-      const y = position(transition.to);
-      if (y === null) {
-        leave();
-        return;
+      if (action === "swap") startSwap();
+      else if (stepper.pendingDelay(lastUserInput) !== null) {
+        pendingScroll = {
+          direction,
+          distance:
+            pendingScroll.direction === direction
+              ? Math.max(pendingScroll.distance, distance)
+              : distance,
+        };
+        schedulePending();
       }
-      setSwap(transition);
-      movePage(y);
-      timer = window.setTimeout(
-        () => {
-          stepper.complete();
-          setActive(transition.to);
-          setSwap(null);
-          updateReady();
-        },
-        reduced.matches ? 0 : PROJECT_SWAP_MS,
-      );
     };
     const wheel = (event: WheelEvent) => {
       if (event.ctrlKey || event.deltaY === 0) return;
@@ -454,11 +490,6 @@ export function MonolithGallery({
       stretches,
     );
     if (moment.details) enter(moment.project);
-    const observer = new MutationObserver(updateReady);
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-journey", "data-camera-settled"],
-    });
     window.addEventListener("wheel", wheel, { passive: false, capture: true });
     window.addEventListener("keydown", key, true);
     window.addEventListener("touchstart", touchStart, { passive: true });
@@ -468,7 +499,6 @@ export function MonolithGallery({
     window.addEventListener("resize", resize);
     return () => {
       leave();
-      observer.disconnect();
       window.removeEventListener("wheel", wheel, true);
       window.removeEventListener("keydown", key, true);
       window.removeEventListener("touchstart", touchStart);
