@@ -91,6 +91,7 @@ export function CabinWorld() {
     setStatus("loading");
     let disposed = false;
     let mounted: World | null = null;
+    const abandon = new AbortController();
 
     // A fresh canvas for every mount. A canvas holds a single WebGL context,
     // so a reused one would be shared with the previous mount, and releasing
@@ -126,6 +127,7 @@ export function CabinWorld() {
             // The live world shows the picture's view: the picture can go.
             releaseHandoff();
           },
+          signal: abandon.signal,
         }),
       )
       .then((instance) => {
@@ -146,6 +148,7 @@ export function CabinWorld() {
 
     return () => {
       disposed = true;
+      abandon.abort();
       mounted?.dispose();
       world.current = null;
       canvas.remove();

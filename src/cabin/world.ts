@@ -1,12 +1,15 @@
 import {
   ACESFilmicToneMapping,
+  MeshStandardMaterial,
   PCFSoftShadowMap,
   PerspectiveCamera,
   Raycaster,
   Vector2,
   Vector3,
   type Intersection,
+  type Material,
   type Object3D,
+  type RenderTarget,
 } from "three";
 import { WebGPURenderer } from "three/webgpu";
 
@@ -52,8 +55,14 @@ type MountOptions = Readonly<{
   arrival?: Readonly<{ kind: "rift"; zoom: () => number }> | Readonly<{ kind: "capture" }>;
   /** The first frame has been drawn. */
   onFirstFrame?: () => void;
+  /** The page no longer wants this world: stop preparing it. */
+  signal?: AbortSignal;
 }>;
 
+/** Most new materials per warm-up draw: each is tens of milliseconds of work. */
+const WARM_MATERIALS = 10;
+/** Most objects per warm-up draw, for the ones sharing materials already compiled. */
+const WARM_OBJECTS = 150;
 /** Drags shorter than this are taps, not looks. */
 const DRAG_SLOP = 4;
 /** How far a visitor may wander: the clearing, both buildings and room round them. */
@@ -102,6 +111,7 @@ export async function mountCabinWorld({
   onLost,
   arrival: entry,
   onFirstFrame,
+  signal,
 }: MountOptions): Promise<CabinWorld> {
   const capture = entry?.kind === "capture";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -402,6 +412,70 @@ export async function mountCabinWorld({
     // The capture script waits for the world to have drawn a while.
     if (capture && frames === 90) canvas.dataset.captureReady = "true";
   };
+
+  // ---------------------------------------------------------------- warm-up
+  // Drawn cold, the first frame builds every shader and uploads every texture
+  // at once, freezing the page for seconds. Behind the still-hidden canvas the
+  // world is drawn a few new materials at a time instead, handing the page back
+  // between draws, so the first real frame finds everything ready. Nothing is
+  // culled meanwhile, so what is behind the visitor is ready too.
+  const drawables: { node: Object3D; culled: boolean }[] = [];
+  world.scene.traverse((node) => {
+    if (!node.visible || !("material" in node)) return;
+    drawables.push({ node, culled: node.frustumCulled });
+    node.visible = false;
+    node.frustumCulled = false;
+  });
+  const materialsOf = (node: Object3D) =>
+    [(node as Object3D & { material: Material | Material[] }).material].flat();
+  const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const internals = renderer as unknown as { _getFrameBufferTarget?: () => RenderTarget | null };
+  const frameTarget = () => internals._getFrameBufferTarget?.call(renderer) ?? null;
+  const compiled = new Set<Material>();
+  let batch: Object3D[] = [];
+  let fresh = 0;
+  const drawBatch = async () => {
+    for (const node of batch) node.visible = true;
+    world.update(camera, performance.now());
+    // Compiling first lets the GPU build programs in parallel where the
+    // browser can; the draw then only uploads textures and shadows.
+    // Tone-mapped frames are drawn into the renderer's own target, so the
+    // compile must aim there too, or it builds programs no frame uses.
+    renderer.setRenderTarget(frameTarget());
+    await renderer.compileAsync(world.scene, camera);
+    renderer.setRenderTarget(null);
+    renderer.render(world.scene, camera);
+    for (const node of batch) node.visible = false;
+    batch = [];
+    fresh = 0;
+    await nextTask();
+  };
+  // The sky and its lighting first, as an ordinary draw with one lit object:
+  // both are turned into cube maps the first time they are used, and done
+  // mid-compile they come out black.
+  const lit = drawables.find(({ node }) =>
+    materialsOf(node).some((material) => material instanceof MeshStandardMaterial),
+  );
+  if (lit) lit.node.visible = true;
+  world.update(camera, performance.now());
+  renderer.render(world.scene, camera);
+  if (lit) lit.node.visible = false;
+  await nextTask();
+  for (const { node } of drawables) {
+    if (signal?.aborted) break;
+    batch.push(node);
+    for (const material of materialsOf(node)) {
+      if (compiled.has(material)) continue;
+      compiled.add(material);
+      fresh += 1;
+    }
+    if (fresh >= WARM_MATERIALS || batch.length >= WARM_OBJECTS) await drawBatch();
+  }
+  if (batch.length > 0 && !signal?.aborted) await drawBatch();
+  for (const { node, culled } of drawables) {
+    node.visible = true;
+    node.frustumCulled = culled;
+  }
 
   const onVisibility = () => {
     if (document.hidden) {
