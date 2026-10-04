@@ -306,11 +306,11 @@ export const survueProject = {
       },
       {
         id: "foundations",
-        label: "Foundations",
+        label: "System design",
         stories: [
           {
             id: "color",
-            eyebrow: "Visual foundations / founder-defined palette",
+            eyebrow: "System design / founder-defined palette",
             title: "Apply the brand palette to interface roles.",
             description:
               "The founder defined the colors and typography. I applied those foundations to the app's surfaces, controls, and vehicle-awareness states. Black and off-white anchor the themes; green represents safe passage, mustard yellow marks level-one risk, and red marks the red warning state.",
@@ -325,8 +325,7 @@ export const survueProject = {
                 { label: "Light options card", value: "#FFFFFF" },
                 { label: "Safe passage", value: "#0FA958" },
                 { label: "Level-one risk", value: "#EAC234" },
-                { label: "Red warning", value: "#E4002B" },
-                { label: "Onboarding action", value: "#E4002B" },
+                { label: "Warning + onboarding", value: "#E4002B" },
               ],
             },
           },

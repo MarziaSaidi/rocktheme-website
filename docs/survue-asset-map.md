@@ -2,15 +2,15 @@
 
 The case study is authored in `src/content/projects/records/survue.project.ts`. Original images live under `public/images/projects/survue/story/`; the interaction prototype is under `public/media/projects/survue/`.
 
-| Stage       | Story views | Evidence                                                                                              |
-| ----------- | ----------: | ----------------------------------------------------------------------------------------------------- |
-| Overview    |           1 | Visitor-controlled prototype video; role and central design question                                  |
-| Structure   |           1 | Original user-flow diagram, with full-size link                                                       |
-| Wireframes  |           3 | Original five-screen board, original setup detail, separate retrospective reconstruction reference    |
-| Detection   |           3 | Distance versus numeric risk comparison, spatial concept, final three-state direction                 |
-| Foundations |           5 | Confirmed palette, Helvetica Neue specimen, original components and icons, proposed spacing guideline |
-| Experience  |           3 | Pairing, recordings, and settings                                                                     |
-| Delivery    |           1 | Final interface overview, contribution, evidence limits, and next validation priorities               |
+| Stage         | Story views | Evidence                                                                                              |
+| ------------- | ----------: | ----------------------------------------------------------------------------------------------------- |
+| Overview      |           1 | Visitor-controlled prototype video; role and central design question                                  |
+| Structure     |           1 | Original user-flow diagram, with full-size link                                                       |
+| Wireframes    |           3 | Original five-screen board, original setup detail, separate retrospective reconstruction reference    |
+| Detection     |           3 | Distance versus numeric risk comparison, spatial concept, final three-state direction                 |
+| System design |           5 | Confirmed palette, Helvetica Neue specimen, original components and icons, proposed spacing guideline |
+| Experience    |           3 | Pairing, recordings, and settings                                                                     |
+| Delivery      |           1 | Final interface overview, contribution, evidence limits, and next validation priorities               |
 
 Survue uses `storyPlayback: "manual"`. Existing stage IDs (`context`, `structure`, `wireframes`, `detection`, `final`) remain compatible with previous deep links; `delivery` adds the closing evidence summary.
 
@@ -31,3 +31,7 @@ Individual Searching, Connecting, My Recordings detail, expanded Sound, and expa
 The user confirmed the founder defined the palette and Helvetica Neue. Palette: dark background #000000; dark options card #212020; light background #F2F2F2; light card #FFFFFF; safe passage #0FA958; level-one risk #EAC234; red road/vehicle warning and founder-directed onboarding action #E4002B. The designer selected icons through Iconify's Figma plugin. Original PNG exports are preserved under `public/images/projects/survue/foundations/`.
 
 The components show only exported states: filled primary action, outlined device alternative, collapsed/expanded Theme settings row, and one toggle state. No disabled, pressed, or loading variants are fabricated. Helvetica Neue examples demonstrate the confirmed family, not original type sizes or weights. The user requested a standard mobile spacing hierarchy: 4, 8, 12, 16, 24, 32 px. It is clearly labelled a proposed guideline rather than original Figma measurements.
+
+## Presentation references
+
+The October refinement groups theme surfaces separately from semantic colors, composes related component states together, introduces a larger typography specimen, and moves navigation away from the artifacts. Reference studies: Hannah Hill's FieldAgent (`https://hannahhill.design/caseStudyDesignSystem.html`) for library relationships, and Eva Yu's Business of Home (`https://www.evayudesign.com/case-study-business-of-home`) for grouped component boards. Survue uses its own assets and visual language; no source imagery is copied.

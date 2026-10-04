@@ -176,7 +176,9 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
     return (
       <div className={styles.typeSpecimen}>
         <p className={styles.specimenLabel}>{visual.family}</p>
-        <p className={styles.typeAlphabet}>Aa</p>
+        <p className={styles.typeAlphabet}>
+          Aa<span>0123456789</span>
+        </p>
         {visual.examples.map((example) => (
           <div className={styles.typeExample} key={example.label}>
             <span className={styles.specimenLabel}>{example.label}</span>
@@ -222,7 +224,10 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
               {step.value}
               <span> px</span>
             </strong>
-            <span className={styles.spacingMark} style={{ width: step.value }} aria-hidden="true" />
+            <span className={styles.spacingMark} style={{ gap: step.value }} aria-hidden="true">
+              <span />
+              <span />
+            </span>
             <span>{step.label}</span>
           </div>
         ))}
@@ -612,6 +617,12 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
         </div>
         <div
           className={styles.visualFrame}
+          data-board={
+            story.visual &&
+            ["palette", "typography", "assets", "spacing"].includes(story.visual.type)
+              ? "true"
+              : undefined
+          }
           data-controlled-video={
             story.visual?.type === "video" && story.visual.playback === "controls"
               ? "true"
