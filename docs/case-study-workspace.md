@@ -59,6 +59,10 @@ Use three to seven stages. Each stage needs at least one story. A single-story s
 - `group`: several related images displayed together.
 - `comparison`: labeled before and after images.
 - `sequence`: a labeled set of real project screens in a row, overview board, or product mosaic; each screen opens its source at full size.
+- `palette`: labelled hex color swatches.
+- `typography`: a Helvetica Neue specimen using named examples.
+- `assets`: original exported icons or components with descriptive labels and full-size links.
+- `spacing`: labelled positive pixel values for an explicit spacing guideline.
 - `code`: a scrollable engineering artifact with an optional language and label.
 - no visual: a text-led stage with no empty media placeholder.
 
@@ -68,7 +72,11 @@ Set `zoomable: true` on a wide image to provide a full-size link beneath the vie
 
 ## Story behavior
 
-Desktop stories advance after six seconds unless a story supplies `durationSeconds`. Progress pauses on hover, keyboard focus, touch interaction, or when the document is hidden. A story never advances into the next stage.
+By default, desktop stories advance after six seconds unless a story supplies `durationSeconds`. The clock pauses while reading the copy, holding the visual, using keyboard focus, playing controlled video, or when the document is hidden. Progress can carry into the next stage.
+
+Set `caseStudy.storyPlayback: "manual"` to disable the clock for a project. Previous/next buttons, stage navigation, keyboard arrows, and touch navigation remain available. This is used for Quill & Pigeon so readers can inspect the evidence at their own pace.
+
+`caseStudy.info.timelineLabel` optionally clarifies what a timeline represents (for example, "Internship"); other projects default to "Timeline".
 
 Mobile stories never auto-advance. People can tap the left or right side, swipe, or use a keyboard. Stage navigation scrolls horizontally when labels do not fit.
 

@@ -203,6 +203,7 @@ export type ProjectSeo = Readonly<{
 /** Project-specific facts shown in the persistent rail and mobile disclosure. */
 export type CaseStudyInfo = Readonly<{
   timeline?: string;
+  timelineLabel?: string;
   company?: string;
   team?: string;
   responsibilities?: readonly string[];
@@ -240,6 +241,24 @@ export type StoryVisual =
       tone?: "dark" | "paper";
       layout?: "row" | "board" | "mosaic";
       items: readonly Readonly<{ label: string; media: ImageMedia }>[];
+    }>
+  | Readonly<{
+      type: "palette";
+      colors: readonly Readonly<{ label: string; value: `#${string}` }>[];
+    }>
+  | Readonly<{
+      type: "typography";
+      family: "Helvetica Neue";
+      examples: readonly Readonly<{ label: string; text: string }>[];
+    }>
+  | Readonly<{
+      type: "assets";
+      layout: "icons" | "components";
+      items: readonly Readonly<{ label: string; media: ImageMedia }>[];
+    }>
+  | Readonly<{
+      type: "spacing";
+      steps: readonly Readonly<{ value: number; label: string }>[];
     }>
   | Readonly<{ type: "code"; code: string; language?: string; label?: string }>;
 
@@ -288,6 +307,8 @@ export type Project = Readonly<{
   accentColor: `#${string}`;
   seo: ProjectSeo;
   caseStudy: Readonly<{
+    /** Keep evidence stable for case studies intended to be read at the visitor's pace. */
+    storyPlayback?: "auto" | "manual";
     /** New projects can author stages directly; legacy block records are adapted. */
     stages?: readonly CaseStudyStage[];
     blocks?: readonly CaseStudyBlock[];

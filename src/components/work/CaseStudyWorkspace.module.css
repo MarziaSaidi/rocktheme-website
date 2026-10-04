@@ -367,6 +367,17 @@ video.visualMedia[data-fit="cover"] {
   inset-inline-end: 0;
   justify-content: flex-end;
 }
+/* Keep native video controls clear of the story navigation hit areas. */
+.visualFrame[data-controlled-video="true"] .previousControl,
+.visualFrame[data-controlled-video="true"] .nextControl {
+  inset-block: 50% auto;
+  width: 3.5rem;
+  height: 3.5rem;
+  padding: 0;
+  justify-content: center;
+  translate: 0 -50%;
+}
+
 .previousControl[hidden],
 .nextControl[hidden] {
   display: none;
@@ -844,4 +855,137 @@ video.visualMedia[data-fit="cover"] {
 .caption,
 .zoomLink {
   animation-delay: var(--motion-case-body-at);
+}
+
+/* Evidence boards use the existing dark workspace and its type tokens. */
+.palette,
+.assetBoard {
+  display: grid;
+  align-content: center;
+  gap: var(--space-5);
+  width: 100%;
+  height: 100%;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  overflow: auto;
+}
+.palette {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.colorSample,
+.assetSample {
+  min-width: 0;
+  margin: 0;
+}
+.swatch {
+  display: block;
+  height: clamp(2.5rem, 6vh, 4.5rem);
+  border: 1px solid rgb(255 255 255 / 20%);
+}
+.colorSample figcaption {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.colorSample strong {
+  font-size: var(--text-small);
+  font-weight: 400;
+}
+.colorSample figcaption > span,
+.specimenLabel,
+.assetSample figcaption {
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  line-height: 1.5;
+  letter-spacing: var(--tracking-micro-tight);
+}
+.typeSpecimen {
+  width: 100%;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.typeAlphabet {
+  margin: 0 0 var(--space-6);
+  font-size: clamp(5rem, 12vw, 10rem);
+  line-height: 1.1;
+}
+.typeExample {
+  padding-block: var(--space-4);
+  border-top: var(--border-hairline);
+}
+.typeExample p {
+  margin: var(--space-2) 0 0;
+  font-size: clamp(1.1rem, 2vw, 1.75rem);
+}
+.assetBoard[data-layout="icons"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.assetBoard[data-layout="components"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.assetSample a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 4.5rem;
+}
+.assetSample img {
+  display: block;
+  object-fit: contain;
+  max-width: 100%;
+  height: auto;
+}
+.assetBoard[data-layout="icons"] img {
+  max-height: 3rem;
+  max-width: 3rem;
+}
+.assetBoard[data-layout="components"] img {
+  max-height: 10rem;
+}
+.assetSample figcaption {
+  margin-top: var(--space-3);
+  text-align: center;
+}
+@media (max-width: 47.99rem) {
+  .palette,
+  .assetBoard {
+    height: auto;
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+  .assetBoard[data-layout="icons"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .assetBoard[data-layout="components"] {
+    grid-template-columns: 1fr;
+  }
+}
+
+.spacingScale {
+  width: 100%;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+.spacingStep {
+  display: grid;
+  grid-template-columns: 4rem 3rem minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+  padding-block: var(--space-5);
+  border-bottom: var(--border-hairline);
+}
+.spacingStep strong {
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+.spacingStep strong span {
+  font-size: var(--text-micro);
+  color: var(--color-text-secondary);
+}
+.spacingMark {
+  height: 4px;
+  background: var(--color-text-primary);
+}
+.spacingStep > span:last-child {
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
 }

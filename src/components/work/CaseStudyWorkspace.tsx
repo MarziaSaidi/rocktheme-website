@@ -152,6 +152,84 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
     );
   }
 
+  if (visual.type === "palette") {
+    return (
+      <div className={styles.palette}>
+        {visual.colors.map((color) => (
+          <figure key={color.label} className={styles.colorSample}>
+            <span
+              className={styles.swatch}
+              style={{ backgroundColor: color.value }}
+              aria-hidden="true"
+            />
+            <figcaption>
+              <strong>{color.label}</strong>
+              <span>{color.value}</span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    );
+  }
+
+  if (visual.type === "typography") {
+    return (
+      <div className={styles.typeSpecimen}>
+        <p className={styles.specimenLabel}>{visual.family}</p>
+        <p className={styles.typeAlphabet}>Aa</p>
+        {visual.examples.map((example) => (
+          <div className={styles.typeExample} key={example.label}>
+            <span className={styles.specimenLabel}>{example.label}</span>
+            <p>{example.text}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (visual.type === "assets") {
+    return (
+      <div className={styles.assetBoard} data-layout={visual.layout}>
+        {visual.items.map((item) => (
+          <figure className={styles.assetSample} key={item.media.src}>
+            <a
+              href={item.media.src}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${item.label} asset full size`}
+            >
+              <Image
+                src={item.media.src}
+                alt={item.media.alt}
+                width={item.media.width}
+                height={item.media.height}
+                unoptimized
+              />
+            </a>
+            <figcaption>{item.label}</figcaption>
+          </figure>
+        ))}
+      </div>
+    );
+  }
+
+  if (visual.type === "spacing") {
+    return (
+      <div className={styles.spacingScale}>
+        {visual.steps.map((step) => (
+          <div className={styles.spacingStep} key={step.value}>
+            <strong>
+              {step.value}
+              <span> px</span>
+            </strong>
+            <span className={styles.spacingMark} style={{ width: step.value }} aria-hidden="true" />
+            <span>{step.label}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (visual.type === "code") {
     return (
       <figure className={styles.codeArtifact}>
@@ -204,7 +282,7 @@ function Lines({ text }: { text: string }) {
 function ProjectFacts({ project, info }: { project: Project; info?: CaseStudyInfo }) {
   const facts = [
     ["Role", project.role.join(" + ")],
-    ["Timeline", info?.timeline ?? String(project.year)],
+    [info?.timelineLabel ?? "Timeline", info?.timeline ?? String(project.year)],
     ["Company", info?.company],
     ["Team", info?.team],
     ["Contribution", info?.responsibilities?.join(", ")],
@@ -266,7 +344,8 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
   const durationMs =
     (story?.durationSeconds ??
       (loopSeconds ? Math.min(30, Math.max(4, loopSeconds)) : DEFAULT_STORY_SECONDS)) * 1000;
-  const autoplay = !mobile && !reducedMotion && !atEnd;
+  const autoplay =
+    project.caseStudy.storyPlayback !== "manual" && !mobile && !reducedMotion && !atEnd;
   const running =
     autoplay && !documentHidden && !reading && !holding && !keyboardFocus && !videoPlaying;
 
@@ -399,7 +478,7 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       left: selected.offsetLeft - (nav.clientWidth - selected.clientWidth) / 2,
       behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
     });
-  }, [stageId]);
+  }, [stageId, mobile]);
 
   // Moves the stage indicator onto the selected stage, and follows resizes.
   useLayoutEffect(() => {
@@ -464,7 +543,8 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
           </span>
         </h1>
         <p>
-          {project.role.join(" + ")} · {info?.timeline ?? project.year}
+          {project.role.join(" + ")} · {info?.timelineLabel ? `${info.timelineLabel}: ` : ""}
+          {info?.timeline ?? project.year}
         </p>
         <details className={styles.infoDisclosure}>
           <summary>Project info</summary>
@@ -532,6 +612,11 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
         </div>
         <div
           className={styles.visualFrame}
+          data-controlled-video={
+            story.visual?.type === "video" && story.visual.playback === "controls"
+              ? "true"
+              : undefined
+          }
           key={storyKey}
           onPointerDown={(event) => {
             if (!(event.target as Element).closest("button, a, video")) setHolding(true);

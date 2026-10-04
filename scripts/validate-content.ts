@@ -283,6 +283,50 @@ function validateStages(stages: readonly CaseStudyStage[], location: string): vo
             validateImage(item.media, `${storyLocation}.visual.items[${itemIndex}].media`);
           },
         );
+      } else if (story.visual?.type === "palette") {
+        if (!story.visual.colors.length)
+          addError(`${storyLocation}.visual.colors`, "must contain colors");
+        story.visual.colors.forEach((color: { label: string; value: string }, index: number) => {
+          validateRequiredString(color.label, `${storyLocation}.visual.colors[${index}].label`);
+          if (!/^#[0-9a-f]{6}$/i.test(color.value))
+            addError(
+              `${storyLocation}.visual.colors[${index}].value`,
+              "must be a six-digit hex color",
+            );
+        });
+      } else if (story.visual?.type === "typography") {
+        if (story.visual.family !== "Helvetica Neue")
+          addError(`${storyLocation}.visual.family`, "unsupported font specimen");
+        if (!story.visual.examples.length)
+          addError(`${storyLocation}.visual.examples`, "must contain examples");
+        story.visual.examples.forEach((example: { label: string; text: string }, index: number) => {
+          validateRequiredString(example.label, `${storyLocation}.visual.examples[${index}].label`);
+          validateRequiredString(example.text, `${storyLocation}.visual.examples[${index}].text`);
+        });
+      } else if (story.visual?.type === "assets") {
+        validateVariant(
+          story.visual.layout,
+          ["icons", "components"],
+          `${storyLocation}.visual.layout`,
+          false,
+        );
+        if (!story.visual.items.length)
+          addError(`${storyLocation}.visual.items`, "must contain assets");
+        story.visual.items.forEach((item: { label: string; media: ImageMedia }, index: number) => {
+          validateRequiredString(item.label, `${storyLocation}.visual.items[${index}].label`);
+          validateImage(item.media, `${storyLocation}.visual.items[${index}].media`);
+        });
+      } else if (story.visual?.type === "spacing") {
+        if (!story.visual.steps.length)
+          addError(`${storyLocation}.visual.steps`, "must contain spacing steps");
+        story.visual.steps.forEach((step: { label: string; value: number }, index: number) => {
+          if (!Number.isFinite(step.value) || step.value <= 0 || step.value > 128)
+            addError(
+              `${storyLocation}.visual.steps[${index}].value`,
+              "must be between 1 and 128 pixels",
+            );
+          validateRequiredString(step.label, `${storyLocation}.visual.steps[${index}].label`);
+        });
       } else if (story.visual?.type === "code" && !story.visual.code.trim()) {
         addError(`${storyLocation}.visual.code`, "is required");
       }
@@ -387,6 +431,12 @@ function validateProject(project: Project, index: number): void {
     return;
   }
 
+  validateVariant(
+    project.caseStudy.storyPlayback,
+    ["auto", "manual"],
+    `${location}.caseStudy.storyPlayback`,
+    true,
+  );
   if (stages?.length) validateStages(stages, `${location}.caseStudy`);
   if (!blocks?.length) return;
 
