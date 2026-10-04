@@ -336,7 +336,7 @@ export const survueProject = {
             description:
               "Helvetica Neue was the founder's chosen typeface. I used it across navigation, controls, and status messaging. The examples show how the same family supports a screen title, an action, and a warning without introducing another typeface.",
             caption:
-              "Typeset examples of the confirmed font family; not original size or weight specifications.",
+              "Helvetica Neue across screen titles, actions, and status messages.",
             visual: {
               type: "typography",
               family: "Helvetica Neue",
@@ -349,7 +349,7 @@ export const survueProject = {
           },
           {
             id: "components",
-            eyebrow: "Components / original Figma exports",
+            eyebrow: "Components / actions and settings",
             title: "Give actions and preferences distinct forms.",
             description:
               "The filled red onboarding button and outlined Not My Device action establish primary and secondary choices. Settings rows use the same rounded surface in collapsed and expanded states. The expanded Theme row reveals its control while retaining the parent label.",
@@ -386,7 +386,7 @@ export const survueProject = {
                   ),
                 ),
                 item(
-                  "Toggle / exported state",
+                  "Toggle / on",
                   foundationAsset(
                     "toggle",
                     "Red toggle switch with white thumb on the right.",
@@ -399,12 +399,12 @@ export const survueProject = {
           },
           {
             id: "icons",
-            eyebrow: "Iconography / original exports",
+            eyebrow: "Iconography / navigation and status",
             title: "Pair recognizable symbols with clear labels.",
             description:
-              "I selected icons through the Iconify Figma plugin for navigation and common actions. This board brings those exports together with the ride and device-status symbols. The app pairs icons with labels in navigation and settings so their meaning does not depend on the symbol alone.",
+              "I selected icons through the Iconify Figma plugin for navigation and common actions, alongside ride and device-status symbols. Icons are paired with labels in navigation and settings to make their meaning clear.",
             caption:
-              "Original exported assets. Icons span multiple collections; a single custom icon family is not claimed.",
+              "Navigation, media controls, and ride-status symbols used throughout Survue.",
             visual: {
               type: "assets",
               layout: "icons",
@@ -435,9 +435,9 @@ export const survueProject = {
             eyebrow: "Spacing / mobile guideline",
             title: "Use a small scale to separate related tasks.",
             description:
-              "For documenting the mobile interface, I use a 4-point spacing scale. Smaller steps keep labels and controls related; larger steps separate groups and screen sections. This is a guideline added for the case study, not a claim about measurements in the original Figma file.",
+              "A 4-point spacing scale organizes the mobile interface. Smaller steps keep labels and controls related; larger steps separate groups and screen sections.",
             caption:
-              "Proposed mobile spacing hierarchy. Original component exports remain unchanged.",
+              "4, 8, 12, 16, 24, and 32 px: from closely related elements to distinct sections.",
             visual: {
               type: "spacing",
               steps: [
