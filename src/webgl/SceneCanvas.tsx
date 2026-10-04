@@ -7,7 +7,7 @@ import { stableViewportHeight } from "@/config/viewport";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
-import { BIO_DWELL } from "./riftChannel";
+import { BIO_DWELL, bioRestScroll } from "./riftChannel";
 import { afterDoorway, subscribeEntryArrival } from "./entryChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { JourneyStops } from "./core/cameraJourney";
@@ -133,11 +133,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       const workEnd = Math.max(workStart, workStart + work.offsetHeight - viewport);
       // The bio rests on its sentence, not the middle of its (tall) section:
       // the rest of the section is the runway out over the water to Contact.
-      const thesis = about.querySelector<HTMLElement>("h2") ?? about;
-      const aboutRest = Math.min(
-        end,
-        Math.max(workEnd, top(thesis) + thesis.offsetHeight / 2 - viewport / 2),
-      );
+      const aboutRest = Math.min(end, Math.max(workEnd, bioRestScroll(about, viewport)));
       const contact = Math.max(aboutRest, end);
       return {
         workStart,

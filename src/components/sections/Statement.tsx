@@ -7,6 +7,7 @@ import { BioDust } from "@/motion/BioDust";
 import { ReadingLight } from "@/motion/ReadingLight";
 import { SectionMotion } from "@/motion/SectionMotion";
 
+import { AboutArrival } from "./AboutArrival";
 import styles from "./Statement.module.css";
 
 /**
@@ -91,6 +92,7 @@ export function Statement() {
       />
 
       <BioDust sectionId={sectionAnchors.about} selector="#about-title" />
+      <AboutArrival />
 
       <EnvironmentLayer sectionId="about" />
 

@@ -119,3 +119,14 @@ export function getRiftAnchor() {
  * crumbles back into the rift over this stretch.
  */
 export const BIO_DWELL = 0.55;
+
+/**
+ * The scroll offset where the camera rests at the bio, facing the rift: the
+ * sentence centred on screen. The camera's journey and the way back from
+ * /my-world both stop here. Unclamped; the page's own bounds apply.
+ */
+export function bioRestScroll(about: HTMLElement, viewport: number) {
+  const thesis = about.querySelector<HTMLElement>("h2") ?? about;
+  const top = thesis.getBoundingClientRect().top + window.scrollY;
+  return top + thesis.offsetHeight / 2 - viewport / 2;
+}
