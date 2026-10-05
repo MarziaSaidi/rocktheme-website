@@ -3,6 +3,8 @@
 import { useEffect, useImperativeHandle, useRef, type Ref, type RefObject } from "react";
 import type { Object3D, Vector3 } from "three";
 
+import { TRANSITION_PEAK } from "@/sound/soundConfig";
+import { emitSoundEvent } from "@/sound/soundEvents";
 import { markDoorwayStanding } from "@/webgl/entryChannel";
 import {
   environmentLightingConfig,
@@ -601,6 +603,12 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
           ).toFixed(3);
           if (clock >= STILL_SEQUENCE.crossed) cross();
           return;
+        }
+
+        // The transition is started so its bloom lands on the burst.
+        const passageCue = SEQUENCE.boom - TRANSITION_PEAK;
+        if (clock - deltaSeconds < passageCue && clock >= passageCue) {
+          emitSoundEvent("entry:passage");
         }
 
         shatter.uniforms.uBreak.value = clock - SEQUENCE.release;

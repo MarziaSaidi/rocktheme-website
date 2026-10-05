@@ -12,6 +12,8 @@
  */
 
 export const SOUND_EVENTS = [
+  /** The doorway has opened into the passage and the camera is pushing in. */
+  "entry:passage",
   /** A project has settled in front of the camera. */
   "project:active",
   /** The statement's words have begun to light. */
