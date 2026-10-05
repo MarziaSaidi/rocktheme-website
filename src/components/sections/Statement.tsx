@@ -1,114 +1,84 @@
-import { Fragment, type CSSProperties, type ReactNode } from "react";
+import { Fragment } from "react";
 
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
-import { BioDust } from "@/motion/BioDust";
-import { ReadingLight } from "@/motion/ReadingLight";
-import { SectionMotion } from "@/motion/SectionMotion";
+import { BioStory } from "@/motion/BioStory";
 
 import { AboutArrival } from "./AboutArrival";
 import styles from "./Statement.module.css";
 
-/**
- * Marks the emphasised terms. The words come from content, so the component
- * never names one itself; it only publishes each as `data-term` so the
- * stylesheet can give it its own treatment.
- */
-function markEmphasis(text: string, terms: readonly string[]): ReactNode {
-  if (terms.length === 0) {
-    return text;
-  }
-
-  const pattern = new RegExp(`\\b(${terms.join("|")})\\b`, "g");
-  const pieces = text.split(pattern);
-
-  return pieces.map((piece, index) =>
-    terms.includes(piece) ? (
-      <span key={`${piece}-${index}`} className={styles.term} data-term={piece}>
-        {piece}
-      </span>
-    ) : (
-      <Fragment key={`text-${index}`}>{piece}</Fragment>
-    ),
-  );
-}
+type Passage = (typeof siteContent.statement.passages)[number];
 
 /**
- * The thesis as words that light in reading order. Each word is an ordinary
- * inline span carrying its index, and the spaces stay real text, so the
- * heading still reads, selects and copies as one sentence. Emphasised terms
- * are marked without their trailing punctuation.
+ * The title as words the dust can land on. A line break in the content is a
+ * real one; the title still reads, selects and copies as one sentence.
  */
-function readingWords(text: string, terms: readonly string[]): ReactNode {
-  const words = text.split(" ");
-  return words.map((word, index) => {
-    const core = word.replace(/[.,;:!?]+$/, "");
-    const tail = word.slice(core.length);
-    const style = { "--i": index } as CSSProperties;
-    return (
-      <Fragment key={`${word}-${index}`}>
-        {terms.includes(core) ? (
-          <>
-            <span className={styles.word} style={style} data-word={index} data-term={core}>
-              {core}
-            </span>
-            <span className={styles.word} style={style} data-word={index}>
-              {tail}
-            </span>
-          </>
-        ) : (
-          <span className={styles.word} style={style} data-word={index}>
+function titleWords({ title, signature }: Passage) {
+  return title.split("\n").map((line, row) => (
+    <Fragment key={row}>
+      {row > 0 ? <br /> : null}
+      {line.split(" ").map((word, index, words) => (
+        <Fragment key={index}>
+          <span
+            className={styles.word}
+            data-title-word=""
+            data-signature={
+              signature.motion !== "sweep" && word === signature.word ? signature.motion : undefined
+            }
+          >
             {word}
           </span>
-        )}
-        {index < words.length - 1 ? " " : null}
-      </Fragment>
-    );
-  });
+          {index < words.length - 1 ? " " : null}
+        </Fragment>
+      ))}
+    </Fragment>
+  ));
 }
 
 /**
  * Personal statement.
  *
- * The calm scene. The thesis is read, not played: its words light in order as
- * the page scrolls through the section, and the emphasised terms settle in
- * lavender. It comes out of the rift as dust and goes back into it
- * as the visitor moves on. The text is ordinary, selectable, semantic text
- * throughout.
+ * Three passages take turns beside the rift. Each title comes out of it as
+ * dust and goes back into it; the copy beneath is read by a light that follows
+ * the scroll. Without the motion owner (no JavaScript, reduced motion, a very
+ * short screen) the passages simply stack, lit and readable.
  */
 export function Statement() {
   const { statement } = siteContent;
-  const [thesis, ...rest] = statement.paragraphs;
 
   return (
     <section id={sectionAnchors.about} className={styles.section} aria-labelledby="about-title">
-      {/* Solid text reveals independently of the ambient particle current. */}
-      <SectionMotion sectionId={sectionAnchors.about} />
-      <ReadingLight
-        sectionId={sectionAnchors.about}
-        selector="#about-title"
-        startEvent="statement:read"
-      />
-
-      <BioDust sectionId={sectionAnchors.about} selector="#about-title" />
       <AboutArrival />
-
+      <BioStory />
       <EnvironmentLayer sectionId="about" />
-
-      <div className={styles.inner}>
-        <h2
-          id="about-title"
-          className={styles.thesis}
-          style={{ "--count": thesis?.split(" ").length ?? 0 } as CSSProperties}
-        >
-          {thesis ? readingWords(thesis, statement.emphasis) : null}
-        </h2>
-        {rest.map((paragraph) => (
-          <p key={paragraph} className={styles.body}>
-            {markEmphasis(paragraph, statement.emphasis)}
-          </p>
-        ))}
+      <div className={styles.story} data-bio-story>
+        <div className={styles.stage}>
+          <div className={styles.inner}>
+            {statement.passages.map((passage, index) => {
+              const Title = index === 0 ? "h2" : "h3";
+              return (
+                <article
+                  key={passage.title}
+                  className={styles.passage}
+                  data-bio-passage
+                  data-emphasis={passage.emphasis.join(" ")}
+                  data-sweep={
+                    passage.signature.motion === "sweep" ? passage.signature.word : undefined
+                  }
+                >
+                  <Title id={index === 0 ? "about-title" : undefined} className={styles.title}>
+                    {titleWords(passage)}
+                  </Title>
+                  <div className={styles.copy} data-bio-copy>
+                    <p className={styles.body}>{passage.body}</p>
+                    <p className={styles.aside}>{passage.aside}</p>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </section>
   );

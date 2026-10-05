@@ -48,11 +48,35 @@ export const siteContent = {
     viewLabel: "View case study",
   },
   statement: {
-    paragraphs: [
-      "I turn complex product tasks into clear interfaces, from reviewing a spreadsheet to understanding approaching traffic.",
+    /**
+     * Three passages that take turns beside the rift. `emphasis` settles in
+     * lavender as it is read. `signature` is each passage's one moment: a title
+     * word that snaps together ("snap") or is printed ("print"), or a body word
+     * that light passes through ("sweep").
+     */
+    passages: [
+      {
+        title: "I’m Marzia.\nI make ideas real.",
+        body: "I’m a design engineer working between an idea and a real product.",
+        aside: "I’m most useful when things are still a little unclear.",
+        emphasis: ["design", "engineer"],
+        signature: { word: "real.", motion: "snap" },
+      },
+      {
+        title: "From the first question to the final detail.",
+        body: "I figure out what a product should do, design how it should feel, and get close enough to the code to make sure the idea survives implementation.",
+        aside: "I care about the small interaction details, and whether the thing actually works.",
+        emphasis: ["small", "interaction", "details"],
+        signature: { word: "detail.", motion: "print" },
+      },
+      {
+        title: "Curiosity usually becomes a prototype.",
+        body: "Lately, I’m exploring what changes when AI becomes part of the product itself, and how people and AI make decisions together.",
+        aside: "Mostly, I like making things. If an idea stays with me, I build it.",
+        emphasis: ["AI"],
+        signature: { word: "AI", motion: "sweep" },
+      },
     ],
-    /** Words that settle in lavender as the sentence is read. */
-    emphasis: ["clear", "interfaces"],
   },
   contact: {
     displayLines: ["Let’s create", "the unexpected."],

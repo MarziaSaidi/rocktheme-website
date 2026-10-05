@@ -43,7 +43,7 @@ them, rendered by `scripts/render-sound-cues.mjs` into `public/audio/effects/`.
 | ---------------- | ------------------------------------------------------ | ----------------------------------------------- |
 | `entry:passage`  | `IntroDoorway.tsx`, timed so the bloom meets the burst | `transition`, whole                             |
 | `project:active` | `MonolithGallery.tsx`, a project settles               | `readout`, a step higher for the second project |
-| `statement:read` | `Statement.tsx` via `ReadingLight`, first words light  | `readout`                                       |
+| `statement:read` | `BioStory.tsx`, a bio passage arrives                  | `readout`                                       |
 | `project:open`   | `MonolithGallery.tsx`, View case study                 | `transition`, entered late                      |
 | `contact:open`   | `SiteFooter.tsx`, the plane or the email link          | `chime`                                         |
 

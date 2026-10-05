@@ -7,7 +7,7 @@ import { stableViewportHeight } from "@/config/viewport";
 import { createPointerSource } from "@/motion/pointerSource";
 
 import styles from "./SceneCanvas.module.css";
-import { BIO_DWELL, bioRestScroll } from "./riftChannel";
+import { bioLeaveScroll, bioRestScroll } from "./riftChannel";
 import { afterDoorway, subscribeEntryArrival } from "./entryChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
 import type { JourneyStops } from "./core/cameraJourney";
@@ -131,15 +131,15 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       const end = Math.max(0, document.documentElement.scrollHeight - viewport);
       const workStart = top(work);
       const workEnd = Math.max(workStart, workStart + work.offsetHeight - viewport);
-      // The bio rests on its sentence, not the middle of its (tall) section:
-      // the rest of the section is the runway out over the water to Contact.
+      // The mountain stays beside the full bio story. Measure its flow box,
+      // never its sticky text, so resize and return visits share the same stops.
       const aboutRest = Math.min(end, Math.max(workEnd, bioRestScroll(about, viewport)));
       const contact = Math.max(aboutRest, end);
       return {
         workStart,
         workEnd,
         about: aboutRest,
-        aboutLeave: Math.min(contact, aboutRest + BIO_DWELL * viewport),
+        aboutLeave: Math.min(contact, bioLeaveScroll(about, viewport)),
         contact,
       };
     };

@@ -83,8 +83,8 @@
 
   /* ------------------------------------------ personal statement reveal */
   /*
-   * The statement is the calm scene. The thesis is lit by scroll
-   * (ReadingLight); any further paragraph arrives slowly after it.
+   * The statement is the calm scene. Its passages are played by BioStory;
+   * these remain for any paragraph revealed by SectionMotion.
    */
   --motion-statement-delay: 120ms;
   --motion-statement-duration: 1100ms;

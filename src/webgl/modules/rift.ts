@@ -71,6 +71,8 @@ export type Rift = Readonly<{
       /** Cursor in client pixels while a mouse is over the page, else null. */
       pointer: { x: number; y: number } | null;
       hold: number;
+      /** The bio's dust has just gone in or come out: a swell to add, read once. */
+      breath: number;
       /** The camera is resting at the bio. */
       atRest: boolean;
       onMoment: (moment: RiftMoment) => void;
@@ -85,6 +87,8 @@ export type Rift = Readonly<{
   steer: (pose: CameraPose) => boolean;
   screenRect: (camera: PerspectiveCamera) => RiftRect | null;
   screenAnchor: (camera: PerspectiveCamera) => RiftAnchor | null;
+  /** How far in front of the camera the opening stands, in metres, while it is there. */
+  openingDepth: (camera: PerspectiveCamera) => number | null;
   /** Objects the water should not mirror. */
   reflectionExclusions: () => readonly Object3D[];
   destroy: () => void;
@@ -518,6 +522,7 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
   // ---------------------------------------------------------------- state
   let elapsed = 0;
   let lastEnergy = 0;
+  let breathing = 0;
   let engagedness = 0;
   /** The cursor coming near the opening, before it is on it. */
   let nearness = 0;
@@ -598,8 +603,10 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
         cursor = onOpeningPlane(input.camera, input.pointer.x, input.pointer.y);
       }
       nearness = MathUtils.damp(nearness, near, near > nearness ? 2.5 : 1.2, dt);
-      // 0 at rest; up to 1 near and on it; up to 2 fully held.
-      const energy = Math.max(nearness * 0.6, engagedness) + held;
+      breathing = Math.min(1.5, breathing + input.breath) * Math.exp(-dt * 2.2);
+      // 0 at rest; up to 1 near and on it; up to 2 fully held. The bio's dust
+      // adds a breath that settles within a second or so.
+      const energy = Math.min(2, Math.max(nearness * 0.6, engagedness) + held + breathing);
       plume?.update({
         delta: reducedMotion ? 0 : delta,
         time: reducedMotion ? 0 : elapsed,
@@ -787,6 +794,12 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
         path,
         energy: lastEnergy,
       };
+    },
+
+    openingDepth: (camera) => {
+      if (!loaded || presence < 0.002) return null;
+      const point = toWorldPoint(opening.centre).applyMatrix4(camera.matrixWorldInverse);
+      return point.z < 0 ? -point.z : null;
     },
 
     reflectionExclusions: () => [],

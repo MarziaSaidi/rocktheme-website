@@ -1,32 +1,10 @@
 .section {
   position: relative;
   z-index: var(--layer-content);
-  padding-block: calc(var(--section-spacing) * 1.15);
-  /*
-   * A runway before the sentence: the camera comes about from the last stone
-   * in one wide, steady turn over the water, with the scene to itself.
-   */
-  padding-block-start: calc(var(--section-spacing) * 1.15 + 150svh);
-  /*
-   * A runway after the sentence: the scene has a stretch of scroll to itself
-   * while the camera travels out over the water to Contact, as the hero has
-   * on the way to Selected Work.
-   */
-  padding-block-end: calc(var(--section-spacing) * 1.15 + 110svh);
-  overflow: hidden;
+  padding-block: calc(var(--section-spacing) * 1.15 + 100svh) 80svh;
+  /* A scrolling overflow ancestor would disable the story's sticky stage. */
+  overflow: clip;
   isolation: isolate;
-}
-
-/*
- * Below the desktop layout both runways are cut down: on a phone's narrow
- * frame the turn over empty water read as dead air. The turn into the bio
- * still runs under 0.2° per scroll pixel on a phone.
- */
-@media (max-width: 1023px) {
-  .section {
-    padding-block-start: calc(var(--section-spacing) * 1.15 + 85svh);
-    padding-block-end: calc(var(--section-spacing) * 1.15 + 70svh);
-  }
 }
 
 .inner {
@@ -38,113 +16,217 @@
   padding-inline: var(--layout-gutter);
 }
 
-.thesis {
-  max-width: 24ch;
-  margin: 0;
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: var(--text-statement);
+.passage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 85svh;
+  padding-block: 5rem;
+  max-width: 42rem;
+}
+
+.title {
+  margin: 0 0 clamp(1.5rem, 4svh, 2.75rem);
+  max-width: 16ch;
+  font-size: clamp(2.4rem, 4.7vw, 4.75rem);
   font-weight: var(--weight-body);
-  line-height: var(--leading-statement);
-  letter-spacing: -0.01em;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
   text-wrap: balance;
+  color: var(--color-text-primary);
 }
 
 .body {
-  max-width: 30ch;
-  margin: clamp(2rem, 5vh, 3.5rem) 0 0;
-  margin-inline-start: auto;
-  color: var(--color-text-secondary);
-  font-size: var(--text-statement);
-  line-height: var(--leading-statement);
-  letter-spacing: -0.01em;
+  max-width: 35ch;
+  margin: 0;
+  font-size: clamp(1.15rem, 1.65vw, 1.6rem);
+  line-height: 1.55;
   text-wrap: pretty;
+  color: var(--color-text-primary);
 }
 
-/* Emphasis is colour only; underlines are reserved for links. */
-.term {
-  color: var(--color-text-primary);
+.aside {
+  max-width: 37ch;
+  margin: 1.5rem 0 0;
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+  color: color-mix(in srgb, var(--brand-lavender) 65%, var(--brand-porcelain));
+}
+
+/* Only the mounted motion owner stacks passages; the fallback stays readable. */
+.story[data-motion] {
+  height: 360svh;
+}
+.story[data-motion] .stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+}
+.story[data-motion] .inner {
+  display: grid;
+}
+.story[data-motion] .passage {
+  grid-area: 1 / 1;
+  min-height: 0;
+  padding-block: 4rem;
+  visibility: hidden;
+}
+.story[data-motion] .passage[data-on] {
+  visibility: visible;
+}
+.story :global(.bio-line-mask) {
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
+}
+
+@media (max-width: 1023px) {
+  .section {
+    padding-block: calc(var(--section-spacing) * 1.15 + 65svh) 60svh;
+  }
+  .passage {
+    max-width: min(35rem, 75vw);
+  }
+}
+
+@media (max-width: 600px) {
+  .passage {
+    max-width: 100%;
+  }
+  .title {
+    font-size: clamp(2.25rem, 9vw, 3.25rem);
+  }
+  .body {
+    max-width: 32ch;
+  }
+}
+
+/* On a phone the portal occupies the lower half of the frame. */
+@media (max-width: 600px) {
+  .story[data-motion] .stage {
+    align-items: flex-start;
+  }
+  .story[data-motion] .inner {
+    padding-block-start: max(6rem, 14svh);
+  }
+  .story[data-motion] .passage {
+    padding-block: 0;
+  }
+  .body,
+  .aside {
+    text-shadow: 0 2px 16px var(--color-background, #100d1a);
+  }
+}
+
+/* =================================================================== the dust */
+
+/*
+ * Title words are shown as far as their dust has landed (`--dust`, 0 → 1):
+ * from the bottom edge up arriving, crumbling from the bottom edge leaving,
+ * and left to right behind the print head. Without `data-dust` they are solid.
+ */
+.word {
+  --dust: 1;
+  display: inline-block;
+  white-space: nowrap;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.word[data-dust="in"] {
+  mask-image: linear-gradient(
+    to top,
+    #000 calc(var(--dust) * 130% - 30%),
+    transparent calc(var(--dust) * 130%)
+  );
+}
+.word[data-dust="out"] {
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(var(--dust) * 130% - 30%),
+    transparent calc(var(--dust) * 130%)
+  );
+}
+.word[data-dust="print"] {
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(var(--dust) * 100%),
+    transparent calc(var(--dust) * 100% + 2px)
+  );
+}
+/* "real." lands with a moonlit flash. */
+.word[data-flash] {
+  animation: bio-flash 1.1s cubic-bezier(0.2, 0, 0, 1) both;
+}
+@keyframes bio-flash {
+  from {
+    color: color-mix(in srgb, var(--color-text-moonlit) 85%, var(--brand-porcelain));
+    text-shadow: 0 0 22px color-mix(in srgb, var(--color-text-moonlit) 60%, transparent);
+  }
+  to {
+    color: var(--color-text-primary);
+    text-shadow: 0 0 0 transparent;
+  }
 }
 
 /* ============================================================ reading light */
 
 /*
- * ReadingLight publishes --read (0 → 1) while the thesis crosses the reading
- * band. Each word lights in moonlit as the reading position reaches it, then
- * settles to its own colour a few words behind, so the words being read glow
- * and the rest of the sentence is calm. The default of 1 is the settled
- * state: without JavaScript, or with reduced motion, the sentence is simply
- * lit, in its final colours.
+ * BioStory publishes --read (0 → 1) as the visitor scrolls through a passage.
+ * Each word lights in moonlit as the reading position reaches it, then settles
+ * to its own colour four words behind. The default of 1 is the settled state,
+ * so the fallback is simply lit. Unread words stay legible (30%) because these
+ * are paragraphs, not one sentence.
  */
-.thesis {
+.copy {
   --read: 1;
-  --word-dim: color-mix(in srgb, var(--color-text-primary) 18%, transparent);
+  --word-dim: color-mix(in srgb, var(--color-text-primary) 30%, transparent);
 }
-
-.word {
-  /* Lit as it is reached; settled four words later. Both finish by --read: 1. */
+.copy :global(.bio-word) {
   --lit: clamp(0, calc((var(--read) * (var(--count) + 7) - var(--i)) / 2.5), 1);
   --settle: clamp(0, calc((var(--read) * (var(--count) + 7) - var(--i) - 4) / 3), 1);
   --word-lit: var(--color-text-primary);
   --word-reading: color-mix(in srgb, var(--color-text-moonlit) 85%, var(--brand-porcelain));
-  /* Keeps hyphenated terms such as "AI-era" on one line. */
-  white-space: nowrap;
-  color: color-mix(
+  --word-colour: color-mix(
     in srgb,
     color-mix(in srgb, var(--word-lit) calc(var(--settle) * 100%), var(--word-reading))
       calc(var(--lit) * 100%),
     var(--word-dim)
   );
+  color: var(--word-colour);
 }
-
-.word[data-term] {
+.aside :global(.bio-word) {
+  --word-lit: color-mix(in srgb, var(--brand-lavender) 65%, var(--brand-porcelain));
+}
+.copy :global(.bio-word[data-term]) {
   --word-lit: color-mix(in srgb, var(--brand-lavender) 70%, var(--brand-porcelain));
 }
 
-/* ================================================================ the dust */
-
-/*
- * BioDust sets `data-dust` while it runs and `--whole` (0 → 1) on each word as
- * its grains land, or crumble away. The word shows from the bottom edge up,
- * as far as its dust has settled, with a soft, burning edge.
- */
-.thesis[data-dust] .word {
-  --whole: 0;
-  --gone: calc(1 - var(--whole));
-  -webkit-mask-image: linear-gradient(
-    to top,
-    transparent calc(var(--gone) * 145% - 45%),
-    #000 calc(var(--gone) * 145%)
+/* "AI": a band of moonlight passes through the letters once the light reaches it. */
+.copy :global(.bio-word[data-sweeping]) {
+  color: transparent;
+  background-image: linear-gradient(
+    100deg,
+    var(--word-colour) 0 38%,
+    var(--brand-porcelain) 47%,
+    var(--color-text-moonlit) 53%,
+    var(--word-colour) 62% 100%
   );
-  mask-image: linear-gradient(
-    to top,
-    transparent calc(var(--gone) * 145% - 45%),
-    #000 calc(var(--gone) * 145%)
-  );
+  background-size: 260% 100%;
+  background-clip: text;
+  animation: bio-sweep 1.15s cubic-bezier(0.35, 0, 0.2, 1) both;
 }
-
-/* ========================================================= statement motion */
-
-/*
- * The copy is present and readable before anything animates. `data-in-view`
- * only adds the arrival; its absence means "settled", not "hidden", so the
- * section is complete without JavaScript. The thesis has no arrival of its
- * own: the reading light is its motion.
- */
-.section[data-in-view] .body {
-  animation-name: var(--motion-keyframes-copy);
-  animation-duration: var(--motion-statement-duration);
-  animation-timing-function: var(--motion-ease-interface);
-  animation-fill-mode: both;
-}
-
-.section[data-in-view] .body {
-  animation-delay: calc(var(--motion-statement-delay) + var(--motion-statement-stagger));
-}
-
-@media (max-width: 63.99rem) {
-  .body {
-    max-width: 34ch;
-    margin-inline-start: 0;
+@keyframes bio-sweep {
+  from {
+    background-position: 100% 0;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-text-moonlit) 55%, transparent));
+  }
+  to {
+    background-position: 0% 0;
+    filter: drop-shadow(0 0 0 transparent);
   }
 }

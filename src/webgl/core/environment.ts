@@ -26,6 +26,8 @@ import {
 import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflectiveFloor";
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
 import { createRift, type Rift } from "../modules/rift";
+import { createBioDust, type BioDust } from "../modules/bioDust";
+import { readBioDust } from "../bioDustChannel";
 import {
   announceRiftMoment,
   publishRiftAnchor,
@@ -304,6 +306,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   // The split mountain beside the bio: the way into /my-world.
   const rift: Rift = createRift(worldScene, options.reducedMotion);
   rift.setViewport(width, height, cappedRatio());
+  // The bio's dust, in the same air as the rift it comes out of.
+  const bioDust: BioDust = createBioDust(worldScene);
 
   const monolith: Monolith = createMonolith(worldScene, monolithConfig, {
     onFailure: (asset) => {
@@ -720,6 +724,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
           ? { x: pointer.x, y: pointer.y }
           : null,
       hold: riftAtRest ? riftInput.hold : 0,
+      breath: options.reducedMotion ? 0 : riftInput.breath,
       atRest: riftAtRest,
       onMoment: announceRiftMoment,
     });
@@ -727,6 +732,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     publishRiftRect(riftAtRest ? rift.screenRect(view) : null);
     // The bio's dust streams out of the other world through the rift, and back.
     publishRiftAnchor(rift.screenAnchor(view));
+    // The page moves the dust; it is drawn here, at the opening's depth, where
+    // the stone hides it going in and the water mirrors it. It stays behind on a crossing.
+    view.updateMatrixWorld();
+    bioDust.setVisible(rift.departure() < 0.3);
+    bioDust.update(view, readBioDust(), rift.openingDepth(view), width, height);
 
     heroLandscape.update(deltaSeconds, {
       pointer: pointer?.active && pointer.inside ? { x: normalisedX, y: -normalisedY } : null,
@@ -986,6 +996,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       rocks.destroy();
       heroLandscape.destroy();
       rift.destroy();
+      bioDust.destroy();
       publishRiftRect(null);
       publishRiftAnchor(null);
       monolith.destroy();

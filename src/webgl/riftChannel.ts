@@ -43,6 +43,7 @@ export function subscribeRiftRect(listener: (rect: RiftRect | null) => void) {
 let engaged = false;
 let hold = 0;
 let crossRequested = false;
+let breath = 0;
 
 /** The visitor is on the opening: hovering it, focused on it, or tapped it. */
 export function setRiftEngaged(next: boolean) {
@@ -59,10 +60,20 @@ export function requestRiftCrossing() {
   crossRequested = true;
 }
 
+/**
+ * The bio's dust going into or out of the rift: the plume and the light it
+ * sheds swell for a moment, then settle. Amounts add up until the scene reads them.
+ */
+export function breatheRift(amount: number) {
+  breath = Math.min(1.5, breath + Math.max(0, amount));
+}
+
 export function readRiftInput() {
   const request = crossRequested;
+  const breathed = breath;
   crossRequested = false;
-  return { engaged, hold, cross: request };
+  breath = 0;
+  return { engaged, hold, cross: request, breath: breathed };
 }
 
 /**
@@ -121,12 +132,21 @@ export function getRiftAnchor() {
 export const BIO_DWELL = 0.55;
 
 /**
- * The scroll offset where the camera rests at the bio, facing the rift: the
- * sentence centred on screen. The camera's journey and the way back from
- * /my-world both stop here. Unclamped; the page's own bounds apply.
+ * The camera and #about navigation arrive at the beginning of the bio story.
+ * Use its normal-flow box: a sticky heading moves relative to the document
+ * during a visit. The heading measurement remains for older compositions.
  */
 export function bioRestScroll(about: HTMLElement, viewport: number) {
+  const story = about.querySelector<HTMLElement>("[data-bio-story]");
+  if (story) return story.getBoundingClientRect().top + window.scrollY;
   const thesis = about.querySelector<HTMLElement>("h2") ?? about;
   const top = thesis.getBoundingClientRect().top + window.scrollY;
   return top + thesis.offsetHeight / 2 - viewport / 2;
+}
+
+/** Keep the mountain beside all three passages, including the static fallback. */
+export function bioLeaveScroll(about: HTMLElement, viewport: number) {
+  const story = about.querySelector<HTMLElement>("[data-bio-story]");
+  if (!story) return bioRestScroll(about, viewport) + BIO_DWELL * viewport;
+  return bioRestScroll(about, viewport) + Math.max(0, story.offsetHeight - viewport);
 }
