@@ -36,18 +36,19 @@ detail object. It is not a permission check.
 
 ## The cues
 
-Five moments make a sound, and nothing else does. Three sample files cover
+Four moments make a sound, and nothing else does. Three sample files cover
 them, rendered by `scripts/render-sound-cues.mjs` into `public/audio/effects/`.
 
-| Event            | Where it is published                                  | Sample                                          |
-| ---------------- | ------------------------------------------------------ | ----------------------------------------------- |
-| `entry:passage`  | `IntroDoorway.tsx`, timed so the bloom meets the burst | `transition`, whole                             |
-| `project:active` | `MonolithGallery.tsx`, a project settles               | `readout`, a step higher for the second project |
-| `statement:read` | `BioStory.tsx`, a bio passage arrives                  | `readout`                                       |
-| `project:open`   | `MonolithGallery.tsx`, View case study                 | `transition`, entered late                      |
-| `contact:open`   | `SiteFooter.tsx`, the plane or the email link          | `chime`                                         |
+| Event            | Where it is published                         | Sample                                          |
+| ---------------- | --------------------------------------------- | ----------------------------------------------- |
+| `project:active` | `MonolithGallery.tsx`, a project settles      | `readout`, a step higher for the second project |
+| `statement:read` | `BioStory.tsx`, a bio passage arrives         | `readout`                                       |
+| `project:open`   | `MonolithGallery.tsx`, View case study        | `transition`, entered late                      |
+| `contact:open`   | `SiteFooter.tsx`, the plane or the email link | `chime`                                         |
 
-The transition is the signature: one sound for every change of place. Shorter
+The intro gate has no sound effects. Stone hover movement and the opening transition are silent.
+
+The transition sample marks case study navigation. Shorter
 scene changes start the file part way through (`lead` in `CUES`) so the bloom
 arrives soon after the gesture. Each transition briefly dips the music, and
 the music sits lower while a case study is open (`MUSIC_DUCK`).
@@ -97,7 +98,7 @@ replace it.
 
 ## Keeping it restrained
 
-No hover sounds, and nothing follows the pointer. The particles and the water
+No hover sounds, and nothing follows the pointer. The intro stones, particles and water
 still respond to the cursor, silently. A cue marks a change of place or a
 decision, never movement. Per-event cooldowns and a voice cap
 (`VOICE_LIMITS`) stop rapid scrolling from stacking cues.

@@ -78,7 +78,6 @@ export const VOICE_LIMITS = {
   maxConcurrent: 6,
   /** Minimum seconds between two firings of the same event. */
   cooldownSeconds: {
-    "entry:passage": 5,
     "project:active": 0.22,
     "statement:read": 2,
     "project:open": 1,
@@ -112,8 +111,6 @@ export type CueShape = Readonly<{
  * Per-cue shape: which sample, how loud, and where to enter it.
  */
 export const CUES = {
-  /** The doorway becomes the passage. The whole transition, full weight. */
-  "entry:passage": { sample: "transition", peak: 1, duck: true },
   /**
    * A project settles and its card's text comes in: a soft tock and a faint
    * sparkle, lasting as long as the text takes to arrive. Kept low, under the

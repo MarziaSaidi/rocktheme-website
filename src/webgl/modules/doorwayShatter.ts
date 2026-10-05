@@ -21,6 +21,8 @@ export type DoorwayShatter = Readonly<{
   uniforms: {
     /** Seconds since the release began; below zero the doorway is whole. */
     uBreak: { value: number };
+    uStonePointer: { value: Vector3 };
+    uStoneHover: { value: number };
     /** Seconds since the pieces began gathering into the ring; below zero, not yet. */
     uGather: { value: number };
     /** The ring's centre, in the mesh's own space. */
@@ -48,6 +50,8 @@ export type DoorwayShatterOptions = Readonly<{
 const SHATTER_GLSL = /* glsl */ `
   attribute vec4 _chunk;
   uniform float uBreak;
+  uniform vec3 uStonePointer;
+  uniform float uStoneHover;
   uniform float uGather;
   uniform vec3 uBreakCrown;
   uniform vec2 uBreakOpening;
@@ -79,6 +83,16 @@ const SHATTER_GLSL = /* glsl */ `
    */
   float shatterRandom(float k) {
     return fract(sin(_chunk.w * 91.7 + k * 17.3) * 43758.5453);
+  }
+
+  float stoneHover() {
+    if (_chunk.w < 0.0) return 0.0;
+    float proximity = 1.0 - smoothstep(0.035, 0.16, distance(_chunk.xyz, uStonePointer));
+    return proximity * uStoneHover * (1.0 - smoothstep(0.0, 0.25, max(uBreak, 0.0)));
+  }
+
+  mat3 stoneTilt() {
+    return shatterTurn(normalize(vec3(0.4, 1.0, 0.2)), stoneHover() * 0.045);
   }
 
   // How far the piece is through its burst, 0 to 1.
@@ -126,6 +140,8 @@ const SHATTER_GLSL = /* glsl */ `
 export function createDoorwayShatter({ crown, opening }: DoorwayShatterOptions): DoorwayShatter {
   const uniforms = {
     uBreak: { value: -1 },
+    uStonePointer: { value: new Vector3(0, -100, 0) },
+    uStoneHover: { value: 0 },
     uGather: { value: -1 },
     uBreakCrown: { value: crown.clone() },
     uBreakOpening: { value: opening.clone() },
@@ -153,6 +169,7 @@ export function createDoorwayShatter({ crown, opening }: DoorwayShatterOptions):
           `#include <beginnormal_vertex>
            {
              float burst = shatterBurst();
+             objectNormal = stoneTilt() * objectNormal;
              if (burst > 0.0) objectNormal = shatterRotation(burst, shatterGather()) * objectNormal;
            }`,
         )
@@ -168,6 +185,8 @@ export function createDoorwayShatter({ crown, opening }: DoorwayShatterOptions):
                transformed = shatterRotation(burst, gather) * (transformed - _chunk.xyz) * size
                  + shatterCentre(burst, gather);
              }
+             transformed = stoneTilt() * (transformed - _chunk.xyz) + _chunk.xyz;
+             transformed += vec3(0.0, 0.004, 0.014) * stoneHover();
              vShatterGlow = shatterGather();
            }`,
         );

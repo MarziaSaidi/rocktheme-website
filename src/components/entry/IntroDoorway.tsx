@@ -3,8 +3,6 @@
 import { useEffect, useImperativeHandle, useRef, type Ref, type RefObject } from "react";
 import type { Object3D, Vector3 } from "three";
 
-import { TRANSITION_PEAK } from "@/sound/soundConfig";
-import { emitSoundEvent } from "@/sound/soundEvents";
 import { markDoorwayStanding } from "@/webgl/entryChannel";
 import {
   environmentLightingConfig,
@@ -471,6 +469,7 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
       let pointerInside = false;
       let presence = 0;
       let pointerSeen = false;
+      const stoneContact = new THREE.Vector3();
 
       const onPointer = (event: PointerEvent) => {
         const rect = element.getBoundingClientRect();
@@ -561,6 +560,22 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
             uniforms.uPoint.value.lerp(hit, follow);
           }
         }
+        let touchingStone = false;
+        if (pointerInside && pointerSeen && stoneMesh && !entering && !still) {
+          stoneMesh.updateWorldMatrix(true, false);
+          raycaster.setFromCamera(ndc, camera);
+          const contact = raycaster.intersectObject(stoneMesh, false)[0];
+          if (contact) {
+            stoneContact.copy(contact.point);
+            stoneMesh.worldToLocal(stoneContact);
+            const firstContact = shatter.uniforms.uStonePointer.value.y < -50;
+            if (firstContact) shatter.uniforms.uStonePointer.value.copy(stoneContact);
+            shatter.uniforms.uStonePointer.value.lerp(stoneContact, follow);
+            touchingStone = true;
+          }
+        }
+        shatter.uniforms.uStoneHover.value +=
+          ((touchingStone ? 1 : 0) - shatter.uniforms.uStoneHover.value) * follow;
         const wanted = entering ? 1 : pointerInside && !still ? 1 : 0;
         presence += (wanted - presence) * (1 - Math.exp(-deltaSeconds * 4));
         uniforms.uPresence.value = presence;
@@ -586,12 +601,6 @@ export function IntroDoorway({ ref, surface, onCrossed }: IntroDoorwayProps) {
           ).toFixed(3);
           if (clock >= STILL_SEQUENCE.crossed) cross();
           return;
-        }
-
-        // The transition is started so its bloom lands on the burst.
-        const passageCue = SEQUENCE.boom - TRANSITION_PEAK;
-        if (clock - deltaSeconds < passageCue && clock >= passageCue) {
-          emitSoundEvent("entry:passage");
         }
 
         shatter.uniforms.uBreak.value = clock - SEQUENCE.release;
