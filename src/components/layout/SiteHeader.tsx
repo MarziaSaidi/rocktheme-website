@@ -6,6 +6,7 @@ import { DecodeText } from "@/motion/DecodeText";
 import { SoundToggle } from "@/sound/SoundToggle";
 
 import { MobileMenu } from "./MobileMenu";
+import { PrimaryNav } from "./PrimaryNav";
 
 import styles from "./SiteHeader.module.css";
 
@@ -18,21 +19,7 @@ export function SiteHeader() {
         {siteContent.name}
       </Link>
 
-      <nav className={styles.nav} aria-label="Primary">
-        <ul className={styles.navList}>
-          {siteContent.navigation.map((item, index) => (
-            <li
-              key={item.key}
-              className={styles.navItem}
-              style={{ "--nav-index": index + 1 } as CSSProperties}
-            >
-              <Link className={styles.navLink} href={item.href}>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <PrimaryNav />
 
       <p
         className={styles.status}
