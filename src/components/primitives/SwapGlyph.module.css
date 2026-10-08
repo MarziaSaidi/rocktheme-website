@@ -1,0 +1,68 @@
+/*
+ * Two copies of the arrow share one grid cell inside a clipped box. The copy
+ * waits outside the box, opposite to the way the arrow points. Every timing
+ * comes from src/motion/motion.css, which zeroes them for reduced motion.
+ */
+.swap {
+  display: inline-grid;
+  overflow: hidden;
+  /* A little room so a glyph's side bearings are never cut. */
+  padding: 0.08em;
+  margin: -0.08em;
+  line-height: 1;
+}
+
+.glyph,
+.copy {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+}
+
+.copy {
+  translate: calc(var(--swap-x) * -110%) calc(var(--swap-y) * -110%);
+}
+
+/*
+ * Played by the enclosing link or button. Hover only where a mouse can hover,
+ * so a tap never leaves the arrow mid-swap; keyboard focus always.
+ */
+@media (hover: hover) and (pointer: fine) {
+  :is(a, button):hover .glyph {
+    animation: swapOut var(--motion-arrow-out) var(--motion-ease-exit) forwards;
+  }
+
+  :is(a, button):hover .copy {
+    animation: swapIn var(--motion-arrow-in) var(--motion-ease-interface)
+      var(--motion-arrow-in-delay) forwards;
+  }
+}
+
+:is(a, button):focus-visible .glyph {
+  animation: swapOut var(--motion-arrow-out) var(--motion-ease-exit) forwards;
+}
+
+:is(a, button):focus-visible .copy {
+  animation: swapIn var(--motion-arrow-in) var(--motion-ease-interface) var(--motion-arrow-in-delay)
+    forwards;
+}
+
+@keyframes swapOut {
+  to {
+    translate: calc(var(--swap-x) * 110%) calc(var(--swap-y) * 110%);
+  }
+}
+
+@keyframes swapIn {
+  to {
+    translate: 0 0;
+  }
+}
+
+/* No travel at all: the arrow simply stays. */
+@media (prefers-reduced-motion: reduce) {
+  .glyph,
+  .copy {
+    animation: none !important;
+  }
+}

@@ -78,6 +78,9 @@
 
   --weight-body: 400;
   --weight-body-strong: 500;
+  /* Mono microcopy at rest and when touched (hover, focus, current). */
+  --weight-signal: 400;
+  --weight-signal-lift: 560;
   --weight-title: 600;
 
   /* ------------------------------------------------------------- Spacing */

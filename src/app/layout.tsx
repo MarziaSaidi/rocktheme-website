@@ -6,6 +6,7 @@ import { WorldHandoff } from "@/components/cabin/WorldHandoff";
 import { SiteEntry } from "@/components/entry/SiteEntry";
 import { pageLandmarkIds } from "@/config/sections";
 import { CustomCursor } from "@/motion/CustomCursor";
+import { PressFeedback } from "@/motion/PressFeedback";
 import { SoundProvider } from "@/sound/SoundProvider";
 
 import "./globals.css";
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {/* Owns the audio context. Nothing else may create one. */}
         <SoundProvider />
         <CustomCursor />
+        <PressFeedback />
         <SiteEntry>
           <SkipLink />
           <SiteHeader />
