@@ -16,9 +16,12 @@ import { sectionAnchors } from "@/config/sections";
  *
  * Without the scene (no WebGL, reduced quality fallback) there is no
  * `--arrival`, and Selected Work holds the middle of the viewport instead.
- * Nothing here reads layout: one observer watches a line across the middle of
- * the viewport, the rest are attribute reads, made when the root's attributes
- * change (the scene writes `--arrival` there each frame it moves).
+ * Nothing here reads layout. One observer watches a line across the middle of
+ * the viewport; the bio and the contact are watched through their own
+ * attributes. `--arrival` is read directly from the root's inline style once a
+ * frame, and only while the hero or Selected Work holds the middle of the
+ * screen. It is never observed: the scene sets several properties on the root
+ * every frame, and observing that attribute measurably cost frames.
  */
 export type HomeSection = "hero" | "selected-work" | "about" | null;
 
@@ -39,12 +42,25 @@ function start() {
     sectionAnchors.footer,
   ];
 
+  /*
+   * The bio and the contact report their own state through attributes the
+   * page observes below; those are read once per change and cached here, so
+   * the per-frame path (the scene rewriting the root's style) only parses one
+   * inline value.
+   */
+  const contact = document.getElementById("contact-title");
+  const bio = document.querySelector("[data-bio-story]");
+  let rippleOn = false;
+  let bioOn = false;
+  const readPage = () => {
+    const ripple = contact?.dataset.ripple;
+    rippleOn = ripple === "playing" || ripple === "done";
+    bioOn = !!bio?.querySelector("[data-bio-passage][data-on]");
+  };
+
   const compute = (): HomeSection => {
-    const ripple = document.getElementById("contact-title")?.dataset.ripple;
-    if (ripple === "playing" || ripple === "done") return null;
-    if (document.querySelector("[data-bio-passage][data-on]") || middle.get(sectionAnchors.about)) {
-      return "about";
-    }
+    if (rippleOn) return null;
+    if (bioOn || middle.get(sectionAnchors.about)) return "about";
     const journey = root.dataset.journey !== undefined;
     const arrival = parseFloat(root.style.getPropertyValue("--arrival")) || 0;
     if (journey ? arrival >= WORK_AT : middle.get(sectionAnchors["selected-work"])) {
@@ -66,6 +82,7 @@ function start() {
   const io = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => middle.set(entry.target.id, entry.isIntersecting));
+      syncFollow();
       update();
     },
     { rootMargin: "-50% 0px -50% 0px", threshold: 0 },
@@ -75,20 +92,34 @@ function start() {
     if (element) io.observe(element);
   });
 
-  const rootWatch = new MutationObserver(update);
-  rootWatch.observe(root, { attributes: true, attributeFilter: ["style", "data-journey"] });
-  const pageWatch = new MutationObserver(update);
-  const bio = document.querySelector("[data-bio-story]");
+  // The camera's progress, read once a frame while it can change the answer.
+  let frame = 0;
+  const follow = () => {
+    update();
+    frame = requestAnimationFrame(follow);
+  };
+  const syncFollow = () => {
+    const near = !!(middle.get(sectionAnchors.hero) || middle.get(sectionAnchors["selected-work"]));
+    if (near && !frame) frame = requestAnimationFrame(follow);
+    else if (!near && frame) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    }
+  };
+  const pageWatch = new MutationObserver(() => {
+    readPage();
+    update();
+  });
   if (bio)
     pageWatch.observe(bio, { attributes: true, subtree: true, attributeFilter: ["data-on"] });
-  const contact = document.getElementById("contact-title");
   if (contact) pageWatch.observe(contact, { attributes: true, attributeFilter: ["data-ripple"] });
 
+  readPage();
   update();
   return () => {
     io.disconnect();
-    rootWatch.disconnect();
     pageWatch.disconnect();
+    cancelAnimationFrame(frame);
   };
 }
 
