@@ -56,7 +56,8 @@ html[data-custom-cursor] summary {
   transition:
     border-color 220ms var(--motion-ease-interface),
     scale var(--motion-cursor-duration) var(--motion-ease-interface);
-  will-change: transform;
+  /* Both, so the size change stays on the compositor with the position. */
+  will-change: transform, scale;
 }
 
 [data-cursor-root][data-cursor-interactive] [data-cursor-ring] {
