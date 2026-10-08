@@ -117,11 +117,16 @@
   min-height: 3rem;
   font-size: 1.5rem;
   text-decoration: none;
-  transition: color var(--duration-interface) var(--ease-interface);
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
+/* A phone has no hover: the press is the response. */
 .link:active {
   color: var(--color-text-moonlit);
+  scale: var(--motion-press-scale);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
 }
 
 .footer {

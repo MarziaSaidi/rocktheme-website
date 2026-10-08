@@ -1015,7 +1015,8 @@
     transform var(--motion-exit-duration) var(--motion-ease-exit) var(--exit-at, 0ms),
     color var(--duration-interface) var(--ease-interface),
     border-color var(--duration-interface) var(--ease-interface),
-    background-color var(--duration-interface) var(--ease-interface);
+    background-color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
 .card[data-shown] .view {
@@ -1026,22 +1027,35 @@
     transform var(--motion-small-duration) var(--motion-ease-reveal) var(--enter),
     color var(--duration-interface) var(--ease-interface),
     border-color var(--duration-interface) var(--ease-interface),
-    background-color var(--duration-interface) var(--ease-interface);
+    background-color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
+/* The arrow swaps (SwapGlyph) instead of nudging, like every arrow on the site. */
 .arrow {
   font-family: var(--font-body);
-  transition: transform var(--duration-interface) var(--ease-interface);
 }
 
-.view:hover {
+@media (hover: hover) and (pointer: fine) {
+  .view:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
+    background-color: color-mix(in srgb, var(--color-accent) 6%, transparent);
+    color: var(--color-accent);
+  }
+}
+
+.view:focus-visible {
   border-color: color-mix(in srgb, var(--color-accent) 60%, transparent);
   background-color: color-mix(in srgb, var(--color-accent) 6%, transparent);
   color: var(--color-accent);
 }
 
-.view:hover .arrow {
-  transform: translateX(0.25rem);
+/* Only the press duration changes; the frozen entrance and exit timings stay. */
+.card[data-shown] .view:active {
+  scale: var(--motion-press-scale);
+  transition-duration:
+    var(--motion-small-duration), var(--motion-small-duration), var(--duration-interface),
+    var(--duration-interface), var(--duration-interface), var(--motion-press-in);
 }
 
 /* ---------------------------------------------------------------- stacked */

@@ -4,6 +4,8 @@ import Image from "next/image";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
+import { SwapGlyph } from "@/components/primitives/SwapGlyph";
+import { DecodeText } from "@/motion/DecodeText";
 import type { CaseStudyInfo, CaseStudyStage, Project, StoryVisual } from "@/content/projects";
 
 import styles from "./CaseStudyWorkspace.module.css";
@@ -552,8 +554,14 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
           <p className={styles.projectDescription}>{project.shortDescription}</p>
           <ProjectFacts project={project} info={info} />
           {info?.externalUrl ? (
-            <a className={styles.liveLink} href={info.externalUrl}>
-              {info.externalLabel ?? "View live project"} <span aria-hidden="true">↗</span>
+            <a className={styles.liveLink} href={info.externalUrl} data-cursor="action">
+              {/* An important action: it decodes on hover or focus, never on arrival. */}
+              <DecodeText
+                text={info.externalLabel ?? "View live project"}
+                entrance={false}
+                replay
+              />
+              <SwapGlyph direction="up-right">↗</SwapGlyph>
             </a>
           ) : null}
         </details>
@@ -631,7 +639,9 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             hidden={atStart}
             aria-label="Previous story"
           >
-            <ArrowGlyph direction="left" className={styles.controlGlyph} />
+            <SwapGlyph direction="left" className={styles.controlGlyph}>
+              <ArrowGlyph direction="left" />
+            </SwapGlyph>
           </button>
           <button
             className={styles.nextControl}
@@ -639,7 +649,9 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             hidden={atEnd}
             aria-label="Next story"
           >
-            <ArrowGlyph direction="right" className={styles.controlGlyph} />
+            <SwapGlyph direction="right" className={styles.controlGlyph}>
+              <ArrowGlyph direction="right" />
+            </SwapGlyph>
           </button>
         </div>
         {story.caption ? (
@@ -655,7 +667,7 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             target="_blank"
             rel="noopener noreferrer"
           >
-            Open artifact full size <span aria-hidden="true">↗</span>
+            Open artifact full size <SwapGlyph direction="up-right">↗</SwapGlyph>
           </a>
         ) : null}
       </section>

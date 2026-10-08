@@ -1,4 +1,5 @@
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
+import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
@@ -39,9 +40,14 @@ export function SiteFooter() {
             sceneAnchor="heading"
           />
           <p className={styles.lead}>{contact.lead}</p>
-          <a className={styles.primary} href={email.href} data-contact-primary="">
-            <DecodeText text={contact.primaryLabel} />
-            <span aria-hidden="true">↗</span>
+          <a
+            className={styles.primary}
+            href={email.href}
+            data-contact-primary=""
+            data-cursor="action"
+          >
+            <DecodeText text={contact.primaryLabel} replay />
+            <SwapGlyph direction="up-right">↗</SwapGlyph>
           </a>
         </div>
 
@@ -51,10 +57,11 @@ export function SiteFooter() {
             href={email.href}
             data-contact-plane=""
             data-scene-anchor="plane"
+            data-cursor="action"
           >
             <span className={styles.planeLabel}>
-              <DecodeText text={contact.planeLabel} />
-              <span aria-hidden="true">↗</span>
+              <DecodeText text={contact.planeLabel} replay />
+              <SwapGlyph direction="up-right">↗</SwapGlyph>
             </span>
             <svg
               className={styles.waveform}
@@ -95,7 +102,7 @@ export function SiteFooter() {
 
         <a className={styles.backToTop} href={`#${pageLandmarkIds.top}`}>
           {footer.backToTopLabel}
-          <span aria-hidden="true">↑</span>
+          <SwapGlyph direction="up">↑</SwapGlyph>
         </a>
       </div>
     </footer>
