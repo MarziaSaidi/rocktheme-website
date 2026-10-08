@@ -166,9 +166,9 @@
    * up, each dropping back into its own mask. Transform and filter are used
    * because the entrance keyframes still hold translate and opacity.
    *
-   *   scroll cue  0.03 -> 0.09      CODE.   0.08 -> 0.17
-   *   lead        0.05 -> 0.13      TASTE&  0.11 -> 0.20
-   *                                 CRAFT,  0.14 -> 0.22
+   *   scroll cue  0.03  -> 0.09     CODE.   0.08 -> 0.17
+   *   lead        0.05  -> 0.13     TASTE&  0.11 -> 0.20
+   *   role        0.065 -> 0.145    CRAFT,  0.14 -> 0.22
    */
   :global(:root[data-journey]) .scroll {
     --gone: clamp(0, (var(--arrival, 0) - 0.03) / 0.06, 1);
@@ -178,6 +178,12 @@
 
   :global(:root[data-journey]) .lead {
     --gone: clamp(0, (var(--arrival, 0) - 0.05) / 0.08, 1);
+    transform: translateY(calc(var(--gone) * var(--motion-small-travel)));
+    filter: opacity(calc(1 - var(--gone)));
+  }
+
+  :global(:root[data-journey]) .role {
+    --gone: clamp(0, (var(--arrival, 0) - 0.065) / 0.08, 1);
     transform: translateY(calc(var(--gone) * var(--motion-small-travel)));
     filter: opacity(calc(1 - var(--gone)));
   }
@@ -273,7 +279,16 @@
   animation-delay: calc(var(--motion-display-delay) + 2 * var(--motion-display-stagger));
 }
 
-/* Step 4: supporting copy, then the scroll cue. */
+/* Step 4: the role decodes under the headline, then supporting copy, then the
+   scroll cue. */
+.role {
+  animation-name: var(--motion-keyframes-copy);
+  animation-duration: var(--motion-role-duration);
+  animation-timing-function: var(--motion-ease-interface);
+  animation-fill-mode: both;
+  animation-delay: var(--motion-role-delay);
+}
+
 .lead {
   animation-name: var(--motion-keyframes-copy);
   animation-duration: var(--motion-lead-duration);

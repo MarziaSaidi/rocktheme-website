@@ -64,6 +64,9 @@
   --motion-display-compress: 0.94;
 
   /* ------------------------------------------ 4. supporting copy reveal */
+  /* The role is read between the headline and the lead. */
+  --motion-role-delay: 820ms;
+  --motion-role-duration: 640ms;
   --motion-lead-delay: 940ms;
   --motion-lead-duration: 720ms;
   --motion-cue-delay: 1120ms;
@@ -320,6 +323,8 @@
     --motion-display-travel: 0%;
     --motion-display-compress: 1;
 
+    --motion-role-delay: 30ms;
+    --motion-role-duration: 200ms;
     --motion-lead-delay: 60ms;
     --motion-lead-duration: 200ms;
     --motion-cue-delay: 90ms;

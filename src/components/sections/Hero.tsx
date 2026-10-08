@@ -32,7 +32,9 @@ export function Hero() {
               lines={hero.displayLines}
               accessibleText={hero.accessibleHeading}
             />
-            <p className={styles.role}>{siteContent.role}</p>
+            <p className={styles.role}>
+              <DecodeText text={siteContent.role} />
+            </p>
             <p className={styles.lead} data-scene-obstacle="">
               {hero.lead}
             </p>
