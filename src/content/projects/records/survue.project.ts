@@ -262,7 +262,6 @@ export const survueProject = {
             id: "distance-and-risk",
             eyebrow: "Exploration / information versus interpretation",
             title: "Distance and risk each left a question unanswered.",
-            emphasis: "risk",
             description:
               "I explored distance behind the cyclist and a large numeric risk level. Distance shows proximity but leaves the rider to interpret urgency. A risk number emphasizes urgency but loses vehicle location. These were design tradeoffs, not conclusions from a measured riding test.",
             decision:
@@ -279,7 +278,6 @@ export const survueProject = {
             id: "position-warning",
             eyebrow: "Decision / a stable spatial reference",
             title: "Bring the vehicle back into the road view.",
-            emphasis: "vehicle",
             description:
               "The next concept places the vehicle in a simplified road behind the cyclist. That gives the warning a spatial reference instead of presenting an isolated value. It became the basis for the final detection direction.",
             decision: "Use the same road model across warning states.",
