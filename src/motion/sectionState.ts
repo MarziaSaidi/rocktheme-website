@@ -19,9 +19,11 @@ import { sectionAnchors } from "@/config/sections";
  * Nothing here reads layout. One observer watches a line across the middle of
  * the viewport; the bio and the contact are watched through their own
  * attributes. `--arrival` is read directly from the root's inline style once a
- * frame, and only while the hero or Selected Work holds the middle of the
- * screen. It is never observed: the scene sets several properties on the root
- * every frame, and observing that attribute measurably cost frames.
+ * frame, and only while the camera is between the hero and its first stop
+ * (the hero or Selected Work holds the middle of the screen and the root has
+ * no `data-arrived`). Standing at a project, nothing runs. The root's style is
+ * never observed: the scene sets several properties there every frame, and
+ * observing that attribute measurably cost frames.
  */
 export type HomeSection = "hero" | "selected-work" | "about" | null;
 
@@ -99,7 +101,10 @@ function start() {
     frame = requestAnimationFrame(follow);
   };
   const syncFollow = () => {
-    const near = !!(middle.get(sectionAnchors.hero) || middle.get(sectionAnchors["selected-work"]));
+    const near =
+      !!(middle.get(sectionAnchors.hero) || middle.get(sectionAnchors["selected-work"])) &&
+      root.dataset.arrived === undefined;
+    update();
     if (near && !frame) frame = requestAnimationFrame(follow);
     else if (!near && frame) {
       cancelAnimationFrame(frame);
@@ -112,13 +117,20 @@ function start() {
   });
   if (bio)
     pageWatch.observe(bio, { attributes: true, subtree: true, attributeFilter: ["data-on"] });
+  // Arriving at a project, and leaving it again: filtered, so the per-frame style writes never reach it.
+  const arrivedWatch = new MutationObserver(syncFollow);
+  arrivedWatch.observe(root, {
+    attributes: true,
+    attributeFilter: ["data-arrived", "data-journey"],
+  });
   if (contact) pageWatch.observe(contact, { attributes: true, attributeFilter: ["data-ripple"] });
 
   readPage();
-  update();
+  syncFollow();
   return () => {
     io.disconnect();
     pageWatch.disconnect();
+    arrivedWatch.disconnect();
     cancelAnimationFrame(frame);
   };
 }
