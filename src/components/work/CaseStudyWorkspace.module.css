@@ -570,13 +570,14 @@ video.visualMedia[data-fit="cover"] {
   box-shadow: inset 0 1px 0 var(--color-line);
 }
 
+/* The same gold lit line as the header's (SiteHeader.module.css, .litLine). */
 .stageIndicator {
   position: absolute;
   inset-block-start: 0;
   inset-inline-start: 0;
   width: var(--indicator-width, 0);
   height: 1px;
-  background: var(--color-text-primary);
+  background: var(--color-highlight);
   translate: var(--indicator-x, 0) 0;
 }
 .stageNav[data-indicator="ready"] .stageIndicator {
@@ -603,7 +604,10 @@ video.visualMedia[data-fit="cover"] {
   color: var(--color-text-secondary);
 }
 
-/* Colour alone marks the current stage, so the labels never change width. */
+/*
+ * Colour marks the current stage, and its label sits at the signal weight
+ * (WeightLabel's crossfade on aria-current), so no label changes width.
+ */
 .stageNav button[aria-current="step"] {
   color: var(--color-text-primary);
 }

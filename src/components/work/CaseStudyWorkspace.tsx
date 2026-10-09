@@ -795,7 +795,8 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
               }
             }}
           >
-            {item.label}
+            {/* The current stage sits at the signal weight, crossfaded, so no label changes width. */}
+            <WeightLabel text={item.label} />
           </button>
         ))}
       </nav>
