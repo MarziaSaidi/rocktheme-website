@@ -93,6 +93,7 @@ export const quillAndPigeonProject = {
   },
   caseStudy: {
     storyPlayback: "manual",
+    titleSignature: "ink",
     info: {
       timeline: "January-August 2025",
       timelineLabel: "Internship",
@@ -203,6 +204,7 @@ export const quillAndPigeonProject = {
             id: "inline-errors",
             eyebrow: "Decision / actionable feedback",
             title: "Count the issues. Point to the correction.",
+            emphasis: "the correction.",
             description:
               "I paired a page-level alert summary with feedback beside the affected fields. In this example, 15 alerts signal the scale of the review, while Duplicate labels identify the nickname fields that need attention. Other rows stay visible while the user works through the list.",
             decision:
@@ -215,6 +217,7 @@ export const quillAndPigeonProject = {
             id: "frontend-boundary",
             eyebrow: "Design + development / interface responsibilities",
             title: "The review is a state, not a preview image.",
+            emphasis: "a state,",
             description:
               "My frontend work connects the selected file, an editable contact table, field-level validation feedback, and a confirmation of saved contacts. The interface has to preserve the user's context across those states: uploading the file and saving the reviewed contacts are separate actions.",
             supportingPoints: [

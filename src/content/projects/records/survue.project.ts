@@ -146,6 +146,7 @@ export const survueProject = {
   },
   caseStudy: {
     storyPlayback: "manual",
+    titleSignature: "approach",
     info: {
       timeline: "September-December 2024",
       responsibilities: [
@@ -261,6 +262,7 @@ export const survueProject = {
             id: "distance-and-risk",
             eyebrow: "Exploration / information versus interpretation",
             title: "Distance and risk each left a question unanswered.",
+            emphasis: "risk",
             description:
               "I explored distance behind the cyclist and a large numeric risk level. Distance shows proximity but leaves the rider to interpret urgency. A risk number emphasizes urgency but loses vehicle location. These were design tradeoffs, not conclusions from a measured riding test.",
             decision:
@@ -277,6 +279,7 @@ export const survueProject = {
             id: "position-warning",
             eyebrow: "Decision / a stable spatial reference",
             title: "Bring the vehicle back into the road view.",
+            emphasis: "vehicle",
             description:
               "The next concept places the vehicle in a simplified road behind the cyclist. That gives the warning a spatial reference instead of presenting an isolated value. It became the basis for the final detection direction.",
             decision: "Use the same road model across warning states.",
@@ -286,6 +289,7 @@ export const survueProject = {
             id: "final-direction",
             eyebrow: "Final direction / changing urgency",
             title: "Change the warning. Keep the structure.",
+            emphasis: "warning.",
             description:
               "The final screens retain the road model across green, yellow, and red states. Vehicle position and warning color change within that familiar structure. This is the interface direction; it does not establish detection accuracy or how reliably cyclists understand it while riding.",
             decision:

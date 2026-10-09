@@ -330,6 +330,19 @@ function validateStages(stages: readonly CaseStudyStage[], location: string): vo
       } else if (story.visual?.type === "code" && !story.visual.code.trim()) {
         addError(`${storyLocation}.visual.code`, "is required");
       }
+      // The emphasis is a run of whole words of the title, as written.
+      if (story.emphasis !== undefined) {
+        const titleWords: string[] = story.title.split(/\s+/).filter(Boolean);
+        const phrase: string[] = story.emphasis.split(/\s+/).filter(Boolean);
+        const found = titleWords.some((_: string, index: number) =>
+          phrase.every((part: string, offset: number) => titleWords[index + offset] === part),
+        );
+        if (!phrase.length || !found)
+          addError(
+            `${storyLocation}.emphasis`,
+            `"${story.emphasis}" is not whole words of the title`,
+          );
+      }
       if (
         story.durationSeconds !== undefined &&
         (story.durationSeconds < 2 || story.durationSeconds > 30)
@@ -435,6 +448,12 @@ function validateProject(project: Project, index: number): void {
     project.caseStudy.storyPlayback,
     ["auto", "manual"],
     `${location}.caseStudy.storyPlayback`,
+    true,
+  );
+  validateVariant(
+    project.caseStudy.titleSignature,
+    ["ink", "approach"],
+    `${location}.caseStudy.titleSignature`,
     true,
   );
   if (stages?.length) validateStages(stages, `${location}.caseStudy`);
