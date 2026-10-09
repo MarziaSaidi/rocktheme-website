@@ -10,6 +10,9 @@ import {
   Vector4,
 } from "three";
 
+import { createWeatherUniforms, WEATHER_GLSL, type WeatherUniforms } from "../core/weather";
+import { lightningConfig } from "../sceneConfig";
+
 import { horizonAtmosphereConfig } from "../sceneConfig";
 import type { FogConfig } from "../sceneTypes";
 
@@ -17,8 +20,10 @@ const MAX_LIGHTS = 4;
 
 const VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
+  varying vec3 vWeatherWorld;
   void main() {
     vUv = uv;
+    vWeatherWorld = (modelMatrix * vec4(position, 1.0)).xyz;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -46,6 +51,8 @@ const MIST_SHADER = /* glsl */ `
   uniform vec4 uLights[${MAX_LIGHTS}];
 
   varying vec2 vUv;
+  varying vec3 vWeatherWorld;
+  ${WEATHER_GLSL}
 
   float hash21(vec2 p) {
     p = fract(p * vec2(123.34, 345.45));
@@ -138,7 +145,11 @@ const MIST_SHADER = /* glsl */ `
     // Never an opaque purple wall.
     alpha = clamp(alpha, 0.0, 0.27);
 
-    gl_FragColor = vec4(color, alpha);
+    float weatherCell = weatherHorizonCell(vWeatherWorld - cameraPosition);
+    float scatter = 1.0 - pow(1.0 - alpha, 4.0);
+    vec3 radiance = uWeatherColor * uWeatherFlash * ${lightningConfig.mistGain}
+      * (0.3 + weatherCell * 0.7) * scatter;
+    gl_FragColor = vec4(color * alpha + radiance, alpha);
   }
 `;
 
@@ -158,6 +169,7 @@ export function createHorizonAtmosphere(
   camera: PerspectiveCamera,
   reducedMotion: boolean,
   initialFog: FogConfig = horizonAtmosphereConfig,
+  weather: WeatherUniforms = createWeatherUniforms(),
 ): HorizonAtmosphere {
   let fogConfig = initialFog;
   const group = new Group();
@@ -195,6 +207,7 @@ export function createHorizonAtmosphere(
       vertexShader: VERTEX_SHADER,
       fragmentShader: MIST_SHADER,
       uniforms: {
+        ...weather,
         uTime: timeUniform,
         uOpacity: { value: layer.opacity },
         uSeed: { value: layer.seed },
@@ -204,6 +217,7 @@ export function createHorizonAtmosphere(
         uLights: { value: lightUniform },
       },
       transparent: true,
+      premultipliedAlpha: true,
       depthWrite: false,
       side: DoubleSide,
       blending: NormalBlending,

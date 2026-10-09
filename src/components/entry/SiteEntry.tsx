@@ -10,7 +10,11 @@ import {
   writeStoredPreference,
 } from "@/sound/soundStore";
 
-import { markDoorwayStanding, requestEntryArrival } from "@/webgl/entryChannel";
+import {
+  markDoorwayStanding,
+  markExperienceEntered,
+  requestEntryArrival,
+} from "@/webgl/entryChannel";
 
 import styles from "./SiteEntry.module.css";
 import { IntroDoorway, type IntroDoorwayHandle } from "./IntroDoorway";
@@ -112,6 +116,8 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
     if (leaving) {
       return;
     }
+
+    markExperienceEntered();
 
     // This update reaches SoundProvider synchronously, while the click still
     // counts as a user gesture for Web Audio and media playback.

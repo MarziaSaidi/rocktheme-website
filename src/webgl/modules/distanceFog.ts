@@ -1,5 +1,12 @@
 import { Color, SRGBColorSpace, Vector3, Vector4, type MeshStandardMaterial } from "three";
 
+import { createWeatherUniforms, WEATHER_GLSL, type WeatherUniforms } from "../core/weather";
+import { lightningConfig } from "../sceneConfig";
+
+import type { SceneViewport } from "@/config/responsive";
+import { lowMistConfig } from "../sceneConfig";
+import { MIST_FIELD_GLSL } from "./mistField";
+
 import type { DistanceFogConfig } from "../sceneTypes";
 
 /**
@@ -17,12 +24,16 @@ import type { DistanceFogConfig } from "../sceneTypes";
  * the DOM background the canvas composites over.
  */
 
-export type DistanceFogUniforms = {
+export type DistanceFogUniforms = WeatherUniforms & {
   uAtmosColor: { value: Vector3 };
   uAtmosLow: { value: Vector3 };
   /** x distance, y density, z height, w heightDensity */
   uAtmosShape: { value: Vector4 };
   uAtmosMax: { value: number };
+  uAtmosTime: { value: number };
+  uOctaves: { value: number };
+  /** scale, drift x, drift z, valley strength */
+  uAtmosMist: { value: Vector4 };
 };
 
 const scratch = new Color();
@@ -33,12 +44,26 @@ export const aerialMist = {
   uAerialMist: { value: new Vector3(0.2, 0.175, 0.27) },
 };
 
-export function createDistanceFogUniforms(config: DistanceFogConfig): DistanceFogUniforms {
+export function createDistanceFogUniforms(
+  config: DistanceFogConfig,
+  weather: WeatherUniforms = createWeatherUniforms(),
+): DistanceFogUniforms {
   const uniforms: DistanceFogUniforms = {
+    ...weather,
     uAtmosColor: { value: new Vector3() },
     uAtmosLow: { value: new Vector3() },
     uAtmosShape: { value: new Vector4() },
     uAtmosMax: { value: 0 },
+    uAtmosTime: { value: 0 },
+    uOctaves: { value: 3 },
+    uAtmosMist: {
+      value: new Vector4(
+        lowMistConfig.noiseScale.large,
+        Math.cos(lowMistConfig.direction) * lowMistConfig.speed,
+        Math.sin(lowMistConfig.direction) * lowMistConfig.speed,
+        config.valleyMist ?? 0,
+      ),
+    },
   };
   setDistanceFog(uniforms, config);
   return uniforms;
@@ -59,6 +84,18 @@ export function setDistanceFog(uniforms: DistanceFogUniforms, config: DistanceFo
     config.heightDensity,
   );
   uniforms.uAtmosMax.value = config.maxAmount;
+  uniforms.uAtmosMist.value.w = config.valleyMist ?? 0;
+}
+
+/** Uses the existing scene clock; no timers or independent animation loop. */
+export function updateDistanceFog(
+  uniforms: DistanceFogUniforms,
+  elapsed: number,
+  reducedMotion: boolean,
+  viewport: SceneViewport,
+) {
+  uniforms.uAtmosTime.value = reducedMotion ? 0 : elapsed;
+  uniforms.uOctaves.value = viewport === "desktop" ? 3 : 2;
 }
 
 export function applyDistanceFog(material: MeshStandardMaterial, uniforms: DistanceFogUniforms) {
@@ -84,7 +121,12 @@ export function applyDistanceFog(material: MeshStandardMaterial, uniforms: Dista
          uniform vec4 uAtmosShape;
          uniform float uAtmosMax;
          uniform float uAerialLift;
-         uniform vec3 uAerialMist;`,
+         uniform vec3 uAerialMist;
+         uniform float uAtmosTime;
+         uniform int uOctaves;
+         uniform vec4 uAtmosMist;
+         ${WEATHER_GLSL}
+         ${MIST_FIELD_GLSL}`,
       )
       .replace(
         "#include <fog_fragment>",
@@ -95,15 +137,37 @@ export function applyDistanceFog(material: MeshStandardMaterial, uniforms: Dista
            // Haze at the base, only where the distance term has begun.
            float atmosLow = exp(-max(vAtmosWorld.y, 0.0) / uAtmosShape.z);
            float atmosBase = uAtmosShape.w * atmosLow * clamp(atmosDepth / uAtmosShape.x, 0.0, 1.0);
+           // Drift the air in world space, never the mountain's UVs or vertices.
+           vec2 flow = vAtmosWorld.xz - uAtmosMist.yz * uAtmosTime;
+           float bank = mistBank(flow, uAtmosMist.x);
+           float ceiling = uAtmosShape.z * mix(0.18, 0.85, bank);
+           float valley = 1.0 - smoothstep(ceiling * 0.25, ceiling, max(vAtmosWorld.y, 0.0));
+           // View-space normal and world up: suppress streaks on steep faces.
+           vec3 worldUpInView = normalize(mat3(viewMatrix) * vec3(0.0, 1.0, 0.0));
+           float slopeMask = smoothstep(0.08, 0.65, abs(dot(normal, worldUpInView)));
+           valley *= uAtmosMist.w * smoothstep(0.3, 0.7, bank) * mix(0.25, 1.0, slopeMask);
+           valley *= clamp(atmosDepth / uAtmosShape.x, 0.0, 1.0);
+           atmosBase = 1.0 - (1.0 - atmosBase) * (1.0 - valley);
            float atmos = 1.0 - (1.0 - atmosDistance) * (1.0 - atmosBase);
            // The base haze takes the low colour; distance alone sinks to the background.
            vec3 atmosTint = mix(uAtmosColor, uAtmosLow, atmosBase / max(atmos, 1e-4));
+           float weatherCell = weatherHorizonCell(vAtmosWorld - cameraPosition);
+           float response = uWeatherFlash * (0.25 + weatherCell * 0.75);
+           // Resolve the calm surface/haze first. Scattered radiance is added
+           // after that mix, so valley light is not extinguished a second time.
            gl_FragColor.rgb = mix(gl_FragColor.rgb, atmosTint, min(atmos, uAtmosMax));
            // From above, the low air reads as a moonlit mist layer the ridges stand out of.
            float mistLayer = exp(-max(vAtmosWorld.y, 0.0) / (uAtmosShape.z * 0.75));
            gl_FragColor.rgb = mix(gl_FragColor.rgb, uAerialMist, uAerialLift * 0.28 * mistLayer);
+           float scatter = 1.0 - exp(-(atmosDistance + atmosBase * 1.8) * 1.2);
+           float layeredAir = scatter * (0.65 + atmosBase * 0.75);
+           vec3 airLight = uWeatherColor * response * ${lightningConfig.hazeGain} * layeredAir;
+           float distantFace = smoothstep(8.0, 60.0, atmosDepth) * (1.0 - atmosDistance);
+           vec3 ridgeLight = uWeatherColor * response * 0.065 * distantFace * (0.3 + slopeMask * 0.7);
+           gl_FragColor.rgb += airLight + ridgeLight;
          }`,
       );
   };
+  material.customProgramCacheKey = () => "distance-fog-weather-v3";
   material.needsUpdate = true;
 }

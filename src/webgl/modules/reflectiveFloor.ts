@@ -1,3 +1,4 @@
+import { STORM_CLOUD_GLSL } from "./stormCloudField";
 import {
   Color,
   LinearFilter,
@@ -14,6 +15,9 @@ import {
   type Scene,
   type WebGLRenderer,
 } from "three";
+
+import { createWeatherUniforms, WEATHER_GLSL, type WeatherUniforms } from "../core/weather";
+import { lightningConfig } from "../sceneConfig";
 
 import { floorConfig, waterTones } from "../sceneConfig";
 import type { WaterConfig } from "../sceneTypes";
@@ -82,6 +86,9 @@ const FRAGMENT_SHADER = /* glsl */ `
   varying vec4 vReflectUv;
   varying vec3 vWorld;
   varying float vDepth;
+
+  ${WEATHER_GLSL}
+  ${STORM_CLOUD_GLSL}
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -214,6 +221,13 @@ const FRAGMENT_SHADER = /* glsl */ `
      * left to break it turns into single-pixel sparkle.
      */
     vec3 bounce = reflect(-view, normal);
+    // Sample precisely the same outgoing radiance as the sky, through the
+    // existing moving wave normal. Resolve transport after the calm haze mix.
+    vec3 stormReflection = vec3(0.0);
+    if (uWeatherFlash > 0.001 && bounce.y > 0.005) {
+      vec3 direction = normalize(bounce);
+      stormReflection = stormCloudRadiance(direction, stormCloudDensity(direction));
+    }
     for (int i = 0; i < ${MAX_BEACONS}; i++) {
       vec4 beacon = uBeacon[i];
       if (beacon.w <= 0.0) continue;
@@ -238,6 +252,11 @@ const FRAGMENT_SHADER = /* glsl */ `
      */
     float haze = smoothstep(24.0, 110.0, vDepth) * 0.85;
     colour = mix(colour, uMist, haze);
+    // Surface reflection and light scattered by the water's distant air each
+    // receive one transmittance factor, rather than two independent gains.
+    colour += stormReflection * mix(uReflectance.x, uReflectance.y, fresnel) * (1.0 - haze);
+    colour += uWeatherColor * uWeatherFlash * ${lightningConfig.hazeGain}
+      * (0.3 + 0.7 * weatherHorizonCell(vWorld - cameraPosition)) * haze;
 
     /*
      * Feather the far edge out before the geometry actually ends. The plane
@@ -258,6 +277,7 @@ export type ReflectiveFloorOptions = Readonly<{
   maxRipples: number;
   reducedMotion: boolean;
   config?: WaterConfig;
+  weather?: WeatherUniforms;
 }>;
 
 export type ReflectiveFloor = Readonly<{
@@ -302,6 +322,7 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
     transparent: true,
     depthWrite: false,
     uniforms: {
+      ...(options.weather ?? createWeatherUniforms()),
       uReflection: { value: null },
       uHasReflection: { value: 0 },
       uReflectMatrix: { value: new Float32Array(16) },

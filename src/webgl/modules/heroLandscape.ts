@@ -17,6 +17,8 @@ import {
   type Object3D,
   type Scene,
 } from "three";
+
+import type { WeatherUniforms } from "../core/weather";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import {
@@ -27,7 +29,7 @@ import {
 
 import { toWorld, type ChapterFrame } from "../core/chapterFrame";
 import type { HeroLandscapeConfig, LandscapeModelPlacement } from "../sceneTypes";
-import { applyDistanceFog, createDistanceFogUniforms } from "./distanceFog";
+import { applyDistanceFog, createDistanceFogUniforms, updateDistanceFog } from "./distanceFog";
 import { applyWaterlineContact } from "./rocks";
 import { bringRobotToLife, type RobotLife, type RobotLifeInput } from "./robotLife";
 import { matchStone } from "./stoneMaterial";
@@ -58,6 +60,7 @@ export type HeroLandscape = Readonly<{
   /** With altitude the moon eases out to the sky's distance, behind every ridge; at the water it is where it was composed. */
   setMoonDistance: (eye: Vector3, lift: number) => void;
   resize: (width: number) => void;
+  updateMist: (elapsed: number, reducedMotion: boolean) => void;
   /** Objects that should not be drawn into the water's reflection. */
   reflectionExclusions: () => readonly Object3D[];
   /** The robot's life: its head follows the cursor, it breathes and blinks. */
@@ -141,6 +144,7 @@ export function createHeroLandscape(
   config: HeroLandscapeConfig,
   frame: ChapterFrame,
   handlers: Readonly<{ onFailure?: (part: Part) => void; onLoaded?: () => void }> = {},
+  weather?: WeatherUniforms,
 ): HeroLandscape {
   const loader = new GLTFLoader();
   const root = new Group();
@@ -164,7 +168,7 @@ export function createHeroLandscape(
   };
   const perchMeshes: Mesh[] = [];
   const waterline = { value: 0.2 };
-  const mountainFog = createDistanceFogUniforms(config.mountainFog);
+  const mountainFog = createDistanceFogUniforms(config.mountainFog, weather);
 
   let viewport: SceneViewport = "desktop";
   let presence = 1;
@@ -399,6 +403,9 @@ export function createHeroLandscape(
       nearPresence = nextNear;
       moonlightPresence = nextLight;
       applyPresence();
+    },
+    updateMist: (elapsed, reducedMotion) => {
+      updateDistanceFog(mountainFog, elapsed, reducedMotion, viewport);
     },
     resize: (width) => {
       viewport = sceneViewportForWidth(width);

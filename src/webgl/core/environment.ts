@@ -1,3 +1,6 @@
+import { emitSoundEvent } from "../../sound/soundEvents";
+import { THUNDER } from "../../sound/thunder";
+import { subscribeExperienceEntry } from "../entryChannel";
 import {
   Color,
   Fog,
@@ -17,6 +20,7 @@ import type { PointerSample } from "@/motion/pointerSource";
 import { createHorizonLights, type HorizonLights } from "../modules/horizonLights";
 import { createHorizonAtmosphere, type HorizonAtmosphere } from "../modules/horizonAtmosphere";
 import { createLowMist, type LowMist } from "../modules/lowMist";
+import { createStormSky } from "../modules/stormSky";
 import {
   createParticleField,
   type AnchorRects,
@@ -48,6 +52,7 @@ import {
   heroLandscapeConfig,
   journeyWaypoints,
   monolithConfig,
+  lightningConfig,
   resolveCamera,
   workStations,
 } from "../sceneConfig";
@@ -65,6 +70,7 @@ import {
 } from "./cameraJourney";
 import { toWorld } from "./chapterFrame";
 import { detectCapability } from "./capability";
+import { createWeather } from "./weather";
 import {
   createQualityManager,
   particleCountFor,
@@ -192,6 +198,23 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   renderer.setClearColor(0x000000, 0);
   renderer.autoClear = false;
 
+  const weather = createWeather(
+    options.reducedMotion,
+    undefined,
+    {
+      onStrike: (state) =>
+        emitSoundEvent("weather:lightning", { intensity: state.strength, storm: state.storm }),
+      onCancel: () => emitSoundEvent("weather:stop"),
+    },
+    Boolean(document.querySelector("[data-site-entry]")),
+  );
+  const unsubscribeExperience = subscribeExperienceEntry((enteredAt) => {
+    weather.beginExperience(document.hidden ? 0 : (performance.now() - enteredAt) / 1000);
+  });
+  const weatherMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const baseFogColor = new Color(activeScene.fog.color);
+  const flashFogColor = new Color(lightningConfig.color);
+
   // ---------------------------------------------------------- perspective pass
   const worldScene = new Scene();
   /*
@@ -238,6 +261,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     maxRipples: settings.maxRipples,
     reducedMotion: options.reducedMotion,
     config: activeScene.water,
+    weather: weather.uniforms,
   });
   worldScene.add(floor.mesh);
   /*
@@ -265,6 +289,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     camera,
     options.reducedMotion,
     activeScene.fog,
+    weather.uniforms,
   );
   /*
    * Low mist lies on the water in world space, so unlike the horizon sheets it
@@ -276,6 +301,14 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     width,
     options.reducedMotion,
     activeScene.mist,
+    weather.uniforms,
+  );
+  const stormSky = createStormSky(
+    worldScene,
+    options.reducedMotion,
+    settings.tier,
+    width,
+    weather.uniforms,
   );
   const rocks: Rocks = createRocks(
     worldScene,
@@ -303,6 +336,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         if (options.reducedMotion) renderOnce(0);
       },
     },
+    weather.uniforms,
   );
   heroLandscape.resize(width);
   /*
@@ -331,16 +365,21 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   // The bio's dust, in the same air as the rift it comes out of.
   const bioDust: BioDust = createBioDust(worldScene);
 
-  const monolith: Monolith = createMonolith(worldScene, monolithConfig, {
-    onFailure: (asset) => {
-      console.error(`Selected Work ${asset} failed to load`);
-      options.canvas.dataset.monolithFailed = asset;
-      options.onMonolithFailure?.();
+  const monolith: Monolith = createMonolith(
+    worldScene,
+    monolithConfig,
+    {
+      onFailure: (asset) => {
+        console.error(`Selected Work ${asset} failed to load`);
+        options.canvas.dataset.monolithFailed = asset;
+        options.onMonolithFailure?.();
+      },
+      onLoaded: () => {
+        if (options.reducedMotion) renderOnce(0);
+      },
     },
-    onLoaded: () => {
-      if (options.reducedMotion) renderOnce(0);
-    },
-  });
+    weather.uniforms,
+  );
   monolith.resize(width);
 
   /*
@@ -727,14 +766,35 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     particles.setCount(particleCountFor(next, width * height));
     particles.resize(width, height, cappedRatio());
     floor.setReflectionSize(next.reflectionSize);
+    stormSky.setQuality(next.tier, width);
     options.onQualityChange?.(next);
   };
 
+  let debugCamera: PerspectiveCamera | undefined;
+  let debugPaused = false;
+  let debugSceneTime: number | undefined;
   const renderOnce = (deltaSeconds: number) => {
     applyJourney(deltaSeconds);
+    if (debugCamera) {
+      view.position.copy(debugCamera.position);
+      view.quaternion.copy(debugCamera.quaternion);
+      view.updateMatrixWorld();
+    }
 
-    atmosphere.update(elapsed);
-    lights.update(deltaSeconds, elapsed);
+    weather.setReducedMotion(options.reducedMotion || weatherMotionQuery.matches);
+    weather.update(
+      debugPaused ? 0 : deltaSeconds,
+      view,
+      Boolean(shownSettled) && entryAge < 0 && rift.departure() < 0.01,
+    );
+    if (worldScene.fog instanceof Fog) {
+      worldScene.fog.color.copy(baseFogColor).lerp(flashFogColor, weather.state.flash * 0.04);
+    }
+    const sceneTime = debugSceneTime ?? elapsed;
+    if (debugSceneTime !== undefined) deltaSeconds = 0;
+    stormSky.update(sceneTime, view);
+    atmosphere.update(sceneTime);
+    lights.update(deltaSeconds, sceneTime);
     const beaconIntensity = lights.intensity();
     options.onBeaconIntensity?.(beaconIntensity);
 
@@ -749,8 +809,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     });
     floor.setBeacons(worldBeacons.slice(0, beacons.length));
     atmosphere.setIllumination(lights.illumination());
-    mist.update(deltaSeconds, elapsed);
-    floor.update(deltaSeconds, elapsed);
+    mist.update(deltaSeconds, sceneTime);
+    heroLandscape.updateMist(sceneTime, options.reducedMotion);
+    monolith.updateMist(sceneTime, options.reducedMotion);
+    floor.update(deltaSeconds, sceneTime);
 
     const normalisedX = pointer && width > 0 ? (pointer.x / width) * 2 - 1 : 0;
     const normalisedY = pointer && height > 0 ? (pointer.y / height) * 2 - 1 : 0;
@@ -792,7 +854,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       view.position,
     );
 
-    particles.update(deltaSeconds, elapsed, {
+    rocks.setWeather(weather.state);
+
+    particles.update(deltaSeconds, sceneTime, {
       x: pointer?.x ?? 0,
       y: pointer?.y ?? 0,
       dirX: pointerDirX,
@@ -808,6 +872,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       floorBeyond,
       lights.group,
       mist.group,
+      stormSky.mesh,
       ...rocks.reflectionExclusions(),
       ...heroLandscape.reflectionExclusions(),
       // The range beyond stays out of the mirror: it would double its cost.
@@ -845,6 +910,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   const handleContextLost = (event: Event) => {
     event.preventDefault();
     contextLost = true;
+    weather.suspend();
     frontLayer?.context.clearRect(0, 0, frontLayer.canvas.width, frontLayer.canvas.height);
     options.onContextLost?.();
     running = false;
@@ -890,10 +956,56 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   function stop() {
     running = false;
+    weather.suspend();
     if (frame !== 0) {
       cancelAnimationFrame(frame);
       frame = 0;
     }
+  }
+
+  const debugHost = window as typeof window & { __portfolioWeatherDebug?: unknown };
+  if (
+    process.env.NODE_ENV !== "production" &&
+    new URLSearchParams(window.location.search).has("weatherDebug")
+  ) {
+    debugHost.__portfolioWeatherDebug = {
+      trigger: () => weather.trigger(view),
+      holdCamera: () => {
+        debugCamera = view.clone();
+      },
+      holdScene: () => {
+        debugSceneTime = elapsed;
+      },
+      releaseScene: () => {
+        debugSceneTime = undefined;
+      },
+      releaseCamera: () => {
+        debugCamera = undefined;
+      },
+      pause: () => {
+        debugPaused = true;
+      },
+      play: () => {
+        debugPaused = false;
+      },
+      sample: (seconds: number) => {
+        debugPaused = true;
+        weather.sample(seconds);
+        renderOnce(0);
+      },
+      peakTime: () => weather.peakTime(),
+      flickerTimes: () => weather.flickerTimes(),
+      diagnostics: () => ({
+        toneMapping: renderer.toneMapping,
+        exposure: renderer.toneMappingExposure,
+      }),
+      state: () => ({
+        ...weather.state,
+        direction: weather.state.direction.toArray(),
+        camera: view.matrixWorld.toArray(),
+        sceneTime: debugSceneTime ?? elapsed,
+      }),
+    };
   }
 
   return {
@@ -921,6 +1033,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       lights.resize(camera);
       atmosphere.resize(camera);
       mist.resize(width, camera);
+      stormSky.setQuality(settings.tier, width);
 
       particles.resize(width, height, cappedRatio());
       rocks.resize(width);
@@ -983,6 +1096,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       if (!sectionId || sectionId === activeSectionId) return;
       activeSectionId = sectionId;
       activeScene = getSceneSection(sectionId);
+      weather.setStormTarget(THUNDER.storm[sectionId]);
+      baseFogColor.setHex(activeScene.fog.color);
       worldScene.fog = new Fog(
         activeScene.fog.color,
         activeScene.lighting.fogNear,
@@ -1029,6 +1144,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     destroy: () => {
       stop();
+      unsubscribeExperience();
+      weather.destroy();
+      delete debugHost.__portfolioWeatherDebug;
       options.canvas.removeEventListener("webglcontextlost", handleContextLost);
       options.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
 
@@ -1046,6 +1164,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       lights.destroy();
       atmosphere.destroy();
       mist.destroy();
+      stormSky.destroy();
       floor.destroy();
 
       horizonRig.clear();
