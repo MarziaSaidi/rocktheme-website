@@ -196,8 +196,11 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
         });
         inner.style.backgroundImage = "none";
         inner.style.paddingInlineEnd = "0";
-        mask.style.paddingInline = `${room}px`;
-        mask.style.marginInline = `${-room}px`;
+        // The mask clips sideways by clip-path instead of overflow, so the
+        // room costs no layout (a padding and negative margin moved its box,
+        // which counts as a layout shift). Vertically it clips exactly as before.
+        mask.style.overflow = "visible";
+        mask.style.clipPath = `inset(0 -${room}px)`;
         mask.style.maxWidth = "none";
         inner.replaceChildren(row);
       }
@@ -237,8 +240,8 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
         line.inner.style.removeProperty("font-kerning");
         line.inner.style.removeProperty("background-image");
         line.inner.style.removeProperty("padding-inline-end");
-        line.mask.style.removeProperty("padding-inline");
-        line.mask.style.removeProperty("margin-inline");
+        line.mask.style.removeProperty("overflow");
+        line.mask.style.removeProperty("clip-path");
         line.mask.style.removeProperty("max-width");
         for (const element of [line.inner, line.mask]) {
           if (!element.getAttribute("style")) element.removeAttribute("style");
