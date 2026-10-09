@@ -1323,3 +1323,44 @@
 .entry:not(:focus-visible) {
   position: fixed;
 }
+
+/* ------------------------------------------------------------------ wake */
+
+/*
+ * The project wakes as one (projectWake.ts). The title's fill is moonlight
+ * rising from below: a little rests in it while the camera stands at the
+ * project (`--title-rest`), and it rises to 62% of the letters when the
+ * project is woken (`--title-rise`). The edge stays soft, over a fifth of the
+ * height; at 0 the title is plain porcelain. Only the fill changes here: the
+ * title's own opacity and transform transitions are frozen and left alone.
+ */
+@property --title-rest {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --title-rise {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.titleInner {
+  --title-light: max(var(--title-rest), var(--title-rise));
+  color: transparent;
+  background-image: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-text-moonlit) 92%, var(--color-text-primary)) 0%,
+    color-mix(in srgb, var(--color-text-moonlit) 45%, var(--color-text-primary))
+      calc(var(--title-light) * 72%),
+    var(--color-text-primary) calc(var(--title-light) * 100% + min(var(--title-light) * 5, 1) * 22%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Woken from its title or screens, the link brightens in moonlight. */
+.project[data-wake] .view:not(:hover, :focus-visible) {
+  border-color: color-mix(in srgb, var(--color-text-moonlit) 70%, transparent);
+}

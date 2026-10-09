@@ -30,6 +30,7 @@ import {
 } from "@/webgl/workJourney";
 
 import styles from "./MonolithGallery.module.css";
+import { bindProjectWake } from "./projectWake";
 import { rememberWorkReturn, takeWorkReturn } from "./workReturn";
 
 /**
@@ -673,6 +674,15 @@ export function MonolithGallery({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The shown project wakes as one; never during a swap.
+  useEffect(() => {
+    const project = runwayRef.current?.querySelector<HTMLElement>(
+      `[data-project-station="${active}"]`,
+    );
+    if (!project || !shown || swap) return;
+    return bindProjectWake(project);
+  }, [shown, swap, active]);
+
   const current = featured[active];
   const visualLayerRef = useRef<HTMLDivElement>(null);
   usePointerParallax(visualLayerRef, shown, current?.slug);
@@ -728,6 +738,7 @@ export function MonolithGallery({
             <div
               key={current.slug}
               className={styles.project}
+              data-project-station={station}
               data-swap={swap ? (station === swap.from ? "out" : "in") : undefined}
               style={swap ? ({ "--swap-direction": swap.direction } as CSSProperties) : undefined}
               aria-hidden={swap ? station !== swap.to : !shown}
@@ -745,8 +756,10 @@ export function MonolithGallery({
                   <span className={styles.glassEdge} aria-hidden="true" />
                   {current ? (
                     <article key={current.slug} aria-label={`${pad(station + 1)} of ${pad(count)}`}>
-                      <h3 className={styles.title}>
-                        <span className={styles.titleInner}>{current.title}</span>
+                      <h3 className={styles.title} data-wake-title="">
+                        <span className={styles.titleInner} data-wake-light="">
+                          {current.title}
+                        </span>
                       </h3>
                       <p className={styles.role}>{current.role}</p>
                       <p className={styles.description}>{current.description}</p>
@@ -815,6 +828,7 @@ export function MonolithGallery({
                     ref={station === active ? visualLayerRef : undefined}
                     className={styles.visualLayer}
                     data-project={current.slug}
+                    data-wake-visual=""
                     data-shown={shown ? "" : undefined}
                     aria-hidden={!shown}
                   >
