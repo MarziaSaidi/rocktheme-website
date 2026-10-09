@@ -1,26 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
 
-import type { SectionId } from "@/config/sections";
 import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { siteContent } from "@/content/site/siteContent";
 import { ENTRANCE_DECODE, playDecode, setDecodePhase } from "@/motion/decode";
-import { subscribeHomeSection, type HomeSection } from "@/motion/sectionState";
-import { subscribeWorkStation, watchWorkLinks, type WorkStation } from "@/motion/workChannel";
+import { useCurrentPlace } from "@/motion/useCurrentPlace";
+import { watchWorkLinks } from "@/motion/workChannel";
 
 import styles from "./SiteHeader.module.css";
-
-const pad = (value: number) => String(value).padStart(2, "0");
 
 /**
  * The header's section links (docs/typography-motion-system.md, Navigation).
@@ -33,31 +22,13 @@ const pad = (value: number) => String(value).padStart(2, "0");
  * belongs to Work.
  */
 export function PrimaryNav() {
-  const pathname = usePathname();
-  const [section, setSection] = useState<HomeSection>("hero");
-  const [station, setStation] = useState<WorkStation | null>(null);
+  const { current, counter } = useCurrentPlace();
   const navRef = useRef<HTMLElement>(null);
   const lineRef = useRef<HTMLSpanElement>(null);
   const counterRef = useRef<HTMLSpanElement>(null);
 
-  const onCaseStudy = pathname.startsWith("/work/");
-  const onHome = pathname === "/";
-  const current: SectionId | null = onCaseStudy ? "selected-work" : onHome ? section : null;
-
-  useEffect(() => {
-    if (!onHome) return;
-    return subscribeHomeSection(setSection);
-  }, [onHome]);
-
-  useEffect(() => subscribeWorkStation(setStation), []);
-
   // A keyboard visitor following a link to Selected Work arrives on a project.
   useEffect(() => watchWorkLinks(), []);
-
-  const counter =
-    onHome && current === "selected-work" && station
-      ? `${pad(station.station + 1)} / ${pad(station.count)}`
-      : null;
 
   /*
    * The lit line is one element moved by transform: measured only when the

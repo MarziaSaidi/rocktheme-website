@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 
 import { siteContent } from "@/content/site/siteContent";
+import { useCurrentPlace } from "@/motion/useCurrentPlace";
 import { SoundToggle } from "@/sound/SoundToggle";
 
 import styles from "./MobileMenu.module.css";
@@ -31,6 +32,8 @@ type MobileMenuProps = Readonly<{
 
 export function MobileMenu({ toggleClassName, toggleStyle }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
+  // The sheet marks where the camera is, as the desktop nav's lit line does.
+  const { current } = useCurrentPlace();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
   const panelId = useId();
@@ -104,6 +107,7 @@ export function MobileMenu({ toggleClassName, toggleStyle }: MobileMenuProps) {
                   ref={index === 0 ? firstLinkRef : undefined}
                   className={styles.link}
                   href={item.href}
+                  aria-current={current === item.key ? "location" : undefined}
                   // Work lands on the first project's details (MonolithGallery).
                   data-work-entry={item.key === "selected-work" ? "" : undefined}
                   onClick={() => setOpen(false)}
