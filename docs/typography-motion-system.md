@@ -935,6 +935,60 @@ Measured: 78 keyboard checks across desktop, reduced motion and a phone
 with the page position at each project identical to the wheel path (4028 and
 7853 at 1440 × 900) and the card layer pixel-identical to the build before.
 
+## 15b. Milestone 3 verification and the redesign audit (2026-10-09)
+
+Measured at 60 Hz, Chrome, 1440 × 900 and iPhone 13 emulation, with the scene
+running.
+
+**Guards.** The hero and contact share one frame guard (`frameGuard.ts`).
+Neither tripped at 1× or 2× CPU, in 12 and 7 runs. At 4×:
+
+- The hero trips in 0.32–0.44 s, with 6–8 slow frames in all (M1 head:
+  0–1; the first Milestone 2 build: 24).
+- The contact trips in about 0.38 s, after which it runs at the M1 head's
+  level (61–64 vs 58–63 slow frames; that section is heavy at 4× either way).
+
+**Motion categories.** Narrative motion explains the project:
+
+- ink, and the green rule on "the correction."
+- approach, and the urgency steps on "warning."
+- the Selected Work wake and the case-study title light
+- the story roles, phone place label, menu marker and the keyboard path
+
+Atmospheric motion rewards attention without explaining anything:
+
+- the hero field, and the cursor's stone state
+- the contact headline's moonlight
+- the plane lean and the waveform band
+
+The proposals under review remove three emphasis moments ("vehicle", "risk",
+"a state,") and soften the contact moonlight to 65%.
+
+**Compatibility with the Barlow/Manrope redesign** (b685874, on
+`origin/main`). This is a trial merge of `typography-motion` onto
+`origin/main` in a throwaway worktree; nothing was committed or pushed.
+
+- One textual conflict: the nav's hover/current rule. The redesign uses
+  colour on proportional labels; motion uses WeightLabel on Geist Mono.
+  Taking either side silently drops the other's nav voice.
+- **Hero field.** On Barlow Condensed (static 400/500) there are no axes
+  to lift. Because the redesign paints the headline solid porcelain, the
+  moonlight is hidden too. The field splits and the cursor presses, but
+  nothing visible answers.
+- **Decode on Manrope.** The redesign moves View case study, Start a
+  conversation, the plane label and the hero role to proportional Manrope.
+  Scrambled glyphs change the label's width: View case study varies by 26 px
+  while decoding (0 px in Geist Mono).
+- **WeightLabel on Manrope** (socials, back to top). The heavier copy is
+  1.3–2 px wider than the label it covers. It doesn't reflow, but the word
+  visibly widens.
+- **Compatible as is:**
+  - Survue's approach in variable Manrope (settles, layout shift 0)
+  - ink
+  - the Selected Work and case-study title lights (font-agnostic)
+  - the lit line, counter, phone label and keyboard path
+  - the frame guards
+
 ## 16. Open decisions
 
 1. **Phones (§13):** approve the header label, the hero's single Breath wave
