@@ -822,6 +822,45 @@ The work figures compare unequal sweeps: the build before has none of the
 wake's markers, so its sweep covered the title only. They show the wake adds
 no measurable cost, not that it saves any.
 
+### Milestone 2, quality pass (after review)
+
+- **Guard.** It now follows the scene's quality manager: a bucket on a
+  20 ms budget, plus a stutter check (4 frames over 25 ms within 60),
+  both measured against the display's cadence, after a 12-frame warm-up.
+  On a trip the whole field rests for the visit (the moonlight alone still
+  cost frames). It never tripped at 1× or 2× CPU, paced at 30 Hz or
+  uncapped; with frames uncapped it trips at 4×. At 60 Hz the logic is the
+  version that tripped in about 0.19 s at 4×; that still needs re-measuring
+  with the display awake.
+- **Fixes.** The Selected Work title light now drains instead of cutting to 0. A pointer leaving the window over the screens releases the wake. The
+  hero's letter room no longer shifts layout (0.0013 → 0). The keyboard
+  controls' names no longer have a stray space.
+- **Contact.** Quieter, as asked: the lean is at most 2°, and the band is
+  at most 55% moonlit and narrower; the headline stays the strongest light.
+
+### Milestone 3, as built
+
+- **Content.** `caseStudy.titleSignature` ("ink" | "approach") and
+  `story.emphasis` (whole words of the title, checked by validate-content).
+- **Story roles** (`CaseStudyWorkspace`): eyebrow out of a one-line mask
+  (160 ms); body opacity only (320 ms, from 280 ms), measured 0 px of
+  travel; the title by signature (`storySignature.ts`), or rising line by
+  line as before for projects without one.
+- **Ink and approach.** As the prototype the user reviewed, with its values:
+  the approach emphasis steps 560 → 640 → 720 and rests at 620. A title
+  below the fold waits until it's on screen. Approach words keep their
+  resting width meanwhile and return to plain layout once settled (layout
+  shift 0).
+- **Reading time.** An autoplaying story stays up at least words ÷ 230 × 60
+  - 1.5 s, never under 6 s. Both featured case studies stay manual.
+- **Stage nav.** The gold lit line, and the current label at the signal
+  weight by WeightLabel's crossfade.
+- **Case-study title.** Rests at the Selected Work resting light (0.2) once
+  risen.
+- **Phones.** A place label beside the wordmark ("Work · 01 / 02"), the
+  menu's gold marker with `aria-current`, and the arrival wake (once per
+  arrival, 1.4 s). There is no automatic headline wave.
+
 ## 15. Keyboard access to Selected Work (found in Milestone 1)
 
 Measured with the keyboard only (no mouse, no wheel), on `main` and on this
