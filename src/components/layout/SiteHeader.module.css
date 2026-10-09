@@ -165,9 +165,11 @@
 }
 
 /* The project counter after "Work": moonlit, decoding to each new number. */
+/* Mono, so its digits decode and change without moving the Manrope label. */
 .counter {
   margin-inline-start: 0.7em;
   color: var(--color-text-moonlit);
+  font-family: var(--font-technical);
   font-variant-numeric: tabular-nums;
   font-weight: var(--weight-signal);
 }

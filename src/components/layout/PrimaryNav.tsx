@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties } from "react";
 
-import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { siteContent } from "@/content/site/siteContent";
 import { ENTRANCE_DECODE, playDecode, setDecodePhase } from "@/motion/decode";
 import { useCurrentPlace } from "@/motion/useCurrentPlace";
@@ -90,7 +89,8 @@ export function PrimaryNav() {
               // Work lands on the first project's details, whatever the input.
               data-work-entry={item.key === "selected-work" ? "" : undefined}
             >
-              <WeightLabel text={item.label} data-nav-label="" />
+              {/* The redesign's Manrope labels answer with colour, never weight. */}
+              <span data-nav-label="">{item.label}</span>
               {item.key === "selected-work" && counter ? (
                 <span ref={counterRef} key={counter} className={styles.counter} aria-hidden="true">
                   {[...counter].map((char, charIndex) =>
