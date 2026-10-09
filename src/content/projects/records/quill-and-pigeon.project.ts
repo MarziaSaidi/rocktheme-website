@@ -217,7 +217,6 @@ export const quillAndPigeonProject = {
             id: "frontend-boundary",
             eyebrow: "Design + development / interface responsibilities",
             title: "The review is a state, not a preview image.",
-            emphasis: "a state,",
             description:
               "My frontend work connects the selected file, an editable contact table, field-level validation feedback, and a confirmation of saved contacts. The interface has to preserve the user's context across those states: uploading the file and saving the reviewed contacts are separate actions.",
             supportingPoints: [
