@@ -108,7 +108,11 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
 
     const tick = (now: number) => {
       const dt = Math.min((now - (last || now)) / 1000, 1 / 30) || 1 / 60;
-      if (last !== 0 && !guard.tripped && guard.sample(now - last)) inside = false;
+      if (last !== 0 && !guard.tripped && guard.sample(now - last)) {
+        inside = false;
+        // Readable in the inspector and by the checks: the light rests for the visit.
+        heading.dataset.fieldGuard = "tripped";
+      }
       last = now;
       const progress = arrival();
       const atRest = progress < AT_REST;
@@ -189,6 +193,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
       if (frame) cancelAnimationFrame(frame);
       setStone(false);
       clear();
+      delete heading.dataset.fieldGuard;
     };
   }, [targetId]);
 
