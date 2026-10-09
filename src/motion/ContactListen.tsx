@@ -11,7 +11,8 @@ import { createPointerSource } from "./pointerSource";
  *   follows the pointer across the letters. Anton has no axes, so light is
  *   all it does.
  * - The plane listens: as the pointer approaches it leans toward it, within
- *   3° of its shipped pose, instead of snapping between two angles.
+ *   2° of its shipped pose, instead of snapping between two angles. It stays
+ *   quieter than the headline, which remains the section's strongest light.
  * - The waveform: with the pointer on the plane, a moonlit band brightens the
  *   line at the pointer's x, like a level meter.
  *
@@ -136,8 +137,8 @@ export function ContactListen({ targetId }: Readonly<{ targetId: string }>) {
       if (glow > 0.002) {
         wave.dataset.band = "";
         wave.style.setProperty("--band-glow", glow.toFixed(3));
-        band.setAttribute("x1", (bandX - 60).toFixed(1));
-        band.setAttribute("x2", (bandX + 60).toFixed(1));
+        band.setAttribute("x1", (bandX - 48).toFixed(1));
+        band.setAttribute("x2", (bandX + 48).toFixed(1));
       } else if (wave.dataset.band !== undefined) {
         delete wave.dataset.band;
         wave.style.removeProperty("--band-glow");

@@ -162,7 +162,7 @@
 
 /*
  * The plane listens (ContactListen.tsx). As a mouse approaches, the plane
- * leans toward it within 3° of its shipped pose (`--lean-x/y`, -1..1, sprung
+ * leans toward it within 2° of its shipped pose (`--lean-x/y`, -1..1, sprung
  * in script, so no transition on transform), in place of the hover's snap to a
  * second angle. Keyboard focus keeps the snap. With the pointer on the plane,
  * a moonlit band follows it along the waveform.
@@ -170,8 +170,8 @@
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) and (min-width: 48rem) {
   .plane[data-lean],
   .plane[data-lean]:hover {
-    transform: rotateY(calc(-11deg + var(--lean-x, 0) * 3deg))
-      rotateX(calc(var(--lean-y, 0) * -1.5deg)) rotateZ(calc(-1.6deg + var(--lean-x, 0) * 0.6deg));
+    transform: rotateY(calc(-11deg + var(--lean-x, 0) * 2deg))
+      rotateX(calc(var(--lean-y, 0) * -1deg)) rotateZ(calc(-1.6deg + var(--lean-x, 0) * 0.4deg));
     transition:
       border-color var(--duration-interface) var(--ease-interface),
       scale var(--motion-press-out) var(--motion-ease-interface);
@@ -185,7 +185,8 @@
 .bandCore {
   stop-color: color-mix(
     in srgb,
-    var(--color-text-moonlit) calc(var(--band-glow, 0) * 100%),
+    /* At most a little over half moonlit: the headline stays the strongest light here. */
+    var(--color-text-moonlit) calc(var(--band-glow, 0) * 55%),
     var(--color-text-secondary)
   );
 }
