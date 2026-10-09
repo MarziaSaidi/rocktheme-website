@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { createFrameGuard } from "./frameGuard";
 import { createPointerSource } from "./pointerSource";
 
 /**
@@ -18,7 +19,9 @@ import { createPointerSource } from "./pointerSource";
  *
  * Mouse only, and only while the footer is on screen; boxes are read when the
  * pointer arrives and on scroll or resize, never once per frame. Every loop
- * parks when settled, and the headline goes back to plain type.
+ * parks when settled, and the headline goes back to plain type. If frames
+ * start to slip while it answers (the shared frame guard, frameGuard.ts), all
+ * three let go and rest for the visit, as the hero's field does.
  */
 
 /** Lean at the edge of the reach, in degrees (SiteFooter.module.css applies it). */
@@ -145,8 +148,19 @@ export function ContactListen({ targetId }: Readonly<{ targetId: string }>) {
       }
     };
 
+    const guard = createFrameGuard();
+    // The guard tripped: everything lets go on its own springs, then parks.
+    const rest = () => {
+      footer.dataset.contactGuard = "tripped";
+      lightTarget = 0;
+      approach = false;
+      leanTX = leanTY = 0;
+      glowTarget = 0;
+    };
+
     const tick = (now: number) => {
       const dt = Math.min((now - (last || now)) / 1000, 1 / 30) || 1 / 60;
+      if (last !== 0 && !guard.tripped && guard.sample(now - last)) rest();
       last = now;
       if (!ripple()) {
         light = 0;
@@ -187,6 +201,7 @@ export function ContactListen({ targetId }: Readonly<{ targetId: string }>) {
     const pointer = createPointerSource();
     let unsubscribe: (() => void) | null = null;
     const onPointer = (sample: { x: number; y: number; inside: boolean }) => {
+      if (guard.tripped) return;
       px = sample.x;
       py = sample.y;
       const box = read();
@@ -268,6 +283,7 @@ export function ContactListen({ targetId }: Readonly<{ targetId: string }>) {
       light = leanX = leanY = glow = 0;
       approach = false;
       paint();
+      delete footer.dataset.contactGuard;
     };
   }, [targetId]);
 
