@@ -21,26 +21,23 @@
   text-decoration: none;
   transition:
     color var(--duration-interface) var(--ease-interface),
-    font-weight var(--motion-weight-duration) var(--motion-ease-interface),
     scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
+/* Colour here; the weight comes from its WeightLabel. */
 @media (hover: hover) and (pointer: fine) {
   .backLink:hover {
     color: var(--color-text-primary);
-    font-weight: var(--weight-signal-lift);
   }
 }
 
 .backLink:focus-visible {
   color: var(--color-text-primary);
-  font-weight: var(--weight-signal-lift);
 }
 
 .backLink:active {
   scale: var(--motion-press-scale);
-  transition-duration:
-    var(--duration-interface), var(--motion-weight-duration), var(--motion-press-in);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
 }
 
 .backArrow {

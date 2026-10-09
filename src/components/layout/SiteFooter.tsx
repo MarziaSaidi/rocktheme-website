@@ -1,5 +1,6 @@
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
+import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
@@ -93,7 +94,7 @@ export function SiteFooter() {
                     ? { target: "_blank", rel: "noreferrer noopener" }
                     : {})}
                 >
-                  {link.label}
+                  <WeightLabel text={link.label} />
                 </a>
               </li>
             ))}
@@ -101,7 +102,7 @@ export function SiteFooter() {
         </nav>
 
         <a className={styles.backToTop} href={`#${pageLandmarkIds.top}`}>
-          {footer.backToTopLabel}
+          <WeightLabel text={footer.backToTopLabel} />
           <SwapGlyph direction="up">↑</SwapGlyph>
         </a>
       </div>

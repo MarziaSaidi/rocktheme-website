@@ -5,6 +5,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 
 import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
+import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { DecodeText } from "@/motion/DecodeText";
 import type { CaseStudyInfo, CaseStudyStage, Project, StoryVisual } from "@/content/projects";
 
@@ -667,7 +668,8 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             target="_blank"
             rel="noopener noreferrer"
           >
-            Open artifact full size <SwapGlyph direction="up-right">↗</SwapGlyph>
+            <WeightLabel text="Open artifact full size" />{" "}
+            <SwapGlyph direction="up-right">↗</SwapGlyph>
           </a>
         ) : null}
       </section>

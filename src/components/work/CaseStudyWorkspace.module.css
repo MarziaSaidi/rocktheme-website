@@ -442,24 +442,13 @@ video.visualMedia[data-fit="cover"] {
   letter-spacing: var(--tracking-micro);
   text-decoration: none;
   text-transform: uppercase;
-  transition:
-    font-weight var(--motion-weight-duration) var(--motion-ease-interface),
-    scale var(--motion-press-out) var(--motion-ease-interface);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .zoomLink:hover {
-    font-weight: var(--weight-signal-lift);
-  }
-}
-
-.zoomLink:focus-visible {
-  font-weight: var(--weight-signal-lift);
+  /* The weight comes from its WeightLabel. */
+  transition: scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
 .zoomLink:active {
   scale: var(--motion-press-scale);
-  transition-duration: var(--motion-weight-duration), var(--motion-press-in);
+  transition-duration: var(--motion-press-in);
 }
 
 .supportingVideo {

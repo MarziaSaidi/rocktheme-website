@@ -1,0 +1,54 @@
+/*
+ * The label stays at its regular weight; the heavier cut sits on top and
+ * fades in. Timing from src/motion/motion.css (--motion-weight-duration),
+ * which makes it immediate for reduced motion.
+ */
+.label {
+  position: relative;
+  display: inline-block;
+  /* Leaving: the regular label is back at once while the heavier cut fades out. */
+  transition: -webkit-text-fill-color 0s linear 0s;
+}
+
+.label::after {
+  /* Browsers without alternative text for generated content get the plain form. */
+  content: attr(data-text);
+  content: attr(data-text) / "";
+  position: absolute;
+  inset: 0;
+  font-weight: var(--weight-signal-lift);
+  white-space: nowrap;
+  /* Its own fill, so hiding the regular label underneath never hides this. */
+  -webkit-text-fill-color: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity var(--motion-weight-duration) var(--motion-ease-interface);
+}
+
+/*
+ * Played by the enclosing link or button: hover only where a mouse can hover.
+ * Once the cut has fully arrived, the regular label underneath goes clear, so
+ * the settled state is exactly the heavier weight, not two weights overlaid.
+ */
+@media (hover: hover) and (pointer: fine) {
+  :is(a, button):hover .label::after {
+    opacity: 1;
+  }
+
+  :is(a, button):hover .label {
+    -webkit-text-fill-color: transparent;
+    transition-delay: var(--motion-weight-duration);
+  }
+}
+
+:is(a, button):focus-visible .label::after,
+[aria-current] .label::after {
+  opacity: 1;
+}
+
+:is(a, button):focus-visible .label,
+[aria-current] .label {
+  -webkit-text-fill-color: transparent;
+  transition-delay: var(--motion-weight-duration);
+}

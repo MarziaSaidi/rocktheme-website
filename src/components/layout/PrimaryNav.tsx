@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import type { SectionId } from "@/config/sections";
+import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { siteContent } from "@/content/site/siteContent";
 import { ENTRANCE_DECODE, playDecode, setDecodePhase } from "@/motion/decode";
 import { subscribeHomeSection, type HomeSection } from "@/motion/sectionState";
@@ -113,7 +114,7 @@ export function PrimaryNav() {
               href={item.href}
               aria-current={current === item.key ? "location" : undefined}
             >
-              <span data-nav-label="">{item.label}</span>
+              <WeightLabel text={item.label} data-nav-label="" />
               {item.key === "selected-work" && counter ? (
                 <span ref={counterRef} key={counter} className={styles.counter} aria-hidden="true">
                   {[...counter].map((char, charIndex) =>

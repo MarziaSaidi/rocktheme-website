@@ -101,30 +101,17 @@
   text-decoration: none;
   transition:
     color var(--duration-interface) var(--ease-interface),
-    font-weight var(--motion-weight-duration) var(--motion-ease-interface),
     scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
 /*
- * Ordinary navigation answers with weight only: Geist Mono keeps its advance
- * at every weight, so the lift never moves a neighbour. The current section
- * keeps it too. Hover only under a fine pointer, so a tap never leaves it on.
+ * Ordinary navigation answers with weight only, through its WeightLabel:
+ * hover under a fine pointer, keyboard focus, and the current section.
  */
-@media (hover: hover) and (pointer: fine) {
-  .navLink:hover {
-    font-weight: var(--weight-signal-lift);
-  }
-}
-
-.navLink:focus-visible,
-.navLink[aria-current] {
-  font-weight: var(--weight-signal-lift);
-}
 
 .navLink:active {
   scale: var(--motion-press-scale);
-  transition-duration:
-    var(--duration-interface), var(--motion-weight-duration), var(--motion-press-in);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
 }
 
 /*
