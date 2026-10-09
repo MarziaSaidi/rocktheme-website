@@ -219,6 +219,8 @@
   --motion-cursor-link: 0.92;
   --motion-cursor-action: 0.75;
   --motion-cursor-press: 0.42;
+  /* Over the hero headline while its field is active: pressing on stone. */
+  --motion-cursor-stone: 0.9;
 }
 
 /* ---------------------------------------------------------------- keyframes */

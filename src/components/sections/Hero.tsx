@@ -3,6 +3,7 @@ import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
 import { DecodeText } from "@/motion/DecodeText";
+import { HeroField } from "@/motion/HeroField";
 import { RippleHeading } from "@/motion/RippleHeading";
 
 import styles from "./Hero.module.css";
@@ -23,6 +24,8 @@ export function Hero() {
           <div className={styles.statement}>
             {/* The headline arrives on a ripple once the visitor is through the doorway. */}
             <RippleHeading targetId="hero-title" trigger="entry" />
+            {/* Afterwards, the letters answer the pointer while the camera is here. */}
+            <HeroField targetId="hero-title" />
             <DisplayHeading
               id="hero-title"
               as="h1"

@@ -76,6 +76,11 @@ html[data-custom-cursor] summary {
   scale: var(--motion-cursor-action);
 }
 
+/* Over the hero headline while its mass field answers (HeroField.tsx). */
+:root[data-cursor-stone] [data-cursor-root]:not([data-cursor-target]) [data-cursor-ring] {
+  scale: var(--motion-cursor-stone);
+}
+
 /* Pressed: the ring contracts toward the dot, quickly. */
 [data-cursor-root][data-cursor-press] [data-cursor-ring] {
   scale: var(--motion-cursor-press);
