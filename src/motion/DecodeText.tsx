@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 
+import { actionDecode, ENTRANCE_DECODE, playDecode, setDecodePhase } from "./decode";
+
 import styles from "./DecodeText.module.css";
 
 /**
@@ -12,29 +14,33 @@ import styles from "./DecodeText.module.css";
  * to right. The label's words stay in the document as plain text for
  * assistive technology; only the visual copy animates.
  *
- * It starts with the label's own entrance: once the page is no longer inert
- * (the visitor is through the doorway), at the moment an ancestor's CSS
- * entrance begins, or, for a label with no entrance, when it scrolls into
- * view. A label that is already on screen when the page loads is left alone.
+ * `entrance` (on by default) starts with the label's own entrance: once the
+ * page is no longer inert (the visitor is through the doorway), at the moment
+ * an ancestor's CSS entrance begins, or, for a label with no entrance, when it
+ * scrolls into view. A label that is already on screen when the page loads is
+ * left alone.
+ *
+ * `replay` is for the short, closed list of important actions
+ * (docs/typography-motion-system.md, §4): the label decodes again when a mouse
+ * comes onto its link or button, or keyboard focus does. It is always readable
+ * again within ACTION_DECODE_BUDGET, and the same action does not replay within
+ * REPLAY_COOLDOWN, so passing over it repeatedly never turns into noise. Touch
+ * never triggers it.
+ *
  * Without JavaScript, or with reduced motion, it is simply the text.
  */
 
-const SYMBOLS = "[]{}!@#$%&*+-=<>?/~0123456789";
-const TIMING = {
-  /** Between one character and the next. */
-  stagger: 34,
-  /** Flickering symbols. */
-  scramble: 190,
-  /** How often a scrambling character changes symbol. */
-  flicker: 55,
-  /** The real letter, still in moonlit. */
-  accent: 150,
-};
 const VIEW_THRESHOLD = 0.6;
+/** The same action does not decode again within this window. */
+const REPLAY_COOLDOWN = 4000;
 
-type DecodeTextProps = Readonly<{ text: string }>;
-
-type CharState = "hidden" | "scramble" | "accent" | "done";
+type DecodeTextProps = Readonly<{
+  text: string;
+  /** Decode with the label's entrance. */
+  entrance?: boolean;
+  /** Decode again on mouse hover or keyboard focus of the enclosing link or button. */
+  replay?: boolean;
+}>;
 
 /** The CSS entrance on this label or just above it, if it has one. */
 function entranceOf(element: HTMLElement): CSSAnimation | null {
@@ -48,73 +54,35 @@ function entranceOf(element: HTMLElement): CSSAnimation | null {
   return null;
 }
 
-export function DecodeText({ text }: DecodeTextProps) {
+export function DecodeText({ text, entrance = true, replay = false }: DecodeTextProps) {
   const ref = useRef<HTMLSpanElement>(null);
+  /** Whichever decode is running, entrance or replay; there is only ever one. */
+  const stopRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const root = ref.current;
-    if (!root) return;
+    if (!root || !entrance) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const chars = [...root.querySelectorAll<HTMLElement>("[data-final]")];
-    const states: CharState[] = chars.map(() => "done");
-    let frame = 0;
     let timer = 0;
-    let disposed = false;
     const cleanups: (() => void)[] = [];
 
-    const setAll = (state: CharState) => {
-      chars.forEach((char, index) => {
-        states[index] = state;
-        char.textContent = char.dataset.final ?? "";
-        if (state === "done") delete char.dataset.state;
-        else char.dataset.state = state;
+    const decode = () => {
+      stopRef.current?.();
+      stopRef.current = playDecode(chars, ENTRANCE_DECODE, {
+        onDone: () => (stopRef.current = null),
       });
     };
 
-    const decode = () => {
-      const start = performance.now();
-      const step = (now: number) => {
-        if (disposed) return;
-        const elapsed = now - start;
-        let settled = true;
-        chars.forEach((char, index) => {
-          const t = elapsed - index * TIMING.stagger;
-          const state: CharState =
-            t < 0
-              ? "hidden"
-              : t < TIMING.scramble
-                ? "scramble"
-                : t < TIMING.scramble + TIMING.accent
-                  ? "accent"
-                  : "done";
-          if (state !== "done") settled = false;
-          if (state === "scramble") {
-            const slot = Math.floor(t / TIMING.flicker);
-            const pick = Math.abs(Math.sin(index * 12.9898 + slot * 78.233) * 43758.5453) % 1;
-            char.textContent = SYMBOLS[Math.floor(pick * SYMBOLS.length)] ?? "";
-          } else if (states[index] === "scramble") {
-            char.textContent = char.dataset.final ?? "";
-          }
-          if (state !== states[index]) {
-            states[index] = state;
-            if (state === "done") delete char.dataset.state;
-            else char.dataset.state = state;
-          }
-        });
-        if (!settled) frame = requestAnimationFrame(step);
-      };
-      frame = requestAnimationFrame(step);
-    };
-
     const begin = () => {
-      const entrance = entranceOf(root);
-      if (entrance) {
-        const delay = Number(entrance.effect?.getTiming().delay ?? 0);
-        const now = Number(entrance.currentTime ?? 0);
+      const animation = entranceOf(root);
+      if (animation) {
+        const delay = Number(animation.effect?.getTiming().delay ?? 0);
+        const now = Number(animation.currentTime ?? 0);
         if (now > delay + 120) {
           // Already arrived before this ran: leave it be.
-          setAll("done");
+          setDecodePhase(chars, "done");
           return;
         }
         timer = window.setTimeout(decode, Math.max(0, delay - now));
@@ -141,7 +109,7 @@ export function DecodeText({ text }: DecodeTextProps) {
       return box.bottom > 0 && box.top < window.innerHeight;
     };
     if (!gate && !entranceOf(root) && onScreen()) return;
-    setAll("hidden");
+    setDecodePhase(chars, "hidden");
 
     if (gate) {
       const watch = new MutationObserver(() => {
@@ -157,13 +125,48 @@ export function DecodeText({ text }: DecodeTextProps) {
     }
 
     return () => {
-      disposed = true;
-      cancelAnimationFrame(frame);
       window.clearTimeout(timer);
       cleanups.forEach((cleanup) => cleanup());
-      setAll("done");
+      stopRef.current?.();
+      stopRef.current = null;
+      setDecodePhase(chars, "done");
     };
-  }, [text]);
+  }, [text, entrance]);
+
+  useEffect(() => {
+    const root = ref.current;
+    const target = root?.closest<HTMLElement>("a, button");
+    if (!root || !target || !replay) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const chars = [...root.querySelectorAll<HTMLElement>("[data-final]")];
+    const timing = actionDecode(chars.length);
+    let last = -Infinity;
+
+    const play = () => {
+      // Never on top of a decode that is still running (the entrance included).
+      if (reduced.matches || stopRef.current) return;
+      const now = performance.now();
+      if (now - last < REPLAY_COOLDOWN) return;
+      last = now;
+      stopRef.current = playDecode(chars, timing, {
+        fromVisible: true,
+        onDone: () => (stopRef.current = null),
+      });
+    };
+    const onPointer = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") play();
+    };
+    const onFocus = () => {
+      if (target.matches(":focus-visible")) play();
+    };
+
+    target.addEventListener("pointerenter", onPointer);
+    target.addEventListener("focus", onFocus);
+    return () => {
+      target.removeEventListener("pointerenter", onPointer);
+      target.removeEventListener("focus", onFocus);
+    };
+  }, [text, replay]);
 
   return (
     <span ref={ref} className={styles.decode}>

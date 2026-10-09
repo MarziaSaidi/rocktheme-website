@@ -8,18 +8,39 @@
   background: none;
   border: 0;
   cursor: pointer;
-  transition: color var(--duration-interface) var(--ease-interface);
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
-.toggle:hover,
 .toggle[aria-pressed="true"] {
   color: var(--color-text-primary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .toggle:hover {
+    color: var(--color-text-primary);
+  }
+
+  .toggle:hover .label {
+    font-weight: var(--weight-signal-lift);
+  }
+}
+
+.toggle:focus-visible .label {
+  font-weight: var(--weight-signal-lift);
+}
+
+.toggle:active {
+  scale: var(--motion-press-scale);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
 }
 
 .label {
   composes: micro from "../styles/type.module.css";
   color: inherit;
   white-space: nowrap;
+  transition: font-weight var(--motion-weight-duration) var(--motion-ease-interface);
 }
 
 /*

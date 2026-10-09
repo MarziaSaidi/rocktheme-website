@@ -30,8 +30,8 @@
   margin: 0 0 clamp(1.5rem, 4svh, 2.75rem);
   max-width: 16ch;
   font-size: clamp(2.4rem, 4.7vw, 4.75rem);
-  font-weight: var(--weight-body);
-  line-height: 1.08;
+  font-weight: var(--weight-body-strong);
+  line-height: 1.1;
   letter-spacing: -0.045em;
   text-wrap: balance;
   color: var(--color-text-primary);
@@ -41,7 +41,8 @@
   max-width: 35ch;
   margin: 0;
   font-size: clamp(1.15rem, 1.65vw, 1.6rem);
-  line-height: 1.55;
+  line-height: 1.6;
+  letter-spacing: var(--tracking-lead);
   text-wrap: pretty;
   color: var(--color-text-primary);
 }
@@ -50,7 +51,8 @@
   max-width: 37ch;
   margin: 1.5rem 0 0;
   font-size: clamp(1rem, 1.3vw, 1.2rem);
-  line-height: 1.6;
+  line-height: 1.65;
+  letter-spacing: var(--tracking-body);
   text-wrap: pretty;
   color: color-mix(in srgb, var(--brand-lavender) 65%, var(--brand-porcelain));
 }

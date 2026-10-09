@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { Anton, Archivo, Geist, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Manrope, Geist_Mono } from "next/font/google";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { WorldHandoff } from "@/components/cabin/WorldHandoff";
 import { SiteEntry } from "@/components/entry/SiteEntry";
 import { pageLandmarkIds } from "@/config/sections";
 import { CustomCursor } from "@/motion/CustomCursor";
+import { PressFeedback } from "@/motion/PressFeedback";
 import { SoundProvider } from "@/sound/SoundProvider";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const readingSans = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
@@ -20,25 +21,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/**
- * Interim monumental condensed display face.
- * Replace with a licensed Druk Condensed cut if that licence is acquired.
- */
-const displayCondensed = Anton({
-  variable: "--font-anton",
-  weight: "400",
+/* Shared architectural display face for the hero and section headings. */
+const displayCondensed = Barlow_Condensed({
+  variable: "--font-barlow-condensed",
+  weight: ["400", "500"],
   subsets: ["latin"],
-  display: "swap",
-});
-
-/*
- * The hero headline's face: a heavy grotesque at a slightly condensed width,
- * wider and rounder than the monumental condensed display used elsewhere.
- */
-const heroDisplay = Archivo({
-  variable: "--font-hero",
-  subsets: ["latin"],
-  axes: ["wdth"],
   display: "swap",
 });
 
@@ -54,7 +41,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${displayCondensed.variable} ${heroDisplay.variable}`}
+      className={`${readingSans.variable} ${geistMono.variable} ${displayCondensed.variable}`}
     >
       <head>
         {/*
@@ -70,6 +57,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         {/* Owns the audio context. Nothing else may create one. */}
         <SoundProvider />
         <CustomCursor />
+        <PressFeedback />
         <SiteEntry>
           <SkipLink />
           <SiteHeader />

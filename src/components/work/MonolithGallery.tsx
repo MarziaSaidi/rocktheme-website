@@ -14,7 +14,10 @@ import {
 import { sceneMediaQueries } from "@/config/responsive";
 import { sectionAnchors } from "@/config/sections";
 import { stableViewportHeight } from "@/config/viewport";
+import { SwapGlyph } from "@/components/primitives/SwapGlyph";
+import { DecodeText } from "@/motion/DecodeText";
 import { ProjectStepper } from "@/motion/projectStepper";
+import { publishWorkStation } from "@/motion/workChannel";
 import { emitSoundEvent } from "@/sound/soundEvents";
 import { setSceneFocus } from "@/webgl/sceneFocus";
 import {
@@ -550,7 +553,11 @@ export function MonolithGallery({
 
   useEffect(() => {
     if (shown && !swap) emitSoundEvent("project:active", { step: active });
-  }, [shown, active, swap]);
+    // The header's project counter decodes in the same beat.
+    publishWorkStation(shown && !swap ? { station: active, count } : null);
+  }, [shown, active, swap, count]);
+
+  useEffect(() => () => publishWorkStation(null), []);
 
   /*
    * Arriving at the gallery by a link (the case study's back link, the nav's
@@ -652,16 +659,18 @@ export function MonolithGallery({
                       <Link
                         className={styles.view}
                         href={current.href}
+                        data-cursor="action"
                         onClick={() => {
                           rememberWorkReturn(current.slug);
                           emitSoundEvent("project:open");
                         }}
                       >
-                        {viewLabel}
+                        {/* An important action: it decodes on hover or focus, never on arrival. */}
+                        <DecodeText text={viewLabel} entrance={false} replay />
                         <span className={styles.hidden}>: {current.title}</span>
-                        <span className={styles.arrow} aria-hidden="true">
+                        <SwapGlyph direction="right" className={styles.arrow}>
                           →
-                        </span>
+                        </SwapGlyph>
                       </Link>
                     </article>
                   ) : null}

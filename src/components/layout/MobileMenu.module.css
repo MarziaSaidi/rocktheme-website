@@ -109,19 +109,24 @@
   list-style: none;
 }
 
-/* The desktop nav's voice (mono, uppercase, tracked), sized up for a sheet. */
+/* Proportional navigation, sized up for the phone sheet. */
 .link {
-  composes: microStrong from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   display: inline-flex;
   align-items: center;
   min-height: 3rem;
   font-size: 1.5rem;
   text-decoration: none;
-  transition: color var(--duration-interface) var(--ease-interface);
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
+/* A phone has no hover: the press is the response. */
 .link:active {
   color: var(--color-text-moonlit);
+  scale: var(--motion-press-scale);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
 }
 
 .footer {

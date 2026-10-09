@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
+import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { CaseStudyWorkspace } from "@/components/work/CaseStudyWorkspace";
 import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
 import { getCaseStudyStages, getProjectBySlug, getProjectStaticParams } from "@/content/projects";
@@ -52,7 +53,9 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
       <CaseStudyWorkspace project={project} stages={getCaseStudyStages(project)} />
       <p className={styles.back}>
         <Link className={styles.backLink} href={`/#${sectionAnchors["selected-work"]}`}>
-          <ArrowGlyph direction="left" className={styles.backArrow} />
+          <SwapGlyph direction="left" className={styles.backArrow}>
+            <ArrowGlyph direction="left" />
+          </SwapGlyph>
           {siteContent.work.displayHeading}
         </Link>
       </p>

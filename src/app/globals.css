@@ -29,6 +29,8 @@ body {
   font-family: var(--font-body);
   font-size: var(--text-body);
   line-height: var(--leading-body);
+  letter-spacing: var(--tracking-body);
+  font-weight: var(--weight-body);
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

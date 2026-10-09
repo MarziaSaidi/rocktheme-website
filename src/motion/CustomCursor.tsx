@@ -15,16 +15,30 @@ import { createPointerSource } from "./pointerSource";
  * It only appears for a fine pointer. On touch and pen the native cursor and
  * default behaviour are untouched, and the native cursor is only hidden once
  * this component has actually painted a ring.
+ *
+ * Its size says what is under it (docs/typography-motion-system.md, §5): at
+ * rest the 48px ring; over a link it tightens a little rather than growing
+ * over the label; over an important action (`data-cursor="action"`) it
+ * tightens further and brightens; pressed, it contracts toward the dot. The
+ * ring is always 48px in layout and changes size by `scale` (cursor.css), so
+ * nothing is laid out per frame; this loop only eases the position.
  */
 
 const INTERACTIVE_SELECTOR =
   'a[href], button, [role="button"], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+const ACTION_SELECTOR = '[data-cursor="action"]';
 
-/** Ring diameter in px at rest and over an interactive target. */
-const REST_SIZE = 48;
-const ACTIVE_SIZE = 72;
+type CursorTarget = "action" | "link" | null;
+
 /** Ring easing per frame. Low enough to feel weighted, high enough to track. */
 const RING_EASE = 0.22;
+
+function targetOf(element: Element | null): CursorTarget {
+  if (!element) return null;
+  if (element.closest(ACTION_SELECTOR)) return "action";
+  if (element.closest(INTERACTIVE_SELECTOR)) return "link";
+  return null;
+}
 
 export function CustomCursor() {
   useEffect(() => {
@@ -42,8 +56,7 @@ export function CustomCursor() {
     let ringY = 0;
     let pointerX = 0;
     let pointerY = 0;
-    let size = REST_SIZE;
-    let targetSize = REST_SIZE;
+    let target: CursorTarget = null;
     let visible = false;
 
     const tick = () => {
@@ -54,18 +67,14 @@ export function CustomCursor() {
 
       ringX += (pointerX - ringX) * RING_EASE;
       ringY += (pointerY - ringY) * RING_EASE;
-      size += (targetSize - size) * RING_EASE;
 
-      ring.style.transform = `translate3d(${ringX.toFixed(2)}px, ${ringY.toFixed(2)}px, 0) translate(-50%, -50%)`;
-      ring.style.width = `${size.toFixed(2)}px`;
-      ring.style.height = `${size.toFixed(2)}px`;
+      // The `translate` property, not `transform`: it applies after the ring's
+      // `scale`, so a size change never moves the ring off the pointer.
+      ring.style.translate = `${ringX.toFixed(2)}px ${ringY.toFixed(2)}px`;
       // The dot is never eased. It is the true pointer position.
       dot.style.transform = `translate3d(${pointerX.toFixed(2)}px, ${pointerY.toFixed(2)}px, 0) translate(-50%, -50%)`;
 
-      const settled =
-        Math.abs(pointerX - ringX) < 0.1 &&
-        Math.abs(pointerY - ringY) < 0.1 &&
-        Math.abs(targetSize - size) < 0.1;
+      const settled = Math.abs(pointerX - ringX) < 0.1 && Math.abs(pointerY - ringY) < 0.1;
 
       frame = settled ? 0 : requestAnimationFrame(tick);
     };
@@ -87,6 +96,10 @@ export function CustomCursor() {
       }
       unsubscribe?.();
       unsubscribe = null;
+      document.removeEventListener("pointerover", onOver);
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
       pointerSource?.destroy();
       pointerSource = null;
       root?.remove();
@@ -97,24 +110,35 @@ export function CustomCursor() {
       visible = false;
     };
 
+    const setTarget = (next: CursorTarget) => {
+      if (next === target || !root) return;
+      target = next;
+      root.toggleAttribute("data-cursor-interactive", next !== null);
+      if (next) root.dataset.cursorTarget = next;
+      else delete root.dataset.cursorTarget;
+    };
+
+    // The element under the pointer, the moment it changes.
+    const onOver = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") setTarget(targetOf(event.target as Element | null));
+    };
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") root?.toggleAttribute("data-cursor-press", true);
+    };
+    const onUp = () => root?.removeAttribute("data-cursor-press");
+
+    /*
+     * Content can also move under a still pointer (the page scrolls, a card
+     * arrives), which fires no pointerover; a short timer re-checks then.
+     */
     const scheduleHitTest = () => {
       if (hitTestTimer !== 0) {
         return;
       }
 
-      // Hit testing is comparatively expensive, so it runs on a short timer
-      // rather than on every pointer event.
       hitTestTimer = window.setTimeout(() => {
         hitTestTimer = 0;
-        const element = document.elementFromPoint(pointerX, pointerY);
-        const interactive = element?.closest(INTERACTIVE_SELECTOR) ?? null;
-        const next = interactive ? ACTIVE_SIZE : REST_SIZE;
-
-        if (next !== targetSize) {
-          targetSize = next;
-          root?.toggleAttribute("data-cursor-interactive", Boolean(interactive));
-          requestFrame();
-        }
+        setTarget(targetOf(document.elementFromPoint(pointerX, pointerY)));
       }, 60);
     };
 
@@ -135,6 +159,10 @@ export function CustomCursor() {
 
       root.append(ring, dot);
       document.body.append(root);
+      document.addEventListener("pointerover", onOver);
+      document.addEventListener("pointerdown", onDown);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
 
       pointerSource = createPointerSource();
       unsubscribe = pointerSource.subscribe((sample) => {

@@ -185,6 +185,39 @@
   --motion-case-nav-at: 420ms;
   --motion-case-nav-stagger: 45ms;
   --motion-case-back-at: 980ms;
+
+  /* ===================================================== Signal: interaction */
+  /*
+   * How labels, links, buttons and the cursor answer the visitor
+   * (docs/typography-motion-system.md, §4). Hover and keyboard focus get the
+   * same response; touch never hovers, so these only run under a fine pointer
+   * or on focus-visible.
+   */
+  /*
+   * Ordinary navigation lifts its weight. Geist Mono keeps its advance at every
+   * weight, so this never moves a neighbour. The lift is immediate: easing
+   * font-weight re-lays out the label on every frame, which measurably cost
+   * frames beside the scene on a slow CPU; the colour still eases.
+   */
+  --motion-weight-duration: 0ms;
+  /* A press compresses at once and lets go a little slower. */
+  --motion-press-scale: 0.97;
+  --motion-press-in: 110ms;
+  --motion-press-out: 200ms;
+  /* An arrow leaves in its own direction while a copy enters behind it. */
+  /* The copy enters once the arrow has mostly left, so the two never read as one shape. */
+  --motion-arrow-out: 200ms;
+  --motion-arrow-in: 260ms;
+  --motion-arrow-in-delay: 150ms;
+  /* The lit line under the current section follows the camera, never the pointer. */
+  --motion-lit-duration: 480ms;
+  --motion-lit-fade: 320ms;
+  /* The cursor ring: rest, over a link, over an important action, pressed. */
+  --motion-cursor-duration: 280ms;
+  --motion-cursor-press-duration: 110ms;
+  --motion-cursor-link: 0.92;
+  --motion-cursor-action: 0.75;
+  --motion-cursor-press: 0.42;
 }
 
 /* ---------------------------------------------------------------- keyframes */
@@ -375,5 +408,19 @@
     --motion-case-nav-at: 60ms;
     --motion-case-nav-stagger: 0ms;
     --motion-case-back-at: 90ms;
+
+    /*
+     * Signal: states still change, instantly. No compress, no travelling
+     * arrow, no sliding line; the weight still lifts so hover and focus stay
+     * visible.
+     */
+    --motion-press-scale: 1;
+    --motion-arrow-out: 0ms;
+    --motion-arrow-in: 0ms;
+    --motion-arrow-in-delay: 0ms;
+    --motion-lit-duration: 1ms;
+    --motion-lit-fade: 1ms;
+    --motion-cursor-duration: 1ms;
+    --motion-cursor-press-duration: 1ms;
   }
 }

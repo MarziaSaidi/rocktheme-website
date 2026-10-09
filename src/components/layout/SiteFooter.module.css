@@ -49,7 +49,7 @@
 }
 
 .primary {
-  composes: micro from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -61,12 +61,25 @@
   border-block-end: 1px solid var(--color-line-strong);
   transition:
     color var(--duration-interface) var(--ease-interface),
-    border-color var(--duration-interface) var(--ease-interface);
+    border-color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
-.primary:hover {
+@media (hover: hover) and (pointer: fine) {
+  .primary:hover {
+    color: var(--color-highlight);
+    border-block-end-color: var(--color-highlight);
+  }
+}
+
+.primary:focus-visible {
   color: var(--color-highlight);
   border-block-end-color: var(--color-highlight);
+}
+
+.primary:active {
+  scale: var(--motion-press-scale);
+  transition-duration: var(--duration-interface), var(--duration-interface), var(--motion-press-in);
 }
 
 /* -------------------------------------------------------- contact plane */
@@ -92,17 +105,29 @@
   transform-origin: right center;
   transition:
     transform var(--duration-interface) var(--ease-interface),
-    border-color var(--duration-interface) var(--ease-interface);
+    border-color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
-.plane:hover,
+@media (hover: hover) and (pointer: fine) {
+  .plane:hover {
+    border-color: var(--color-accent);
+    transform: rotateY(-6deg) rotateZ(-0.8deg);
+  }
+}
+
 .plane:focus-visible {
   border-color: var(--color-accent);
   transform: rotateY(-6deg) rotateZ(-0.8deg);
 }
 
+.plane:active {
+  scale: 0.985;
+  transition-duration: var(--duration-interface), var(--duration-interface), var(--motion-press-in);
+}
+
 .planeLabel {
-  composes: micro from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -125,7 +150,12 @@
   transition: stroke var(--duration-interface) var(--ease-interface);
 }
 
-.plane:hover .waveform polyline,
+@media (hover: hover) and (pointer: fine) {
+  .plane:hover .waveform polyline {
+    stroke: var(--color-accent);
+  }
+}
+
 .plane:focus-visible .waveform polyline {
   stroke: var(--color-accent);
 }
@@ -180,33 +210,69 @@
 }
 
 .socialLink {
-  composes: micro from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
   color: var(--color-text-secondary);
+  font-weight: var(--weight-signal);
   text-decoration: none;
-  transition: color var(--duration-interface) var(--ease-interface);
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    font-weight var(--motion-weight-duration) var(--motion-ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
-.socialLink:hover {
+@media (hover: hover) and (pointer: fine) {
+  .socialLink:hover {
+    color: var(--color-text-primary);
+    font-weight: var(--weight-signal-lift);
+  }
+}
+
+.socialLink:focus-visible {
   color: var(--color-text-primary);
+  font-weight: var(--weight-signal-lift);
+}
+
+.socialLink:active {
+  scale: var(--motion-press-scale);
+  transition-duration:
+    var(--duration-interface), var(--motion-weight-duration), var(--motion-press-in);
 }
 
 .backToTop {
-  composes: micro from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   display: inline-flex;
   gap: var(--space-2);
   align-items: center;
   justify-self: end;
   min-height: 2.75rem;
   color: var(--color-text-secondary);
+  font-weight: var(--weight-signal);
   text-decoration: none;
-  transition: color var(--duration-interface) var(--ease-interface);
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    font-weight var(--motion-weight-duration) var(--motion-ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
-.backToTop:hover {
+@media (hover: hover) and (pointer: fine) {
+  .backToTop:hover {
+    color: var(--color-text-primary);
+    font-weight: var(--weight-signal-lift);
+  }
+}
+
+.backToTop:focus-visible {
   color: var(--color-text-primary);
+  font-weight: var(--weight-signal-lift);
+}
+
+.backToTop:active {
+  scale: var(--motion-press-scale);
+  transition-duration:
+    var(--duration-interface), var(--motion-weight-duration), var(--motion-press-in);
 }
 
 /* ------------------------------------------------------------- responsive */

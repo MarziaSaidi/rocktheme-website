@@ -41,18 +41,45 @@ html[data-custom-cursor] summary {
   opacity: 0;
 }
 
+/*
+ * Always 48px in layout, centred on the root's origin, so `scale` (its size)
+ * always works around its own centre. CustomCursor.tsx moves it with the
+ * `translate` property, which applies after `scale`; the per-frame loop only
+ * ever writes that.
+ */
 [data-cursor-ring] {
   position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
+  inset-block-start: -24px;
+  inset-inline-start: -24px;
+  width: 48px;
+  height: 48px;
   border: 1px solid color-mix(in srgb, var(--color-focus) 60%, transparent);
   border-radius: 50%;
-  transition: border-color 220ms var(--motion-ease-interface);
-  will-change: transform, width, height;
+  transition:
+    border-color 220ms var(--motion-ease-interface),
+    scale var(--motion-cursor-duration) var(--motion-ease-interface);
+  /* Both, so the size change stays on the compositor with the position. */
+  will-change: translate, scale;
 }
 
 [data-cursor-root][data-cursor-interactive] [data-cursor-ring] {
   border-color: var(--color-focus);
+}
+
+/* Over a link: a little tighter, so it frames the label instead of covering it. */
+[data-cursor-root][data-cursor-target="link"] [data-cursor-ring] {
+  scale: var(--motion-cursor-link);
+}
+
+/* Over an important action: tighter still, at full gold. */
+[data-cursor-root][data-cursor-target="action"] [data-cursor-ring] {
+  scale: var(--motion-cursor-action);
+}
+
+/* Pressed: the ring contracts toward the dot, quickly. */
+[data-cursor-root][data-cursor-press] [data-cursor-ring] {
+  scale: var(--motion-cursor-press);
+  transition-duration: 220ms, var(--motion-cursor-press-duration);
 }
 
 [data-cursor-dot] {
