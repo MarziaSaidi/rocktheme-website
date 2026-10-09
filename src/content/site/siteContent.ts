@@ -46,6 +46,9 @@ export const siteContent = {
     displayHeading: "Selected work",
     galleryLabel: "Selected projects",
     viewLabel: "View case study",
+    enterLabel: "Enter selected work",
+    nextLabel: "Next project",
+    previousLabel: "Previous project",
   },
   statement: {
     /**

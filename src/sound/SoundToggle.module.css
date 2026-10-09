@@ -21,14 +21,6 @@
   .toggle:hover {
     color: var(--color-text-primary);
   }
-
-  .toggle:hover .label {
-    font-weight: var(--weight-signal-lift);
-  }
-}
-
-.toggle:focus-visible .label {
-  font-weight: var(--weight-signal-lift);
 }
 
 .toggle:active {
@@ -40,7 +32,6 @@
   composes: micro from "../styles/type.module.css";
   color: inherit;
   white-space: nowrap;
-  transition: font-weight var(--motion-weight-duration) var(--motion-ease-interface);
 }
 
 /*

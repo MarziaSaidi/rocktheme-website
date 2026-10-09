@@ -93,6 +93,7 @@ export const quillAndPigeonProject = {
   },
   caseStudy: {
     storyPlayback: "manual",
+    titleSignature: "ink",
     info: {
       timeline: "January-August 2025",
       timelineLabel: "Internship",
@@ -203,6 +204,7 @@ export const quillAndPigeonProject = {
             id: "inline-errors",
             eyebrow: "Decision / actionable feedback",
             title: "Count the issues. Point to the correction.",
+            emphasis: "the correction.",
             description:
               "I paired a page-level alert summary with feedback beside the affected fields. In this example, 15 alerts signal the scale of the review, while Duplicate labels identify the nickname fields that need attention. Other rows stay visible while the user works through the list.",
             decision:

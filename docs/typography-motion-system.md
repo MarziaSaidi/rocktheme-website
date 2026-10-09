@@ -776,7 +776,220 @@ After stage 10: a full-site recording at real speed on desktop and phone, a
 real-device pass (Safari and Chrome on a Mac, iPhone Safari, Android Chrome),
 and the prototype's temporary launch entries removed.
 
-## 15. Open decisions
+### Milestone 2, as built
+
+Stages 6, 7 and 8, plus the keyboard fix in §15. What differs from the plan:
+
+- **Hero field (`src/motion/HeroField.tsx`).** The 3 px cap, as approved.
+  The letters are split only while the field is active; at rest the original
+  server nodes are put back (not a copy), so the markup is identical. Springs
+  count as settled once no visible weight is left to change (half a step of
+  40), which unsplits within about a second instead of waiting on the springs'
+  invisible tail. While the camera is leaving, weight rounds down, so the last
+  step is gone before the exit at `--arrival` 0.03. The cursor's stone state
+  (0.9) is `data-cursor-stone` on the root, applied only while the field
+  answers.
+- **Selected Work (`src/components/work/projectWake.ts`).** As approved, with
+  one correction to the prototype: the screens already drift on `translate`
+  (an ambient CSS animation), so the wake's offset is added to it
+  (`composite: "add"`) rather than replacing it, and the release reverses
+  with a negative rate (the prototype's positive rate replayed it forward).
+  The main screen brightens through its image's `filter`, because the piece's
+  own `filter` belongs to the frozen assembly.
+- **Contact (`src/motion/ContactListen.tsx`).** The plane's lean replaces the
+  hover snap only for a mouse at desktop widths; keyboard focus keeps the
+  -6° pose. The band uses a gradient defined in the footer's SVG, so nothing
+  is injected.
+
+Measured in the running scene (1440 × 900, Chrome):
+
+| Check                                     | Result                                                                                   |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Hero letter travel (21 pointer positions) | 2.44 px at most                                                                          |
+| Hero markup at rest                       | Identical to the server's                                                                |
+| Hero weight at `--arrival` 0.03           | 860 (rest)                                                                               |
+| Selected Work frozen timings              | Transitions, transforms and opacity identical (M1's press `scale` aside)                 |
+| Contact plane after the pointer leaves    | Shipped pose, matrix difference 6e-10                                                    |
+| Browser checks                            | 162 pass (keyboard 78, M1 28, crossfade 13, hero 13, wake 17, contact 13)                |
+| Main thread, pointer sweeps, 1× CPU       | Hero 33.1 → 36.7%, work 34.6 → 31.1%, contact 31.0 → 32.9%; 0 slow frames                |
+| Same, 4× CPU                              | Saturated before and after (97–100%); slow frames rise most on the hero (3 → 24 of ~200) |
+
+At 4× the hero's guard watches for 9 of 45 frames over 22 ms, which this
+machine stays just under for much of the sweep; at 6× it trips as designed
+and the light carries on alone. Whether to tighten it is an open decision.
+
+The work figures compare unequal sweeps: the build before has none of the
+wake's markers, so its sweep covered the title only. They show the wake adds
+no measurable cost, not that it saves any.
+
+### Milestone 2, quality pass (after review)
+
+- **Guard.** It now follows the scene's quality manager: a bucket on a
+  20 ms budget, plus a stutter check (4 frames over 25 ms within 60),
+  both measured against the display's cadence, after a 12-frame warm-up.
+  On a trip the whole field rests for the visit (the moonlight alone still
+  cost frames). It never tripped at 1× or 2× CPU, paced at 30 Hz or
+  uncapped; with frames uncapped it trips at 4×. At 60 Hz the logic is the
+  version that tripped in about 0.19 s at 4×; that still needs re-measuring
+  with the display awake.
+- **Fixes.** The Selected Work title light now drains instead of cutting to 0. A pointer leaving the window over the screens releases the wake. The
+  hero's letter room no longer shifts layout (0.0013 → 0). The keyboard
+  controls' names no longer have a stray space.
+- **Contact.** Quieter, as asked: the lean is at most 2°, and the band is
+  at most 55% moonlit and narrower; the headline stays the strongest light.
+
+### Milestone 3, as built
+
+- **Content.** `caseStudy.titleSignature` ("ink" | "approach") and
+  `story.emphasis` (whole words of the title, checked by validate-content).
+- **Story roles** (`CaseStudyWorkspace`): eyebrow out of a one-line mask
+  (160 ms); body opacity only (320 ms, from 280 ms), measured 0 px of
+  travel; the title by signature (`storySignature.ts`), or rising line by
+  line as before for projects without one.
+- **Ink and approach.** As the prototype the user reviewed, with its values:
+  the approach emphasis steps 560 → 640 → 720 and rests at 620. A title
+  below the fold waits until it's on screen. Approach words keep their
+  resting width meanwhile and return to plain layout once settled (layout
+  shift 0).
+- **Reading time.** An autoplaying story stays up at least words ÷ 230 × 60
+  - 1.5 s, never under 6 s. Both featured case studies stay manual.
+- **Stage nav.** The gold lit line, and the current label at the signal
+  weight by WeightLabel's crossfade.
+- **Case-study title.** Rests at the Selected Work resting light (0.2) once
+  risen.
+- **Phones.** A place label beside the wordmark ("Work · 01 / 02"), the
+  menu's gold marker with `aria-current`, and the arrival wake (once per
+  arrival, 1.4 s). There is no automatic headline wave.
+
+## 15. Keyboard access to Selected Work (found in Milestone 1)
+
+Measured with the keyboard only (no mouse, no wheel), on `main` and on this
+branch alike. This is existing behaviour; Milestone 1 does not change it.
+
+| Path                                      | What happens                                                                                                                                                                      |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab from the top                          | Header → Scroll to enter → **Email Marzia** (footer). Selected Work is never reached                                                                                              |
+| Tab to Work, Enter, then Tab              | The page lands at the top of the gallery (y ≈ 2000), before the first project's details, so the card is still inert; Tab continues to About, then the footer                      |
+| Page Down until a project shows, then Tab | The card is shown and its link is focusable, but Tab first reaches the hero's Scroll to enter, the browser scrolls it into view, the camera leaves, and the card goes inert again |
+| Arrow / Page keys                         | Step through both projects (the gallery's own stepper), but never put focus on a case-study link                                                                                  |
+
+Causes: the cards are `inert` until the camera stands at them (correct for
+the visual sequence), nothing focusable stands in for them while they are
+not shown, and the Work link lands before the first project rather than on it.
+
+### Proposal for Milestone 2
+
+Keep the camera and the cards exactly as they are; give the keyboard its own
+way in, made of things the gallery already does.
+
+1. **The Work link lands on the first project.** Arriving at `#selected-work`
+   with no project to return to places the page on the first project's
+   details point (the same `stationOffset` the case-study back link already
+   uses), so the card is shown on arrival. When the link was activated from the
+   keyboard, focus moves to that card's View case study once it is shown.
+2. **A way in from the hero.** Right after Scroll to enter in the tab order, a
+   link that is visually hidden until focused: "Selected work, 2 projects".
+   Focused, it shows as a mono label where the scroll cue is; nothing moves.
+   Enter does what the Work link does (1). Focus alone never moves the camera.
+3. **Between projects.** Inside each card, after View case study, a "Next
+   project" button (and "Previous project" on the second), visually hidden
+   until focused. Enter steps the gallery with its existing stepper, so the
+   camera travels on its approved path, and focus moves to the next card's
+   View case study when it is shown. After the last project, Tab continues to
+   the bio and the footer as today.
+4. **Nothing scrolls under focus.** Focus is placed with `preventScroll` and
+   only once the target card is shown, so the browser never scrolls the page
+   back and undoes the camera.
+5. **Screen readers.** The gallery already announces "Quill & Pigeon, 1 of 2";
+   the hidden controls carry plain names, and the order is linear.
+
+Checks: from a fresh load, keyboard only, both case-study links are reached
+(Tab and Enter only, and Arrow keys too); mouse and touch see no change; no
+frame of the camera or card sequence differs; axe and the accessibility tree
+are compared against `main`.
+
+### As built (Milestone 2)
+
+The proposal shipped with these differences:
+
+- **Work, for every input.** The header's Work (and the phone menu's) lands on
+  the first project's details whether it is clicked, tapped or pressed; only a
+  keyboard press moves focus. The URL still gets `#selected-work`. Already in
+  the gallery, Work leaves the camera where it is.
+- **Scroll to enter keeps its pointer behaviour.** A click still lands at the
+  top of the gallery. Pressed from the keyboard, it lands on the first
+  project, as Work does.
+- **The way in is a button, "Enter selected work".** It is fixed to the
+  viewport's lower left while focused, so focusing it cannot scroll, and it
+  unmounts while a project is shown. Its accessible name adds the count:
+  "Enter selected work, 2 projects".
+- **Focus follows every step.** Next / Previous project, the arrow and Page
+  keys, and Space all step through the stepper; if focus was in the gallery,
+  it lands on the next card's View case study when the swap completes.
+- **Back from a case study.** The back link and Work, pressed from the
+  keyboard on a case study, return to the project that was opened with its
+  link focused (`watchWorkLinks` in `src/motion/workChannel.ts`).
+
+Measured: 78 keyboard checks across desktop, reduced motion and a phone
+(Tab and Shift+Tab, Enter, Space, the arrow keys, both case studies and back),
+with the page position at each project identical to the wheel path (4028 and
+7853 at 1440 × 900) and the card layer pixel-identical to the build before.
+
+## 15b. Milestone 3 verification and the redesign audit (2026-10-09)
+
+Measured at 60 Hz, Chrome, 1440 × 900 and iPhone 13 emulation, with the scene
+running.
+
+**Guards.** The hero and contact share one frame guard (`frameGuard.ts`).
+Neither tripped at 1× or 2× CPU, in 12 and 7 runs. At 4×:
+
+- The hero trips in 0.32–0.44 s, with 6–8 slow frames in all (M1 head:
+  0–1; the first Milestone 2 build: 24).
+- The contact trips in about 0.38 s, after which it runs at the M1 head's
+  level (61–64 vs 58–63 slow frames; that section is heavy at 4× either way).
+
+**Motion categories.** Narrative motion explains the project:
+
+- ink, and the green rule on "the correction."
+- approach, and the urgency steps on "warning."
+- the Selected Work wake and the case-study title light
+- the story roles, phone place label, menu marker and the keyboard path
+
+Atmospheric motion rewards attention without explaining anything:
+
+- the hero field, and the cursor's stone state
+- the contact headline's moonlight
+- the plane lean and the waveform band
+
+The proposals under review remove three emphasis moments ("vehicle", "risk",
+"a state,") and soften the contact moonlight to 65%.
+
+**Compatibility with the Barlow/Manrope redesign** (b685874, on
+`origin/main`). This is a trial merge of `typography-motion` onto
+`origin/main` in a throwaway worktree; nothing was committed or pushed.
+
+- One textual conflict: the nav's hover/current rule. The redesign uses
+  colour on proportional labels; motion uses WeightLabel on Geist Mono.
+  Taking either side silently drops the other's nav voice.
+- **Hero field.** On Barlow Condensed (static 400/500) there are no axes
+  to lift. Because the redesign paints the headline solid porcelain, the
+  moonlight is hidden too. The field splits and the cursor presses, but
+  nothing visible answers.
+- **Decode on Manrope.** The redesign moves View case study, Start a
+  conversation, the plane label and the hero role to proportional Manrope.
+  Scrambled glyphs change the label's width: View case study varies by 26 px
+  while decoding (0 px in Geist Mono).
+- **WeightLabel on Manrope** (socials, back to top). The heavier copy is
+  1.3–2 px wider than the label it covers. It doesn't reflow, but the word
+  visibly widens.
+- **Compatible as is:**
+  - Survue's approach in variable Manrope (settles, layout shift 0)
+  - ink
+  - the Selected Work and case-study title lights (font-agnostic)
+  - the lit line, counter, phone label and keyboard path
+  - the frame guards
+
+## 16. Open decisions
 
 1. **Phones (§13):** approve the header label, the hero's single Breath wave
    and the arrival wake for stage 10, or keep phones to the timed half.

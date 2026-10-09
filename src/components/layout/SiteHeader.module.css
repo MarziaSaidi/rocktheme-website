@@ -39,6 +39,20 @@
   display: none;
 }
 
+/* Desktop: the box takes no part in the header's grid. */
+.brand {
+  display: contents;
+}
+
+.place {
+  composes: micro from "../../styles/type.module.css";
+  display: none;
+}
+
+.placeCounter {
+  color: var(--color-text-moonlit);
+}
+
 .wordmark {
   composes: microStrong from "../../styles/type.module.css";
   display: inline-flex;
@@ -104,7 +118,6 @@
   text-decoration: none;
   transition:
     color var(--duration-interface) var(--ease-interface),
-    font-weight var(--motion-weight-duration) var(--motion-ease-interface),
     scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
@@ -122,8 +135,7 @@
 
 .navLink:active {
   scale: var(--motion-press-scale);
-  transition-duration:
-    var(--duration-interface), var(--motion-weight-duration), var(--motion-press-in);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
 }
 
 /*
@@ -256,6 +268,24 @@
   .nav,
   .status {
     display: none;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    justify-self: start;
+    min-width: 0;
+  }
+
+  /* Where the camera is, beside the wordmark: the phone bar has no section links. */
+  .place {
+    display: inline-flex;
+    padding-inline-start: var(--space-3);
+    border-inline-start: 1px solid var(--color-line);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .menu {

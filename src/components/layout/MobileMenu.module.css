@@ -122,6 +122,18 @@
     scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
+/* The current section: a short gold line before it, the header's lit line turned on its side. */
+.link[aria-current] {
+  gap: var(--space-3);
+}
+
+.link[aria-current]::before {
+  content: "";
+  width: 1.25rem;
+  height: 1px;
+  background: var(--color-highlight);
+}
+
 /* A phone has no hover: the press is the response. */
 .link:active {
   color: var(--color-text-moonlit);

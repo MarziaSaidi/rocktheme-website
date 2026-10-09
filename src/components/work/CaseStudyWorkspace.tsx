@@ -5,10 +5,12 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } f
 
 import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
+import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { DecodeText } from "@/motion/DecodeText";
 import type { CaseStudyInfo, CaseStudyStage, Project, StoryVisual } from "@/content/projects";
 
 import styles from "./CaseStudyWorkspace.module.css";
+import { prepareStoryTitle, readingSeconds } from "./storySignature";
 
 type CaseStudyWorkspaceProps = Readonly<{
   project: Project;
@@ -344,13 +346,35 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
   const story = stage?.stories[storyIndex] ?? stage?.stories[0];
   const storyCount = stage?.stories.length ?? 0;
   const storyKey = `${stage?.id}-${story?.id}`;
+  const titleSignature = project.caseStudy.titleSignature;
+  const emphasis = story?.emphasis;
   const atStart = stageIndex === 0 && storyIndex === 0;
   const atEnd = stageIndex === stages.length - 1 && storyIndex >= storyCount - 1;
 
   const loopSeconds = mediaSeconds?.key === storyKey ? mediaSeconds.seconds : undefined;
+  /*
+   * An autoplaying story stays up at least as long as it takes to read
+   * (docs/typography-motion-system.md, §11); a shorter authored or video
+   * duration is raised to it.
+   */
+  const readingFloor = story
+    ? readingSeconds([
+        story.title,
+        story.description,
+        ...(story.supportingPoints ?? []),
+        story.decision,
+        story.constraint,
+        story.outcome,
+        story.metric?.label,
+        story.quote?.text,
+      ])
+    : DEFAULT_STORY_SECONDS;
   const durationMs =
-    (story?.durationSeconds ??
-      (loopSeconds ? Math.min(30, Math.max(4, loopSeconds)) : DEFAULT_STORY_SECONDS)) * 1000;
+    Math.max(
+      readingFloor,
+      story?.durationSeconds ??
+        (loopSeconds ? Math.min(30, Math.max(4, loopSeconds)) : DEFAULT_STORY_SECONDS),
+    ) * 1000;
   const autoplay =
     project.caseStudy.storyPlayback !== "manual" && !mobile && !reducedMotion && !atEnd;
   const running =
@@ -526,7 +550,11 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
     }
     const step = Math.min(70, 900 / Math.max(1, line));
     storyRef.current?.style.setProperty("--line-step", `${step}ms`);
-  }, [storyKey]);
+    // Then the title's signature, measured against those lines, still before paint.
+    return storyRef.current
+      ? prepareStoryTitle(storyRef.current, titleSignature, emphasis)
+      : undefined;
+  }, [storyKey, titleSignature, emphasis]);
 
   const releaseHold = () => setHolding(false);
 
@@ -667,7 +695,8 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             target="_blank"
             rel="noopener noreferrer"
           >
-            Open artifact full size <SwapGlyph direction="up-right">↗</SwapGlyph>
+            <WeightLabel text="Open artifact full size" />{" "}
+            <SwapGlyph direction="up-right">↗</SwapGlyph>
           </a>
         ) : null}
       </section>
@@ -766,7 +795,8 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
               }
             }}
           >
-            {item.label}
+            {/* The current stage sits at the signal weight, crossfaded, so no label changes width. */}
+            <WeightLabel text={item.label} />
           </button>
         ))}
       </nav>

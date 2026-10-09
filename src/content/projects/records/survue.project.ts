@@ -146,6 +146,7 @@ export const survueProject = {
   },
   caseStudy: {
     storyPlayback: "manual",
+    titleSignature: "approach",
     info: {
       timeline: "September-December 2024",
       responsibilities: [
@@ -286,6 +287,7 @@ export const survueProject = {
             id: "final-direction",
             eyebrow: "Final direction / changing urgency",
             title: "Change the warning. Keep the structure.",
+            emphasis: "warning.",
             description:
               "The final screens retain the road model across green, yellow, and red states. Vehicle position and warning color change within that familiar structure. This is the interface direction; it does not establish detection accuracy or how reliably cyclists understand it while riding.",
             decision:

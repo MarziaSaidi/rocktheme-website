@@ -6,6 +6,7 @@ import { DecodeText } from "@/motion/DecodeText";
 import { SoundToggle } from "@/sound/SoundToggle";
 
 import { MobileMenu } from "./MobileMenu";
+import { PhonePlace } from "./PhonePlace";
 import { PrimaryNav } from "./PrimaryNav";
 
 import styles from "./SiteHeader.module.css";
@@ -15,9 +16,13 @@ export function SiteHeader() {
     <header className={styles.header}>
       <div className={styles.scrim} aria-hidden="true" />
 
-      <Link className={styles.wordmark} href="/" style={{ "--nav-index": 0 } as CSSProperties}>
-        {siteContent.name}
-      </Link>
+      {/* On a phone the place label sits beside the wordmark; elsewhere this box is invisible. */}
+      <div className={styles.brand}>
+        <Link className={styles.wordmark} href="/" style={{ "--nav-index": 0 } as CSSProperties}>
+          {siteContent.name}
+        </Link>
+        <PhonePlace />
+      </div>
 
       <PrimaryNav />
 

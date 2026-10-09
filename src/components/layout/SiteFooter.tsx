@@ -1,8 +1,10 @@
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
+import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
+import { ContactListen } from "@/motion/ContactListen";
 import { CueEmitter } from "@/motion/CueEmitter";
 import { DecodeText } from "@/motion/DecodeText";
 import { RippleHeading } from "@/motion/RippleHeading";
@@ -28,6 +30,8 @@ export function SiteFooter() {
       <EnvironmentLayer sectionId="footer" />
       {/* The invitation arrives on a ripple each time it comes into view. */}
       <RippleHeading targetId="contact-title" trigger="view" />
+      {/* Afterwards the headline, the plane and its waveform answer the pointer. */}
+      <ContactListen targetId="contact-title" />
 
       <div className={styles.inner}>
         <div className={styles.invitation}>
@@ -70,6 +74,14 @@ export function SiteFooter() {
               aria-hidden="true"
               focusable="false"
             >
+              {/* The moonlit band under the pointer; x1/x2 are set by ContactListen. */}
+              <defs>
+                <linearGradient id="contact-wave-band" gradientUnits="userSpaceOnUse">
+                  <stop className={styles.bandEdge} offset="0" />
+                  <stop className={styles.bandCore} offset="0.5" />
+                  <stop className={styles.bandEdge} offset="1" />
+                </linearGradient>
+              </defs>
               <polyline points={WAVEFORM_POINTS} />
             </svg>
           </a>
@@ -93,7 +105,7 @@ export function SiteFooter() {
                     ? { target: "_blank", rel: "noreferrer noopener" }
                     : {})}
                 >
-                  {link.label}
+                  <WeightLabel text={link.label} />
                 </a>
               </li>
             ))}
@@ -101,7 +113,7 @@ export function SiteFooter() {
         </nav>
 
         <a className={styles.backToTop} href={`#${pageLandmarkIds.top}`}>
-          {footer.backToTopLabel}
+          <WeightLabel text={footer.backToTopLabel} />
           <SwapGlyph direction="up">↑</SwapGlyph>
         </a>
       </div>

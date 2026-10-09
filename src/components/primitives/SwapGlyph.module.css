@@ -28,11 +28,14 @@
  * so a tap never leaves the arrow mid-swap; keyboard focus always.
  */
 @media (hover: hover) and (pointer: fine) {
-  :is(a, button):hover .glyph {
+  /* `data-wake`: the link's project woke from its title or screens (projectWake.ts). */
+  :is(a, button):hover .glyph,
+  :global([data-wake]) :is(a, button) .glyph {
     animation: swapOut var(--motion-arrow-out) var(--motion-ease-exit) forwards;
   }
 
-  :is(a, button):hover .copy {
+  :is(a, button):hover .copy,
+  :global([data-wake]) :is(a, button) .copy {
     animation: swapIn var(--motion-arrow-in) var(--motion-ease-interface)
       var(--motion-arrow-in-delay) forwards;
   }

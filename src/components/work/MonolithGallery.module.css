@@ -1269,3 +1269,97 @@
     animation: none;
   }
 }
+
+/* ------------------------------------------------------------- keyboard */
+
+/*
+ * Keyboard-only controls (docs/typography-motion-system.md, §15). Out of
+ * sight until focused, so the approved compositions are unchanged for
+ * everyone else; focused, each shows as one mono label with the site's focus
+ * treatment. The entry is fixed to the viewport so focusing it never scrolls.
+ */
+.entry,
+.step {
+  composes: micro from "../../styles/type.module.css";
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 60%, transparent);
+  background-color: color-mix(in srgb, var(--color-background) 82%, transparent);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.entry {
+  position: fixed;
+  z-index: var(--layer-navigation);
+  inset-block-end: var(--space-8);
+  inset-inline-start: var(--layout-gutter);
+}
+
+.steps {
+  position: absolute;
+  inset-block-end: clamp(1.75rem, 1rem + 1.6vw, 2.5rem);
+  inset-inline-start: clamp(1.75rem, 1rem + 1.6vw, 2.5rem);
+  display: flex;
+  gap: var(--space-3);
+}
+
+.entry:not(:focus-visible),
+.step:not(:focus-visible) {
+  min-height: 0;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.entry:not(:focus-visible) {
+  position: fixed;
+}
+
+/* ------------------------------------------------------------------ wake */
+
+/*
+ * The project wakes as one (projectWake.ts). The title's fill is moonlight
+ * rising from below: a little rests in it while the camera stands at the
+ * project (`--title-rest`), and it rises to 62% of the letters when the
+ * project is woken (`--title-rise`). The edge stays soft, over a fifth of the
+ * height; at 0 the title is plain porcelain. Only the fill changes here: the
+ * title's own opacity and transform transitions are frozen and left alone.
+ */
+@property --title-rest {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --title-rise {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.titleInner {
+  --title-light: max(var(--title-rest), var(--title-rise));
+  color: transparent;
+  background-image: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-text-moonlit) 92%, var(--color-text-primary)) 0%,
+    color-mix(in srgb, var(--color-text-moonlit) 45%, var(--color-text-primary))
+      calc(var(--title-light) * 72%),
+    var(--color-text-primary) calc(var(--title-light) * 100% + min(var(--title-light) * 5, 1) * 22%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Woken from its title or screens, the link brightens in moonlight. */
+.project[data-wake] .view:not(:hover, :focus-visible) {
+  border-color: color-mix(in srgb, var(--color-text-moonlit) 70%, transparent);
+}

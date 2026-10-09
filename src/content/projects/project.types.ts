@@ -277,6 +277,12 @@ export type CaseStudyStory = Readonly<{
   outcome?: string;
   supportingVideo?: Readonly<{ media: VideoMedia; label: string }>;
   durationSeconds?: number;
+  /**
+   * Whole words of the title that carry the case study's title signature: the
+   * phrase ruled under once an ink title lands, or the word an approach title
+   * steps through urgency on (docs/typography-motion-system.md, §5).
+   */
+  emphasis?: string;
 }>;
 
 export type CaseStudyStage = Readonly<{
@@ -309,6 +315,8 @@ export type Project = Readonly<{
   caseStudy: Readonly<{
     /** Keep evidence stable for case studies intended to be read at the visitor's pace. */
     storyPlayback?: "auto" | "manual";
+    /** How story titles arrive: written in ("ink") or closing in ("approach"). */
+    titleSignature?: "ink" | "approach";
     /** New projects can author stages directly; legacy block records are adapted. */
     stages?: readonly CaseStudyStage[];
     blocks?: readonly CaseStudyBlock[];

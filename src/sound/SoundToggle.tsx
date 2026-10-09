@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import { WeightLabel } from "@/components/primitives/WeightLabel";
+
 import styles from "./SoundToggle.module.css";
 import {
   getServerSoundState,
@@ -43,7 +45,7 @@ export function SoundToggle() {
       aria-pressed={state.enabled}
       data-running={state.ready ? "" : undefined}
     >
-      <span className={styles.label}>Sound {state.enabled ? "on" : "off"}</span>
+      <WeightLabel className={styles.label} text={`Sound ${state.enabled ? "on" : "off"}`} />
       <span className={styles.waveform} aria-hidden="true">
         <span />
         <span />

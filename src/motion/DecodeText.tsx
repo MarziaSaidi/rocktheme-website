@@ -31,6 +31,12 @@ import styles from "./DecodeText.module.css";
  */
 
 const VIEW_THRESHOLD = 0.6;
+/**
+ * Dispatched on a replaying label's link or button to decode it without a
+ * hover or focus of its own (a Selected Work project waking as one).
+ */
+export const REPLAY_EVENT = "decode-replay";
+
 /** The same action does not decode again within this window. */
 const REPLAY_COOLDOWN = 4000;
 
@@ -162,9 +168,11 @@ export function DecodeText({ text, entrance = true, replay = false }: DecodeText
 
     target.addEventListener("pointerenter", onPointer);
     target.addEventListener("focus", onFocus);
+    target.addEventListener(REPLAY_EVENT, play);
     return () => {
       target.removeEventListener("pointerenter", onPointer);
       target.removeEventListener("focus", onFocus);
+      target.removeEventListener(REPLAY_EVENT, play);
     };
   }, [text, replay]);
 
