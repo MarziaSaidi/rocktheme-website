@@ -7,6 +7,12 @@
  * `data-state` ("hidden" | "scramble" | "accent"); a settled character carries
  * no state, so the label's own hover and focus colours keep working. Styles
  * live with whichever component owns the spans.
+ *
+ * A span always holds its real character, so it always has its final width,
+ * in any face (Manrope's proportional letters included) and before or after
+ * the font has loaded. While scrambling, the letter is made invisible and the
+ * symbol (`data-glyph`) is painted over it, centred (motion.css). The label
+ * never changes width or spacing, and selection still gives the real word.
  */
 
 export const DECODE_SYMBOLS = "[]{}!@#$%&*+-=<>?/~0123456789";
@@ -52,6 +58,7 @@ type Phase = "hidden" | "scramble" | "accent" | "done";
 export function setDecodePhase(chars: readonly HTMLElement[], phase: Phase) {
   chars.forEach((char) => {
     char.textContent = char.dataset.final ?? "";
+    delete char.dataset.glyph;
     if (phase === "done") delete char.dataset.state;
     else char.dataset.state = phase;
   });
@@ -93,9 +100,9 @@ export function playDecode(
       if (phase === "scramble") {
         const slot = Math.floor(t / timing.flicker);
         const pick = Math.abs(Math.sin(index * 12.9898 + slot * 78.233) * 43758.5453) % 1;
-        char.textContent = DECODE_SYMBOLS[Math.floor(pick * DECODE_SYMBOLS.length)] ?? "";
-      } else if (states[index] === "scramble" || states[index] === "hidden") {
-        char.textContent = char.dataset.final ?? "";
+        char.dataset.glyph = DECODE_SYMBOLS[Math.floor(pick * DECODE_SYMBOLS.length)] ?? "";
+      } else if (char.dataset.glyph !== undefined) {
+        delete char.dataset.glyph;
       }
       if (phase !== states[index]) {
         states[index] = phase;

@@ -428,3 +428,25 @@
     --motion-cursor-press-duration: 1ms;
   }
 }
+
+/*
+ * The decode's symbols (decode.ts). The real letter stays in place, invisible,
+ * so the character keeps its final width; the symbol is painted over it,
+ * centred, in the colour the owning component gives the scramble phase.
+ */
+[data-final][data-glyph] {
+  position: relative;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-final][data-glyph]::after {
+  content: attr(data-glyph);
+  content: attr(data-glyph) / "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  -webkit-text-fill-color: currentColor;
+  white-space: nowrap;
+  pointer-events: none;
+}
