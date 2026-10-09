@@ -157,6 +157,8 @@ export type DistanceFogConfig = Readonly<{
    * between the ridges. Defaults to `color`.
    */
   lowColor?: number;
+  /** Moving valley haze strength; absent means the existing static haze. */
+  valleyMist?: number;
 }>;
 
 /**

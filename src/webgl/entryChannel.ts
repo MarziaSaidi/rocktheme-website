@@ -53,3 +53,21 @@ export function afterDoorway(limitMs = 8000): Promise<void> {
     doorwayWaiters.add(done);
   });
 }
+
+/** The entry gesture starts weather independently of the visitor's sound choice. */
+let experienceEnteredAt: number | null = null;
+const experienceListeners = new Set<(enteredAt: number) => void>();
+
+export function markExperienceEntered(): void {
+  experienceEnteredAt = performance.now();
+  experienceListeners.forEach((listener) => listener(experienceEnteredAt!));
+}
+
+/** A late-loading main scene receives the original gesture time. */
+export function subscribeExperienceEntry(listener: (enteredAt: number) => void): () => void {
+  experienceListeners.add(listener);
+  if (experienceEnteredAt !== null) listener(experienceEnteredAt);
+  return () => {
+    experienceListeners.delete(listener);
+  };
+}

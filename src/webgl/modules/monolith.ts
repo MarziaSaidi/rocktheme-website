@@ -17,6 +17,8 @@ import {
   type Scene,
   type Texture,
 } from "three";
+
+import type { WeatherUniforms } from "../core/weather";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 import {
@@ -27,7 +29,7 @@ import {
 
 import { getMonolithFaces, subscribeMonolith } from "../monolithChannel";
 import type { MonolithConfig, MonolithPlacement } from "../sceneTypes";
-import { applyDistanceFog, createDistanceFogUniforms } from "./distanceFog";
+import { applyDistanceFog, createDistanceFogUniforms, updateDistanceFog } from "./distanceFog";
 import { applyWaterlineContact, presenceAt } from "./rocks";
 import { matchStone } from "./stoneMaterial";
 
@@ -62,6 +64,7 @@ export type Monolith = Readonly<{
    */
   setRevealed: (count: number) => void;
   resize: (width: number) => void;
+  updateMist: (elapsed: number, reducedMotion: boolean) => void;
   destroy: () => void;
 }>;
 
@@ -209,6 +212,7 @@ export function createMonolith(
   scene: Scene,
   config: MonolithConfig,
   handlers: Readonly<{ onFailure?: (asset: string) => void; onLoaded?: () => void }> = {},
+  weather?: WeatherUniforms,
 ): Monolith {
   const loader = new GLTFLoader();
   const textureLoader = new TextureLoader();
@@ -232,7 +236,7 @@ export function createMonolith(
   scene.add(mountains, key, keyTarget);
 
   const mountainMaterials: MeshStandardMaterial[] = [];
-  const mountainFog = createDistanceFogUniforms(config.mountains.fog);
+  const mountainFog = createDistanceFogUniforms(config.mountains.fog, weather);
   const { screen } = config;
   const plane = new PlaneGeometry(1, 1);
   const box = new BoxGeometry(1, 1, 1);
@@ -542,6 +546,9 @@ export function createMonolith(
       revealed = count;
     },
 
+    updateMist: (elapsed, reducedMotion) => {
+      updateDistanceFog(mountainFog, elapsed, reducedMotion, viewport);
+    },
     resize: (width) => {
       viewport = sceneViewportForWidth(width);
       applyPlacement();

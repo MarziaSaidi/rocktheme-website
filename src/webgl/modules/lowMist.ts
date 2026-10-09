@@ -14,10 +14,14 @@ import {
   type Scene,
 } from "three";
 
+import { createWeatherUniforms, WEATHER_GLSL, type WeatherUniforms } from "../core/weather";
+import { lightningConfig } from "../sceneConfig";
+
 import { resolveResponsiveValue, sceneViewportForWidth } from "@/config/responsive";
 
 import type { LowMistConfig } from "../sceneTypes";
 import { FADE_RATE } from "./rocks";
+import { MIST_FIELD_GLSL } from "./mistField";
 
 /** Upper bound on slices; a viewport shows as many as its detail asks for. */
 const MAX_SLICES = 14;
@@ -73,37 +77,8 @@ const FRAGMENT_SHADER = /* glsl */ `
   varying vec3 vWorld;
   varying vec2 vUv;
 
-  float hash21(vec2 p) {
-    p = fract(p * vec2(123.34, 345.45));
-    p += dot(p, p + 34.345);
-    return fract(p.x * p.y);
-  }
-
-  float noise2D(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = hash21(i);
-    float b = hash21(i + vec2(1.0, 0.0));
-    float c = hash21(i + vec2(0.0, 1.0));
-    float d = hash21(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-  }
-
-  float fbm(vec2 p) {
-    float value = 0.0;
-    float amplitude = 0.5;
-    float total = 0.0;
-    mat2 rotation = mat2(0.80, 0.60, -0.60, 0.80);
-    for (int i = 0; i < 5; i++) {
-      if (i >= uOctaves) break;
-      value += noise2D(p) * amplitude;
-      total += amplitude;
-      p = rotation * p * 2.03 + vec2(17.1, 9.2);
-      amplitude *= 0.5;
-    }
-    return value / total;
-  }
+  ${WEATHER_GLSL}
+  ${MIST_FIELD_GLSL}
 
   void main() {
     float reachXZ = distance(vWorld.xz, cameraPosition.xz);
@@ -147,7 +122,14 @@ const FRAGMENT_SHADER = /* glsl */ `
     float alpha = body * profile * reach * border * uOpacity;
     // Denser cores catch a touch more light than the thin fringes.
     vec3 color = uColor * (0.82 + 0.36 * body * broad);
-    gl_FragColor = vec4(color, alpha);
+    float weatherCell = weatherHorizonCell(vWorld - cameraPosition);
+    // Incoming light crosses a longer bank than the thin view-facing slice.
+    // Keep extinction/movement unchanged; integrate its scattering separately.
+    float scatter = 1.0 - pow(1.0 - alpha, 4.0);
+    scatter *= smoothstep(8.0, 38.0, dist);
+    vec3 radiance = uWeatherColor * uWeatherFlash * ${lightningConfig.mistGain}
+      * (0.3 + weatherCell * 0.7) * scatter;
+    gl_FragColor = vec4(color * alpha + radiance, alpha);
   }
 `;
 
@@ -166,6 +148,7 @@ export function createLowMist(
   width: number,
   reducedMotion: boolean,
   initialConfig: LowMistConfig,
+  weather: WeatherUniforms = createWeatherUniforms(),
 ): LowMist {
   let config = initialConfig;
   let viewportWidth = width;
@@ -178,6 +161,7 @@ export function createLowMist(
   geometry.rotateX(-Math.PI / 2);
 
   const shared = {
+    ...weather,
     uTime: { value: 0 },
     uDensity: { value: config.density },
     uOctaves: { value: 4 },
@@ -195,6 +179,7 @@ export function createLowMist(
       fragmentShader: FRAGMENT_SHADER,
       uniforms: { ...shared, uOpacity: { value: 0 } },
       transparent: true,
+      premultipliedAlpha: true,
       depthWrite: false,
       side: DoubleSide,
       blending: NormalBlending,
