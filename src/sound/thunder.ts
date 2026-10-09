@@ -7,6 +7,8 @@ export const THUNDER_SAMPLES = [
   "low-canopy",
   "rolling-strike",
 ] as const;
+/** Embedded light rain in this source conflicts with the thunder-only mix. */
+export const THUNDER_DISABLED_SAMPLES: readonly string[] = ["distant-valley"];
 export const THUNDER = {
   delay: [0, 2.5],
   gainDb: 3.5,
@@ -39,8 +41,11 @@ export function createThunderSelector(random: () => number = Math.random) {
     available: readonly number[] = [0, 1, 2, 3, 4, 5],
   ) => {
     const preferred = clamp(distance) <= 0.06 ? [2, 3, 5] : [0, 1, 4];
-    const matching = available.filter((index) => preferred.includes(index));
-    const candidates = matching.length ? matching : [...available];
+    const enabled = available.filter(
+      (index) => !THUNDER_DISABLED_SAMPLES.includes(THUNDER_SAMPLES[index]!),
+    );
+    const matching = enabled.filter((index) => preferred.includes(index));
+    const candidates = matching.length ? matching : enabled;
     if (!candidates.length) return null;
     const key = [...candidates].sort().join(",");
     let bag = bags.get(key);

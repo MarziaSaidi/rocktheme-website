@@ -48,7 +48,7 @@ Audio files are used.
 | `statement:read`    | `BioStory.tsx`, a bio passage arrives                         | `readout`                                       |
 | `project:open`      | `MonolithGallery.tsx`, View case study                        | `transition`, entered late                      |
 | `contact:open`      | `SiteFooter.tsx`, the plane or the email link                 | `chime`                                         |
-| `weather:lightning` | Main-page weather controller, once at the first visible flash | One of six CC0 thunder field recordings         |
+| `weather:lightning` | Main-page weather controller, once at the first visible flash | One of five enabled CC0 thunder field recordings         |
 
 The transition is the signature: one sound for every change of place. Shorter
 scene changes start the file part way through (`lead` in `CUES`) so the bloom
@@ -192,8 +192,8 @@ scheduled start as evidence of playback.
 ## Stage 4 timing and mix proposal (approval pending)
 
 The single main-page weather controller is armed from the entry gesture,
-independently of either sound choice. Its first countdown is 8–14 seconds;
-subsequent gaps are irregular 20–40 seconds. Camera travel can defer a due
+independently of either sound choice. Its first countdown is 8–12 seconds;
+subsequent gaps alternate occasional 6.5–9 second pairs, irregular 16–26 second gaps, and 32–44 second quieter periods. Camera travel can defer a due
 strike until a safe rest. Section changes only ease the existing audio character;
 they do not re-arm the clock. Enabling sound neither advances the clock nor
 replays a silent event. The entry channel retains the gesture timestamp for a
@@ -219,3 +219,15 @@ The live browser mix comparison, output/stem measurements, natural-entry
 recording and scope checks are in `design/screenshots/stage-24-mix/README.md`.
 Measured output headroom is not a subjective listening approval or a physical
 laptop-speaker test. Stage 5 remains unstarted.
+
+### Stage 4 rhythm refinement (pending approval)
+
+The same weather countdown now allows occasional pairs 6.5–9 seconds apart,
+ordinary gaps of 16–26 seconds, and quieter gaps of 32–44 seconds. A pair always
+ends before another group can start. First entry remains 8–12 active seconds.
+The reference evidence covers only a short clip, so its longer pauses are unknown;
+quiet-period settings are a conservative portfolio choice, not measured reference timings.
+No audio source, gain, ducking, distance, visual envelope or camera setting changes.
+No rainfall, wind or weather ambience layer is added.
+
+`distant-valley` is retained on disk for provenance but excluded from loading and selection: its source explicitly contains light rain. The other five original recordings and all mix settings are unchanged.

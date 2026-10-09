@@ -63,13 +63,26 @@ export function createWeather(
   const attacks = new Float32Array(4);
   const decays = new Float32Array(4);
   const look = new Vector3();
-  const gap = () =>
-    lightningConfig.interval[0] +
-    random() * (lightningConfig.interval[1] - lightningConfig.interval[0]);
+  let groupedFollowUp = false;
+  const gap = (allowGroup = true) => {
+    // At most one follow-up per pair; then leave room for the rolling tails.
+    const choice = random();
+    const group = allowGroup && !groupedFollowUp && choice < lightningConfig.groupChance;
+    const quiet =
+      choice >= lightningConfig.groupChance &&
+      choice < lightningConfig.groupChance + lightningConfig.quietChance;
+    groupedFollowUp = group;
+    const range = group
+      ? lightningConfig.groupedInterval
+      : quiet
+        ? lightningConfig.quietInterval
+        : lightningConfig.interval;
+    return range[0] + random() * (range[1] - range[0]);
+  };
   const firstGap = () =>
     lightningConfig.firstInterval[0] +
     random() * (lightningConfig.firstInterval[1] - lightningConfig.firstInterval[0]);
-  const nextGap = () => (state.strikes === 0 ? firstGap() : gap());
+  const nextGap = () => (state.strikes === 0 ? firstGap() : gap(false));
   let remaining = firstGap();
   let experienceStarted = !waitingForEntry;
   let age = -1;

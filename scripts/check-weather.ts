@@ -38,14 +38,14 @@ const rng = () => {
   };
 };
 
-test("first strike is 8–14 seconds, then irregular 20–40 active seconds, with four bounded flickers", () => {
+test("first strike is 8–12 seconds, then bounded pairs, irregular gaps and quiet periods", () => {
   const weather = createWeather(false, rng());
   const view = camera();
   const starts: number[] = [];
   const peaks: number[][] = [];
   let before = 0;
   let rising = false;
-  for (let frame = 0; frame < 60 * 360; frame++) {
+  for (let frame = 0; frame < 60 * 1800; frame++) {
     const strikes = weather.state.strikes;
     weather.update(1 / 60, view);
     const now = (frame + 1) / 60;
@@ -61,9 +61,29 @@ test("first strike is 8–14 seconds, then irregular 20–40 active seconds, wit
     before = value;
   }
   assert.ok(starts.length >= 6);
-  assert.ok(starts[0]! >= 8 && starts[0]! <= 14.02);
+  assert.ok(starts[0]! >= 8 && starts[0]! <= 12.02);
   const gaps = starts.slice(1).map((time, index) => time - starts[index]!);
-  assert.ok(gaps.every((gap) => gap >= 20 - 1 / 60 && gap <= 40 + 1 / 60));
+  assert.ok(
+    gaps.every((gap) =>
+      [
+        lightningConfig.groupedInterval,
+        lightningConfig.interval,
+        lightningConfig.quietInterval,
+      ].some(([low, high]) => gap >= low - 1 / 60 && gap <= high + 1 / 60),
+    ),
+  );
+  assert.ok(
+    gaps.some((gap) => gap < 10),
+    "occasional grouped strikes",
+  );
+  assert.ok(
+    gaps.some((gap) => gap > 32),
+    "occasional quiet periods",
+  );
+  assert.ok(
+    gaps.every((gap, index) => gap >= 10 || index === 0 || gaps[index - 1]! >= 10),
+    "never chain three tightly grouped strikes",
+  );
   assert.ok(new Set(gaps.map((gap) => Math.round(gap))).size > 2);
   for (const pulse of peaks.slice(0, -1)) {
     assert.equal(pulse.length, 4);
@@ -77,7 +97,7 @@ test("first strike is 8–14 seconds, then irregular 20–40 active seconds, wit
 
 test("reduced motion cancels a strike and never produces another", () => {
   const weather = createWeather(false, () => 0.5);
-  step(weather, 11.033333333);
+  step(weather, 10.033333333);
   assert.ok(weather.state.flash > 0);
   weather.setReducedMotion(true);
   assert.equal(weather.state.flash, 0);
@@ -87,7 +107,7 @@ test("reduced motion cancels a strike and never produces another", () => {
   weather.setReducedMotion(false);
   step(weather, 20);
   assert.equal(weather.state.strikes, count);
-  step(weather, 23);
+  step(weather, 3);
   assert.equal(weather.state.strikes, count + 1);
   const initiallyReduced = createWeather(true, () => 0.5);
   step(initiallyReduced, 200);
@@ -107,11 +127,11 @@ test("camera travel defers new strikes but lets an existing envelope finish", ()
 
 test("suspension and destruction never replay an interrupted strike", () => {
   const weather = createWeather(false, () => 0.5);
-  step(weather, 11.033333333);
+  step(weather, 10.033333333);
   assert.ok(weather.state.flash > 0);
   weather.suspend();
   assert.equal(weather.uniforms.uWeatherFlash.value, 0);
-  step(weather, 25);
+  step(weather, 15);
   assert.equal(weather.state.strikes, 1);
   weather.destroy();
   step(weather, 180);
@@ -124,8 +144,8 @@ test("mobile strikes are dimmer and direction stays fixed through camera movemen
   const mobile = createWeather(false, () => 0.5);
   const narrow = camera();
   narrow.aspect = 0.46;
-  step(desktop, 11.033333333);
-  step(mobile, 11.033333333, narrow);
+  step(desktop, 10.033333333);
+  step(mobile, 10.033333333, narrow);
   assert.ok(mobile.state.flash < desktop.state.flash);
   const direction = desktop.state.direction.clone();
   const turned = camera();
@@ -171,7 +191,7 @@ test("all atmospheric consumers share the controller's exact uniform references"
     assert.strictEqual(material.uniforms.uWeatherColor, weather.uniforms.uWeatherColor);
   });
   assert.ok(count >= 19);
-  step(weather, 11.033333333);
+  step(weather, 10.033333333);
   assert.ok(fog.uWeatherFlash.value > 0);
   weather.destroy();
   assert.equal(fog.uWeatherFlash.value, 0);
@@ -223,7 +243,7 @@ test("entry arms the clock once; chapter and consent changes cannot restart it",
   step(weather, 90);
   assert.equal(weather.state.strikes, 0);
   weather.beginExperience(2);
-  step(weather, 7);
+  step(weather, 6);
   weather.setStormTarget(0.45);
   weather.beginExperience();
   step(weather, 2.04);
@@ -231,6 +251,6 @@ test("entry arms the clock once; chapter and consent changes cannot restart it",
   weather.beginExperience();
   step(weather, 20);
   weather.setStormTarget(0.6);
-  step(weather, 10.04);
+  step(weather, 2.04);
   assert.equal(weather.state.strikes, 2);
 });

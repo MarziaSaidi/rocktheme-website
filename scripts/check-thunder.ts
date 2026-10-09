@@ -13,7 +13,7 @@ const random = () => {
   };
 };
 const camera = new PerspectiveCamera(34, 1.6, 0.1, 420);
-test("six distinct files and shuffled non-repeating thunder characters", () => {
+test("six intact source files and five enabled, shuffled thunder characters", () => {
   const hashes = THUNDER_SAMPLES.map((name) =>
     createHash("sha256")
       .update(readFileSync(`public/audio/effects/thunder/${name}.mp3`))
@@ -25,13 +25,13 @@ test("six distinct files and shuffled non-repeating thunder characters", () => {
     let previous = -1;
     for (let cycle = 0; cycle < 10; cycle++) {
       const used = new Set();
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < (distance === 0 ? 3 : 2); i++) {
         const next = select(distance, 0.8)!;
         assert.notEqual(next.index, previous);
         used.add(next.index);
         previous = next.index;
       }
-      assert.equal(used.size, 3);
+      assert.equal(used.size, distance === 0 ? 3 : 2);
     }
   }
 });
@@ -102,10 +102,11 @@ test("close onset and distant delay derive from the same strike strength", () =>
 test("partial asset failures always select a decoded recording", () => {
   const select = createThunderSelector(random());
   for (let i = 0; i < 30; i++) {
-    const plan = select(i % 2 ? 0 : 1, 0.9, 0.55, [0]);
-    assert.equal(plan?.index, 0);
+    const plan = select(i % 2 ? 0 : 1, 0.9, 0.55, [1]);
+    assert.equal(plan?.index, 1);
   }
   assert.equal(select(0, 1, 0.55, []), null);
+  assert.equal(select(1, 1, 0.55, [0]), null);
 });
 
 test("shipped recordings match the audited CC0 provenance", () => {

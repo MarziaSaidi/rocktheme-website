@@ -1,4 +1,10 @@
-import { createThunderSelector, thunderDistance, THUNDER, THUNDER_SAMPLES } from "./thunder";
+import {
+  createThunderSelector,
+  thunderDistance,
+  THUNDER,
+  THUNDER_SAMPLES,
+  THUNDER_DISABLED_SAMPLES,
+} from "./thunder";
 import { getSoundState } from "./soundStore";
 import { thunderAudit } from "./thunderAudit";
 import {
@@ -305,7 +311,7 @@ export function createSoundEngine(): SoundEngine | null {
     const signal = controller.signal;
     const task = Promise.all(
       THUNDER_SAMPLES.map(async (name, index) => {
-        if (thunderBuffers.has(index)) return;
+        if (THUNDER_DISABLED_SAMPLES.includes(name) || thunderBuffers.has(index)) return;
         try {
           const response = await fetch(`/audio/effects/thunder/${name}.mp3`, { signal });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -383,7 +389,8 @@ export function createSoundEngine(): SoundEngine | null {
     }
     // Retry incomplete loads on the next real strike; use a ready recording now.
     // No late replay and no independent weather clock.
-    if (thunderBuffers.size < THUNDER_SAMPLES.length) void loadThunder();
+    if (thunderBuffers.size < THUNDER_SAMPLES.length - THUNDER_DISABLED_SAMPLES.length)
+      void loadThunder();
     const plan = selectThunder(
       thunderDistance(detail.intensity ?? 0.8),
       detail.intensity ?? 0.8,
