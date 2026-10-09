@@ -989,6 +989,26 @@ The proposals under review remove three emphasis moments ("vehicle", "risk",
   - the lit line, counter, phone label and keyboard path
   - the frame guards
 
+### Integration with the redesign (`typography-integration`, 2026-10-09)
+
+This branch is `origin/main` (the Barlow/Manrope redesign and the elevated
+camera journey) with `typography-motion` merged in, adapted to the redesigned
+faces:
+
+- **Hero.** Stays in Barlow Condensed. The field is moonlight only, at the
+  contact's softened strength, gone by `--arrival` 0.03. At rest it is
+  pixel-identical to main.
+- **Decode.** Every character keeps its real letter, invisible while the
+  symbol is painted over it. The four Manrope labels decode with 0 px width
+  or letter movement at 1440 px, 390 px and on a phone, before and after
+  font loading, with the same final spacing as main.
+- **Nav.** The redesign's Manrope labels and moonlit colour states. The gold
+  lit line, `aria-current` and the gold focus outline stay. The counter is in
+  Geist Mono.
+- **Socials, Back to top, stage nav.** Colour only (0 px movement). The
+  weight crossfade remains only on monospaced labels (back link, zoom link,
+  sound toggle).
+
 ## 16. Open decisions
 
 1. **Phones (§13):** approve the header label, the hero's single Breath wave
