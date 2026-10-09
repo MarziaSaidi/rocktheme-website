@@ -1153,3 +1153,169 @@ video.visualMedia[data-fit="cover"] {
     transition: none;
   }
 }
+
+/* ============================================================ story roles */
+
+/*
+ * A story change, by role (docs/typography-motion-system.md, §5): the eyebrow
+ * slides up out of a one-line mask; the title arrives by the project's
+ * signature (ink or approach, storySignature.ts), or rises line by line as
+ * before when it has none; the body only fades in, after the title, and never
+ * travels. Nothing here outlasts 0.9 s, so it never takes time from reading.
+ */
+.story .word {
+  animation: copy-in 320ms var(--motion-ease-interface) 280ms both;
+}
+
+.story .eyebrow {
+  clip-path: inset(0 -1em);
+}
+
+.story .eyebrow .word {
+  animation: eyebrow-in 160ms var(--motion-ease-interface) both;
+}
+
+.story h2 .word {
+  animation: line-in 480ms var(--ease-interface) both;
+  animation-delay: calc(var(--line, 0) * var(--line-step, 60ms));
+}
+
+/* A signature title below the fold waits, unseen, until it comes on screen. */
+.story[data-signature]:not([data-ready]) h2 .word {
+  opacity: 0;
+  animation: none;
+}
+
+/* Ink: each line is written in left to right by a feathered wipe; glyphs never move. */
+.story[data-signature="ink"] h2 .word {
+  -webkit-mask-image: linear-gradient(90deg, #000 0 42%, transparent 58% 100%);
+  mask-image: linear-gradient(90deg, #000 0 42%, transparent 58% 100%);
+  -webkit-mask-size: 260% 100%;
+  mask-size: 260% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: ink-in var(--ink-dur, 300ms) linear var(--ink-at, 0ms) both;
+}
+
+/* The correction, ruled in botanical once the title is written: the page's one green moment. */
+.story[data-signature="ink"] h2 .word[data-emphasis] {
+  background-image: linear-gradient(var(--color-accent), var(--color-accent));
+  background-repeat: no-repeat;
+  background-position: 0 92%;
+  background-size: 0 1px;
+  animation:
+    ink-in var(--ink-dur, 300ms) linear var(--ink-at, 0ms) both,
+    ink-rule 420ms var(--motion-ease-reveal) var(--rule-at, 900ms) forwards;
+}
+
+/*
+ * Approach: light and loose, closing in to the title's own weight and
+ * tracking. Each word holds its resting width meanwhile, so no line reflows;
+ * settled, the words are plain inline boxes again.
+ */
+.story[data-signature="approach"] h2 .word {
+  animation: approach-in 640ms var(--motion-ease-reveal) calc(var(--line, 0) * 70ms) both;
+}
+
+.story[data-signature="approach"]:not([data-settled]) h2 .word {
+  display: inline-flex;
+  justify-content: center;
+  width: var(--word-w, auto);
+  white-space: nowrap;
+}
+
+/* The word the urgency lives in: three risk levels, one beat each, resting on the middle. */
+.story[data-signature="approach"] h2 .word[data-emphasis] {
+  animation:
+    approach-in 640ms var(--motion-ease-reveal) calc(var(--line, 0) * 70ms) both,
+    approach-urgency 900ms steps(1, end) 760ms forwards;
+}
+
+@keyframes copy-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes eyebrow-in {
+  from {
+    translate: 0 110%;
+  }
+}
+
+@keyframes ink-in {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+
+  to {
+    -webkit-mask-position: 0% 0;
+    mask-position: 0% 0;
+  }
+}
+
+@keyframes ink-rule {
+  to {
+    background-size: 100% 1px;
+  }
+}
+
+@keyframes approach-in {
+  0% {
+    opacity: 0;
+    font-weight: 380;
+    letter-spacing: 0.015em;
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    font-weight: var(--weight-body-strong);
+    letter-spacing: -0.025em;
+  }
+}
+
+@keyframes approach-urgency {
+  0% {
+    font-weight: 560;
+  }
+
+  33% {
+    font-weight: 640;
+  }
+
+  66% {
+    font-weight: 720;
+  }
+
+  100% {
+    font-weight: 620;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story .word,
+  .story .eyebrow .word,
+  .story h2 .word,
+  .story[data-signature] h2 .word,
+  .story[data-signature] h2 .word[data-emphasis] {
+    animation: none;
+  }
+
+  .story[data-signature="ink"] h2 .word {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .story[data-signature="ink"] h2 .word[data-emphasis] {
+    background-size: 100% 1px;
+  }
+
+  .story[data-signature="approach"] h2 .word[data-emphasis] {
+    font-weight: 620;
+  }
+}
