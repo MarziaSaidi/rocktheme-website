@@ -21,17 +21,21 @@ import styles from "./HeroField.module.css";
  * original nodes are put back as soon as every spring has settled.
  *
  * Performance guard: weight and width cost layout, so they run only where the
- * scene runs at its high tier, and switch off for the rest of the visit if
- * frames start to slip. The test is the scene's own (src/webgl/core/quality.ts):
- * a frame over the 20 ms budget charges a bucket (at most 50 ms, so one long
- * frame can't trip it), a frame within budget drains it. The scene waits for
- * 1.2 s of net overload before giving up a tier; this optional effect gives up
- * after GUARD.patienceMs, about six slow frames in a row, and leaves the
- * scene's budget alone. Because fast frames drain the bucket, stutter (slow
- * frames between quick ones) never fills it, so the field also gives up after
- * 4 frames over 25 ms within 60; at normal and 2× CPU no frame comes near that. Measured, the moonlight alone still cost a struggling
- * device frames (repainting a clipped gradient over very large type), so the
- * whole field releases on its springs and rests for the visit.
+ * scene runs at its high tier, and the whole field rests for the visit once
+ * frames start to slip (the moonlight alone, repainting a clipped gradient over
+ * very large type, still cost a struggling device frames). It follows the
+ * scene's quality manager (src/webgl/core/quality.ts): a frame over budget
+ * charges a bucket, at most 50 ms so one long frame can't trip it, and a frame
+ * within budget drains it; the field gives up after 160 ms of net overload,
+ * not the scene's 1.2 s, because it is optional. Fast frames drain that bucket,
+ * so stutter (slow frames between quick ones) never fills it; 4 slow frames
+ * within 60 also trip it. The scene times its own render work; the field's
+ * cost lands in the browser's style, layout and paint, so it times whole
+ * frames instead, against the display's own cadence (the shortest recent
+ * frame): a frame is over budget above 1.2 cadences and slow above 1.5, never
+ * below 20 and 25 ms. A browser pacing at 30 fps (a sleeping display, power
+ * saving) therefore doesn't trip it on every frame. The first frames after a
+ * split are its own one-off measurement, a warm-up that doesn't count.
  */
 
 /** The approved 3 px cap. */
@@ -60,7 +64,15 @@ const GUARD = {
   /** Stutter: this many frames over `stutterMs` within the last `windowFrames`. */
   stutterMs: 25,
   stutterFrames: 4,
+  /** Over budget, and slow, measured in display cadences. */
+  budgetCadences: 1.2,
+  stutterCadences: 1.5,
   windowFrames: 60,
+  /**
+   * Frames right after a split don't count toward stutter: the split's own
+   * measurement and first lifts are a one-off, as the scene's warm-up is.
+   */
+  warmupFrames: 12,
 };
 
 type Letter = {
@@ -132,6 +144,9 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
     let guardTripped = false;
     let overBudgetMs = 0;
     const stutters: number[] = [];
+    /** Recent frame intervals; the shortest is the display's cadence. */
+    const intervals: number[] = [];
+    let warmup = 0;
 
     const arrival = () => parseFloat(root.style.getPropertyValue("--arrival")) || 0;
     const ready = () => heading.dataset.ripple === "done";
@@ -230,6 +245,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
         el.style.removeProperty("--d");
       });
       split = lines.length > 0;
+      warmup = GUARD.warmupFrames;
     };
 
     // Back to the server markup, exactly: the original nodes, not a copy.
@@ -271,17 +287,27 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
     const setStone = (on: boolean) => root.toggleAttribute("data-cursor-stone", on);
 
     const tick = (now: number) => {
-      const elapsed = last ? now - last : 1000 / 60;
+      const measured = last !== 0;
+      const elapsed = measured ? now - last : 1000 / 60;
       last = now;
       // Every frame the field runs counts, at any tier; the loop's first frame
       // after waking has no previous frame to measure from.
-      if (!guardTripped && elapsed < 500) {
-        overBudgetMs =
-          elapsed > GUARD.budgetMs
-            ? overBudgetMs + Math.min(elapsed, GUARD.maxChargeMs)
-            : Math.max(0, overBudgetMs - elapsed);
-        stutters.push(elapsed > GUARD.stutterMs ? 1 : 0);
-        if (stutters.length > GUARD.windowFrames) stutters.shift();
+      if (!guardTripped && measured && elapsed < 500) {
+        intervals.push(elapsed);
+        if (intervals.length > GUARD.windowFrames) intervals.shift();
+        const cadence = Math.min(...intervals);
+        const budget = Math.max(GUARD.budgetMs, cadence * GUARD.budgetCadences);
+        const slow = Math.max(GUARD.stutterMs, cadence * GUARD.stutterCadences);
+        if (warmup > 0) {
+          warmup -= 1;
+        } else {
+          overBudgetMs =
+            elapsed > budget
+              ? overBudgetMs + Math.min(elapsed, GUARD.maxChargeMs)
+              : Math.max(0, overBudgetMs - elapsed);
+          stutters.push(elapsed > slow ? 1 : 0);
+          if (stutters.length > GUARD.windowFrames) stutters.shift();
+        }
         const stuttering = stutters.reduce((sum, slow) => sum + slow, 0) >= GUARD.stutterFrames;
         if (overBudgetMs >= GUARD.patienceMs || stuttering) tripGuard();
       }
