@@ -34,8 +34,9 @@ import styles from "./HeroField.module.css";
  * frames instead, against the display's own cadence (the shortest recent
  * frame): a frame is over budget above 1.2 cadences and slow above 1.5, never
  * below 20 and 25 ms. A browser pacing at 30 fps (a sleeping display, power
- * saving) therefore doesn't trip it on every frame. The first frames after a
- * split are its own one-off measurement, a warm-up that doesn't count.
+ * saving) therefore doesn't trip it on every frame. The 3 frames after a
+ * split are its own one-off measurement, a warm-up that doesn't count. Once
+ * tripped, it lets go on the quick springs it uses when the camera leaves.
  */
 
 /** The approved 3 px cap. */
@@ -72,7 +73,7 @@ const GUARD = {
    * Frames right after a split don't count toward stutter: the split's own
    * measurement and first lifts are a one-off, as the scene's warm-up is.
    */
-  warmupFrames: 12,
+  warmupFrames: 3,
 };
 
 type Letter = {
@@ -330,7 +331,9 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
             const dy = py - letter.cy;
             target = Math.exp(-((dx * dx) / (2 * sx * sx) + (dy * dy) / (2 * sy * sy)));
           }
-          const rate = target > letter.s ? RATE.in : atRest ? RATE.out : RATE.release;
+          // Leaving with the camera, or after the guard trips, is the quick release.
+          const rate =
+            target > letter.s ? RATE.in : atRest && !guardTripped ? RATE.out : RATE.release;
           [letter.s, letter.v] = spring(letter.s, letter.v, target, rate, dt);
           if (letter.s < 0) {
             letter.s = 0;
@@ -357,7 +360,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
 
       const want = on ? 1 : 0;
       // The light leaves with the camera as quickly as the letters do.
-      const lightRate = want > presence ? 7 : atRest ? 4 : RATE.release;
+      const lightRate = want > presence ? 7 : atRest && !guardTripped ? 4 : RATE.release;
       [presence, presenceV] = spring(presence, presenceV, want, lightRate, dt);
       if (Math.abs(want - presence) > SETTLED.light || Math.abs(presenceV) > 0.01) moving = true;
       const follow = 1 - Math.exp(-9 * dt);
