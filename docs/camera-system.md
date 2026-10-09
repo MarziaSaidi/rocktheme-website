@@ -1,15 +1,45 @@
 # Homepage camera system — frozen
 
-Status: **frozen** (approved 2026-09-25). Hero → Quill & Pigeon → Survue.
+Status: **frozen**. Hero frames approved 2026-09-25; the elevated Selected
+Work journey (below) approved 2026-10-08 from recorded runs. Hero → Selected
+Work climb → Quill & Pigeon → Survue, both held among the peaks → descent →
+the bio.
 
 Do not retune anything in this document unless a clear visual bug is found.
 "It could feel a bit better" is not a bug. Any change must be re-verified with
-stills at the keyframes listed below (1440×900, camera stopped), and the frames
-compared against `design/screenshots/stage-13-occlusion-reveal/`,
-`stage-14-screen-reflection/` and `stage-16-survue-refinement/`.
+a continuous run (every scroll position, not only the keyframes) at 1440×900
+and 390×844, compared against `design/screenshots/stage-22-elevated-work-storyboard/`
+for Selected Work and `stage-13-occlusion-reveal/` for the hero.
 
-The How I Work and Contact legs after Survue are **not** part of this freeze.
-They are described under "The bio's shots" below.
+The How I Work and Contact legs after the descent are **not** part of this
+freeze. They are described under "The bio's shots" below.
+
+## The elevated Selected Work journey (2026-10-08)
+
+| Stretch (desktop px) | Camera                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| 0 – 2230             | Hero, Frames 01–03 and the pass at 0.62: unchanged, at the water                          |
+| 2230 – 3600          | Climb, from the heading's reveal (arrival 0.62) to the Quill hold, forward at about 45°   |
+| 3600 – 4725          | Quill & Pigeon held at `(-7, 54, -10)` → `(9, 61, -144)`: ridges low, sky behind the copy |
+| stepper swap (~1 s)  | Glide at altitude to Survue                                                               |
+| 7425 – 8550          | Survue held at `(-46, 52, -8)` → `(-55, 58, -172)`                                        |
+| 8550 – 9450          | Descent, facing the range, to the old Survue pose `(-38.5, 6.6, 21)` (`descentKeyframes`) |
+| 9450 →               | The bio shot, unchanged, leaving from that water-level pose (`waterSettle`)               |
+
+- Inside the gallery the stepper moves the page instantly between details
+  points, so Quill → Survue is flown by the scroll spring in about a second,
+  not scrubbed over the travel's three screens.
+- The descent's screen is padding in `Statement.module.css` (+100svh, +65svh
+  below the desktop layout) and the `descentEnd` stop in `SceneCanvas.tsx`.
+- Below the desktop layout the stacked stations hold at about y 55, pitched up,
+  so the ridges sit under the copy at the bottom of the panel.
+- The range beyond the hero's mountains (`modules/aerialTerrain.ts`, built by
+  `npm run prepare:aerial`) is not drawn while the camera is below y 13, so
+  every water-level frame is exactly as before. From y 13 to 22 its haze lifts,
+  while the old ridgelines still cover it. The scene fog, the water's extent,
+  the far plane, a light valley mist and the moon's distance follow altitude.
+- The Arrival and Departure tables below are the water-level keyframes this
+  journey replaced after arrival 0.62; they are kept for the record.
 
 ## Where the values live
 
