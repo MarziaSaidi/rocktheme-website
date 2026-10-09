@@ -22,8 +22,16 @@ import styles from "./HeroField.module.css";
  *
  * Performance guard: weight and width cost layout, so they run only where the
  * scene runs at its high tier, and switch off for the rest of the visit if
- * frames start to slip (9 of 45 frames over 22 ms). The moonlight, which costs
- * no layout, stays.
+ * frames start to slip. The test is the scene's own (src/webgl/core/quality.ts):
+ * a frame over the 20 ms budget charges a bucket (at most 50 ms, so one long
+ * frame can't trip it), a frame within budget drains it. The scene waits for
+ * 1.2 s of net overload before giving up a tier; this optional effect gives up
+ * after GUARD.patienceMs, about six slow frames in a row, and leaves the
+ * scene's budget alone. Because fast frames drain the bucket, stutter (slow
+ * frames between quick ones) never fills it, so the field also gives up after
+ * 4 frames over 25 ms within 60; at normal and 2× CPU no frame comes near that. Measured, the moonlight alone still cost a struggling
+ * device frames (repainting a clipped gradient over very large type), so the
+ * whole field releases on its springs and rests for the visit.
  */
 
 /** The approved 3 px cap. */
@@ -45,7 +53,15 @@ const AT_REST = 0.0005;
  * invisible tail would keep the letters split for seconds.
  */
 const SETTLED = { letter: 0.5 / LEVELS, light: 0.005 };
-const GUARD = { window: 45, slowMs: 22, trips: 9 };
+const GUARD = {
+  budgetMs: 20,
+  maxChargeMs: 50,
+  patienceMs: 160,
+  /** Stutter: this many frames over `stutterMs` within the last `windowFrames`. */
+  stutterMs: 25,
+  stutterFrames: 4,
+  windowFrames: 60,
+};
 
 type Letter = {
   el: HTMLSpanElement;
@@ -114,7 +130,8 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
     let frame = 0;
     let last = 0;
     let guardTripped = false;
-    const slow: number[] = [];
+    let overBudgetMs = 0;
+    const stutters: number[] = [];
 
     const arrival = () => parseFloat(root.style.getPropertyValue("--arrival")) || 0;
     const ready = () => heading.dataset.ripple === "done";
@@ -233,6 +250,10 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
 
     const tripGuard = () => {
       guardTripped = true;
+      // Readable in the inspector and by the checks: the field is light only now.
+      heading.dataset.fieldGuard = "tripped";
+      // Nothing holds the loop open any more: it releases, unsplits and parks.
+      inside = false;
       for (const line of lines) {
         line.letters.forEach((letter) => {
           letter.q = 0;
@@ -249,17 +270,23 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
     const tick = (now: number) => {
       const elapsed = last ? now - last : 1000 / 60;
       last = now;
-      if (!guardTripped && axesAllowed()) {
-        slow.push(elapsed > GUARD.slowMs ? 1 : 0);
-        if (slow.length > GUARD.window) slow.shift();
-        if (slow.length === GUARD.window && slow.reduce((a, b) => a + b, 0) >= GUARD.trips) {
-          tripGuard();
-        }
+      // Every frame the field runs counts, at any tier; the loop's first frame
+      // after waking has no previous frame to measure from.
+      if (!guardTripped && elapsed < 500) {
+        overBudgetMs =
+          elapsed > GUARD.budgetMs
+            ? overBudgetMs + Math.min(elapsed, GUARD.maxChargeMs)
+            : Math.max(0, overBudgetMs - elapsed);
+        stutters.push(elapsed > GUARD.stutterMs ? 1 : 0);
+        if (stutters.length > GUARD.windowFrames) stutters.shift();
+        const stuttering = stutters.reduce((sum, slow) => sum + slow, 0) >= GUARD.stutterFrames;
+        if (overBudgetMs >= GUARD.patienceMs || stuttering) tripGuard();
       }
       const dt = Math.min(elapsed / 1000, 1 / 30);
       const atRest = arrival() < AT_REST;
       if (!atRest) inside = false;
-      const on = ready() && atRest && inside;
+      // Once the guard trips, the field lets go on its springs and stays at rest.
+      const on = ready() && atRest && inside && !guardTripped;
       setStone(on);
       const sx = FIELD.sx * em;
       const sy = FIELD.sy * em;
@@ -357,7 +384,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
 
     const pointer = createPointerSource();
     const unsubscribe = pointer.subscribe((sample) => {
-      if (!ready()) return;
+      if (!ready() || guardTripped) return;
       if (arrival() >= AT_REST || !sample.inside) {
         field = null;
         if (inside) {
@@ -404,6 +431,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       onResize();
+      delete heading.dataset.fieldGuard;
     };
   }, [targetId]);
 
