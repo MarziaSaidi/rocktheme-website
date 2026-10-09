@@ -28,8 +28,11 @@ import { createPointerSource } from "./pointerSource";
 const SPRING = 4.5;
 /** The lean answers the pointer approaching from this far, in plane sizes. */
 const REACH = { x: 0.9, y: 1.4 };
-/** The headline's light: its margin, in px, and strength. */
-const HEADLINE = { pad: 40, light: 0.7 };
+/**
+ * The headline's light: its margin, in px, and strength. 65% of the first
+ * cut (0.7), so it answers the pointer without competing with the headline.
+ */
+const HEADLINE = { pad: 40, light: 0.455 };
 /** The waveform's viewBox width (SiteFooter.tsx). */
 const WAVE_WIDTH = 320;
 
