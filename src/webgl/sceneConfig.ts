@@ -637,7 +637,18 @@ export const distanceFogConfig: DistanceFogConfig = {
  * reads as set into the rock. The camera looks past the stone's right side,
  * so the stone holds the left third and the details the open right.
  */
-const quillSettle: PosePoint = { eye: [-5.1, 3.6, 21.9], target: [4.8, 6.2, -1.6], fov: 34 };
+export const quillWaterSettle: PosePoint = {
+  eye: [-5.1, 3.6, 21.9],
+  target: [4.8, 6.2, -1.6],
+  fov: 34,
+};
+
+/*
+ * Quill & Pigeon, held up among the peaks (2026-10-08): about 54 over the water, the ridges in the lower third and dark sky
+ * behind the copy. Same heading as the water-level view, so the range reads
+ * as the same place seen from the air.
+ */
+const quillSettle: PosePoint = { eye: [-7, 54, -10], target: [9, 61, -144], fov: 34 };
 
 /*
  * Frame 07, and the second stone's settled view. The release after Quill &
@@ -647,11 +658,17 @@ const quillSettle: PosePoint = { eye: [-5.1, 3.6, 21.9], target: [4.8, 6.2, -1.6
  * the left half, where the details go. The stone holds the right third, crown
  * and waterline both in frame, at about three quarters of the view's height.
  */
-const survueSettle: PosePoint = {
+const survueWaterSettle: PosePoint = {
   eye: [-38.5, 6.6, 21],
   target: [-35.89, 7.65, -8.87],
   fov: 34,
 };
+
+/*
+ * Survue, held at the same altitude, a glide to the west of
+ * Quill & Pigeon, turned a little left so the details on the left sit over sky.
+ */
+const survueSettle: PosePoint = { eye: [-46, 52, -8], target: [-55, 58, -172], fov: 34 };
 
 export const monolithConfig: MonolithConfig = {
   sectionId: "selected-work",
@@ -716,14 +733,11 @@ export const monolithConfig: MonolithConfig = {
     stacked: [
       {
         approach: [{ eye: [4.4, 3.2, 29], target: [3.0, 4.5, -3.2], fov: 46 }],
-        settle: { eye: [4.6, 3.0, 14.3], target: [3.0, 3.1, -3.2], fov: 46 },
+        settle: { eye: [-4, 56, -6], target: [6, 82, -140], fov: 46 },
       },
       {
-        approach: [
-          { eye: [-6, 3, 10], target: [-24, 3.4, -14], fov: 46 },
-          { eye: [-24, 3.2, 8], target: [-30, 3.4, -14], fov: 46 },
-        ],
-        settle: { eye: [-34, 3.2, 2.5], target: [-30, 3.4, -14], fov: 46 },
+        approach: [{ eye: [-24, 58, -10], target: [-22, 84, -160], fov: 46 }],
+        settle: { eye: [-42, 54, -6], target: [-50, 80, -170], fov: 46 },
       },
     ],
   },
@@ -1089,8 +1103,13 @@ const desktopArrival: readonly ArrivalKeyframe[] = [
   heroArrival(0.26, 10, [2, 0.6, 8.5], [4.7, 1.85, -4.2]),
   heroArrival(0.5, 8, [3.2, 0.65, 8.7], [8.7, 1.9, -3.1]),
   heroArrival(0.62, 70, [9.8, 1.2, 7.9], [14.2, 2.6, -4.3]),
-  heroArrival(0.67, 90, [12.5, 1.8, 3.5], [16.7, 3.2, -8.8]),
-  heroArrival(0.72, 90, [14.5, 2.8, -1], [25, 6.2, -35.4]),
+  // From the heading's reveal the camera climbs forward over
+  // the water toward the range, the ridges sinking through the frame, until it
+  // holds among the peaks for Quill & Pigeon.
+  { at: 0.7, eye: [-11, 5.5, 26], target: [-0.6, 9, -12.6], fov: 34 },
+  { at: 0.78, eye: [-11, 15, 13], target: [3.6, 21, -55], fov: 34 },
+  { at: 0.86, eye: [-9, 28, 2], target: [6.6, 35, -96], fov: 34 },
+  { at: 0.93, eye: [-7.6, 43, -6], target: [8.5, 50, -125], fov: 34 },
   { at: 1, speed: 0, ...quillSettle },
 ];
 
@@ -1136,14 +1155,14 @@ export const journeyWaypoints = {
 export function arrivalKeyframes(viewport: SceneViewport): readonly ArrivalKeyframe[] {
   if (viewport === "desktop") return desktopArrival;
   const stacked = monolithConfig.stations.stacked[0]!;
-  const far = stacked.approach[0]!;
   // Speeds are left to the timeline: it carries the pace through each point.
   return [
     { at: 0, ...chapterRest("hero", viewport) },
     { at: 0.14, ...poseInFrame(chapterFrames.hero, journeyWaypoints.approach) },
     { at: 0.34, ...poseInFrame(chapterFrames.hero, journeyWaypoints.arrival) },
-    // The far view, moved out past the perch, which now stands where it was.
-    { at: 0.6, eye: [-12, 3.2, 17], target: far.target, fov: far.fov },
+    // The climb toward the peaks, then the elevated hold.
+    { at: 0.55, eye: [-18, 14, 8], target: [-6, 24, -110], fov: 44 },
+    { at: 0.78, eye: [-10, 36, -2], target: [2, 58, -130], fov: 45 },
     { at: 1, speed: 0, ...stacked.settle },
   ];
 }
@@ -1180,13 +1199,9 @@ export function arrivalKeyframes(viewport: SceneViewport): readonly ArrivalKeyfr
  */
 // Frozen (2026-09-25): see docs/camera-system.md before changing any value.
 const desktopDeparture: readonly ArrivalKeyframe[] = [
+  // The glide between the projects stays up among the peaks.
   { at: 0, speed: 0, ...quillSettle },
-  { at: 0.1, speed: 20, eye: [-8, 3.9, 22.2], target: [2.21, 6.51, -5.88], fov: 34 },
-  { at: 0.26, speed: 70, eye: [-17, 6.5, 29], target: [-9.24, 7.02, 0.03], fov: 34 },
-  { at: 0.45, speed: 95, eye: [-22, 10.5, 47], target: [-23.57, 9.45, 17.06], fov: 34 },
-  { at: 0.52, speed: 80, eye: [-26.86, 12.5, 45.9], target: [-29.99, 10.67, 16.12], fov: 34 },
-  { at: 0.7, speed: 60, eye: [-31.64, 10, 32.97], target: [-30.59, 9.21, 3], fov: 34 },
-  { at: 0.85, speed: 40, eye: [-35.57, 8, 25.61], target: [-34, 8.26, -4.35], fov: 34 },
+  { at: 0.5, eye: [-26, 57, -12], target: [-22, 64, -160], fov: 34 },
   { at: 1, speed: 0, ...survueSettle },
 ];
 
@@ -1323,6 +1338,38 @@ function composeShot(from: PosePoint, to: PosePoint, shape: ShotShape): ArrivalK
   }
   return keys;
 }
+
+/*
+ * After the last project the camera sinks back to the
+ * water, still facing the range, so the peaks rise back over the horizon as
+ * it comes down. It lands on the approved water-level pose, from which the
+ * approved turn to the bio runs unchanged.
+ */
+const stackedSurvueWater: PosePoint = { eye: [-34, 3.2, 2.5], target: [-30, 3.4, -14], fov: 46 };
+
+export function waterSettle(viewport: SceneViewport): PosePoint {
+  return viewport === "desktop" ? survueWaterSettle : stackedSurvueWater;
+}
+
+export function descentKeyframes(viewport: SceneViewport): readonly ArrivalKeyframe[] {
+  if (viewport === "desktop") {
+    return [
+      { at: 0, speed: 0, ...survueSettle },
+      { at: 0.35, eye: [-44, 36, 2], target: [-58, 44, -160], fov: 34 },
+      { at: 0.7, eye: [-40.5, 17, 15], target: [-42, 19, -120], fov: 34 },
+      { at: 1, speed: 0, ...survueWaterSettle },
+    ];
+  }
+  const high = monolithConfig.stations.stacked[1]!.settle;
+  return [
+    { at: 0, speed: 0, ...high },
+    { at: 0.45, eye: [-39, 26, 0], target: [-44, 30, -150], fov: 46 },
+    { at: 1, speed: 0, ...stackedSurvueWater },
+  ];
+}
+
+/** Screens of scroll the descent takes, before the turn to the bio (matches Statement.module.css). */
+export const DESCENT_SCREENS = { desktop: 1, narrow: 0.65 } as const;
 
 export type BioShots = Readonly<{
   toBio: readonly ArrivalKeyframe[];

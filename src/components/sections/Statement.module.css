@@ -1,7 +1,8 @@
 .section {
   position: relative;
   z-index: var(--layer-content);
-  padding-block: calc(var(--section-spacing) * 1.15 + 100svh) 80svh;
+  /* 100svh of it is the camera's descent from the last project to the water. */
+  padding-block: calc(var(--section-spacing) * 1.15 + 200svh) 80svh;
   /* A scrolling overflow ancestor would disable the story's sticky stage. */
   overflow: clip;
   isolation: isolate;
@@ -84,7 +85,8 @@
 
 @media (max-width: 1023px) {
   .section {
-    padding-block: calc(var(--section-spacing) * 1.15 + 65svh) 60svh;
+    /* 65svh of it is the descent from the last project. */
+    padding-block: calc(var(--section-spacing) * 1.15 + 130svh) 60svh;
   }
   .passage {
     max-width: min(35rem, 75vw);

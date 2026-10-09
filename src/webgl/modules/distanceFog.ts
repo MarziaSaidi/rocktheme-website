@@ -27,6 +27,12 @@ export type DistanceFogUniforms = {
 
 const scratch = new Color();
 
+/** The valley mist seen from altitude; 0 below the haze ceiling, so low views are unchanged. */
+export const aerialMist = {
+  uAerialLift: { value: 0 },
+  uAerialMist: { value: new Vector3(0.2, 0.175, 0.27) },
+};
+
 export function createDistanceFogUniforms(config: DistanceFogConfig): DistanceFogUniforms {
   const uniforms: DistanceFogUniforms = {
     uAtmosColor: { value: new Vector3() },
@@ -59,7 +65,7 @@ export function applyDistanceFog(material: MeshStandardMaterial, uniforms: Dista
   // Scene fog would flatten the range to its colour; this replaces it.
   material.fog = false;
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
+    Object.assign(shader.uniforms, uniforms, aerialMist);
 
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nvarying vec3 vAtmosWorld;")
@@ -76,7 +82,9 @@ export function applyDistanceFog(material: MeshStandardMaterial, uniforms: Dista
          uniform vec3 uAtmosColor;
          uniform vec3 uAtmosLow;
          uniform vec4 uAtmosShape;
-         uniform float uAtmosMax;`,
+         uniform float uAtmosMax;
+         uniform float uAerialLift;
+         uniform vec3 uAerialMist;`,
       )
       .replace(
         "#include <fog_fragment>",
@@ -91,6 +99,9 @@ export function applyDistanceFog(material: MeshStandardMaterial, uniforms: Dista
            // The base haze takes the low colour; distance alone sinks to the background.
            vec3 atmosTint = mix(uAtmosColor, uAtmosLow, atmosBase / max(atmos, 1e-4));
            gl_FragColor.rgb = mix(gl_FragColor.rgb, atmosTint, min(atmos, uAtmosMax));
+           // From above, the low air reads as a moonlit mist layer the ridges stand out of.
+           float mistLayer = exp(-max(vAtmosWorld.y, 0.0) / (uAtmosShape.z * 0.75));
+           gl_FragColor.rgb = mix(gl_FragColor.rgb, uAerialMist, uAerialLift * 0.28 * mistLayer);
          }`,
       );
   };

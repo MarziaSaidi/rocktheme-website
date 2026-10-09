@@ -55,6 +55,8 @@ export type HeroLandscape = Readonly<{
    * `far` for the range and the moon, `near` for the perch and the robot.
    */
   setPresence: (far: number, near: number, moonlight?: number) => void;
+  /** With altitude the moon eases out to the sky's distance, behind every ridge; at the water it is where it was composed. */
+  setMoonDistance: (eye: Vector3, lift: number) => void;
   resize: (width: number) => void;
   /** Objects that should not be drawn into the water's reflection. */
   reflectionExclusions: () => readonly Object3D[];
@@ -366,6 +368,22 @@ export function createHeroLandscape(
   applyPresence();
 
   return {
+    setMoonDistance: (eye, lift) => {
+      const placement = resolveResponsiveValue(config.placement, viewport);
+      const [mx, my, mz] = placement.moon;
+      const hx = 0.4,
+        hy = 0.8,
+        hz = 11;
+      const k = 4;
+      const lx = eye.x - root.position.x,
+        ly = eye.y - root.position.y,
+        lz = eye.z - root.position.z;
+      const fx = lx + (mx - hx) * k,
+        fy = ly + (my - hy) * k,
+        fz = lz + (mz - hz) * k;
+      moonDisc.position.set(mx + (fx - mx) * lift, my + (fy - my) * lift, mz + (fz - mz) * lift);
+      moonDisc.scale.setScalar(config.moon.size * (1 + (k - 1) * lift));
+    },
     setPresence: (far, near, moonlight = far) => {
       const nextFar = Math.min(1, Math.max(0, far));
       const nextNear = Math.min(1, Math.max(0, near));

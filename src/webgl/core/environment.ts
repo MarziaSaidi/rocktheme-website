@@ -40,6 +40,8 @@ import {
   arrivalKeyframes,
   bioShots,
   departureKeyframes,
+  descentKeyframes,
+  waterSettle,
   chapterFrames,
   chapterRest,
   getSceneSection,
@@ -50,6 +52,8 @@ import {
   workStations,
 } from "../sceneConfig";
 import type { EnvironmentLightingConfig, Vector3Tuple } from "../sceneTypes";
+import { createAerialTerrain } from "../modules/aerialTerrain";
+import { aerialMist } from "../modules/distanceFog";
 import { workStretchesFor } from "../workJourney";
 import {
   evaluateJourney,
@@ -301,6 +305,24 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     },
   );
   heroLandscape.resize(width);
+  /*
+   * The range beyond the range: real terrain and further peaks behind the
+   * hero's mountains, for the climb into Selected Work. Below the haze
+   * ceiling it is not drawn at all, so every water-level view is as composed.
+   */
+  const aerialTerrain = createAerialTerrain(
+    worldScene,
+    activeScene.fog.color,
+    // Thinner air than the hero range's: from above, the forms must carry the depth.
+    {
+      ...heroLandscapeConfig.mountainFog,
+      distance: 140,
+      density: 0.0032,
+      heightDensity: 0.22,
+      maxAmount: 0.72,
+    },
+    width < 1024 ? 2 : 1,
+  );
 
   // The patch of water beside the bio that looks down into the winter cabin's world.
   // The split mountain beside the bio: the way into /my-world.
@@ -397,12 +419,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   let stations = workStations(viewport);
   let arrival = arrivalKeyframes(viewport);
   let departures = departureKeyframes(viewport);
-  const buildShots = () =>
-    bioShots(
-      stations[stations.length - 1]?.settle ?? arrival[arrival.length - 1]!,
-      rests.about,
-      rests.contact,
-    );
+  // The bio shot leaves from the water-level pose after the last project; the
+  // descent from the elevated project hold brings the camera there first.
+  let descent = descentKeyframes(viewport);
+  const buildShots = () => bioShots(waterSettle(viewport), rests.about, rests.contact);
   let shots = buildShots();
   const waypoints = { departure: journeyWaypoints.departure, passage: journeyWaypoints.passage };
 
@@ -505,6 +525,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         stations,
         stretches: workStretchesFor(viewport),
         departures,
+        descent,
         shots,
       },
       pose,
@@ -530,6 +551,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         stations,
         stretches: workStretchesFor(viewport),
         departures,
+        descent,
         shots,
       },
       destination,
@@ -577,8 +599,22 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     view.fov = pose.fov;
     view.aspect = width / height;
-    view.near = initialCamera.near;
-    view.far = initialCamera.far;
+    /*
+     * Altitude. Above the haze ceiling the view reaches further, the low air
+     * thins, the water widens under the camera and the moon eases to the
+     * distance of the sky, so the camera can climb among the peaks.
+     */
+    const altitude = Math.min(1, Math.max(0, (pose.eye.y - 13) / 40));
+    view.near = initialCamera.near + altitude * 0.9;
+    view.far = initialCamera.far + altitude * 2600;
+    aerialTerrain.setViewer(pose.eye);
+    if (worldScene.fog instanceof Fog) {
+      const lift = altitude * altitude * (3 - 2 * altitude);
+      worldScene.fog.near = activeScene.lighting.fogNear + lift * 260;
+      worldScene.fog.far = activeScene.lighting.fogFar + lift * 900;
+      aerialMist.uAerialLift.value = lift;
+      heroLandscape.setMoonDistance(pose.eye, lift);
+    }
     view.position.copy(pose.eye);
     view.lookAt(pose.target);
     view.updateProjectionMatrix();
@@ -601,8 +637,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       floorHome.y,
       floorHome.z + pose.eye.z - camera.position.z,
     );
+    const waterScale = 1 + Math.max(0, pose.eye.y - 10) / 6;
+    floor.mesh.scale.set(waterScale, waterScale, 1);
+    floorBeyond.scale.copy(floor.mesh.scale);
     floorBeyond.position.copy(floor.mesh.position);
-    floorBeyond.position.z += 140;
+    floorBeyond.position.z += 140 * waterScale;
 
     rocks.setLighting(blendLighting(state.from, state.to, state.blend));
 
@@ -771,6 +810,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       mist.group,
       ...rocks.reflectionExclusions(),
       ...heroLandscape.reflectionExclusions(),
+      // The range beyond stays out of the mirror: it would double its cost.
+      ...aerialTerrain.reflectionExclusions(),
     ]);
 
     renderer.clear();
@@ -875,6 +916,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       stations = workStations(viewport);
       arrival = arrivalKeyframes(viewport);
       departures = departureKeyframes(viewport);
+      descent = descentKeyframes(viewport);
       shots = buildShots();
       lights.resize(camera);
       atmosphere.resize(camera);
@@ -995,6 +1037,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       particles.destroy();
       rocks.destroy();
       heroLandscape.destroy();
+      aerialTerrain.destroy();
       rift.destroy();
       bioDust.destroy();
       publishRiftRect(null);

@@ -135,9 +135,13 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       // never its sticky text, so resize and return visits share the same stops.
       const aboutRest = Math.min(end, Math.max(workEnd, bioRestScroll(about, viewport)));
       const contact = Math.max(aboutRest, end);
+      // The descent after the last project; Statement.module.css adds its screen.
+      // Kept inline (DESCENT_SCREENS in sceneConfig.ts) so this module stays free of the scene code.
+      const descentScreens = window.innerWidth >= 1024 ? 1 : 0.65;
       return {
         workStart,
         workEnd,
+        descentEnd: Math.min(aboutRest, workEnd + descentScreens * viewport),
         about: aboutRest,
         aboutLeave: Math.min(contact, bioLeaveScroll(about, viewport)),
         contact,

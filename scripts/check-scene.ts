@@ -41,6 +41,8 @@ import {
   bioShots,
   chapterFrames,
   departureKeyframes,
+  descentKeyframes,
+  waterSettle,
   chapterRest,
   journeyWaypoints,
   floorConfig,
@@ -548,8 +550,23 @@ console.log("\ncamera journey");
 {
   // Scroll offsets as the page measures them; the work stage pins for its journey.
   const layouts = {
-    desktop: { workStart: 2070, workEnd: 8550, about: 10637, aboutLeave: 11132, contact: 12245 },
-    mobile: { workStart: 844, workEnd: 6921, about: 8758, aboutLeave: 9222, contact: 10216 },
+    // The descent after Survue adds a screen (desktop) or 0.65 of one (mobile).
+    desktop: {
+      workStart: 2070,
+      workEnd: 8550,
+      descentEnd: 9450,
+      about: 11537,
+      aboutLeave: 12032,
+      contact: 13145,
+    },
+    mobile: {
+      workStart: 844,
+      workEnd: 6921,
+      descentEnd: 7470,
+      about: 9307,
+      aboutLeave: 9771,
+      contact: 10765,
+    },
   } as const satisfies Record<string, JourneyStops>;
 
   for (const [viewport, stops] of Object.entries(layouts) as [
@@ -564,7 +581,8 @@ console.log("\ncamera journey");
     const arrival = arrivalKeyframes(viewport);
     const departures = departureKeyframes(viewport);
     const stations = workStations(viewport);
-    const shots = bioShots(stations[stations.length - 1]!.settle, rests.about, rests.contact);
+    const shots = bioShots(waterSettle(viewport), rests.about, rests.contact);
+    const descent = descentKeyframes(viewport);
     const pivots = monolithConfig.stones.map((stone) => {
       const { position } = resolveResponsiveValue(stone, viewport);
       return new Vector3(position[0], 0, position[2]);
@@ -585,7 +603,7 @@ console.log("\ncamera journey");
     const at = (scroll: number) => {
       const pose: CameraPose = { eye: new Vector3(), target: new Vector3(), fov: 0 };
       evaluateJourney(
-        { scroll, stops, arrival, rests, waypoints, stations, departures, shots },
+        { scroll, stops, arrival, rests, waypoints, stations, departures, descent, shots },
         pose,
       );
       return pose;
@@ -641,6 +659,7 @@ console.log("\ncamera journey");
     // The bio's shots are held to a turning budget near the frozen journey's
     // (which peaks at about 0.06° a pixel), so no stretch ever whips round.
     let bioTurn = 0;
+    let descentTurn = 0;
     let nearestStone = Number.POSITIVE_INFINITY;
     let nearestRock = Number.POSITIVE_INFINITY;
     for (let scroll = 1; scroll <= stops.contact; scroll += 1) {
@@ -650,7 +669,8 @@ console.log("\ncamera journey");
       largestStep = Math.max(largestStep, pose.eye.distanceTo(previous.eye));
       const turn = Math.acos(Math.min(1, direction.dot(before)));
       largestTurn = Math.max(largestTurn, turn);
-      if (scroll > stops.workEnd) bioTurn = Math.max(bioTurn, turn);
+      if (scroll > (stops.descentEnd ?? stops.workEnd)) bioTurn = Math.max(bioTurn, turn);
+      else if (scroll > stops.workEnd) descentTurn = Math.max(descentTurn, turn);
       pivots.forEach((pivot) => {
         nearestStone = Math.min(
           nearestStone,
@@ -675,6 +695,11 @@ console.log("\ncamera journey");
       `${viewport}: the bio's shots turn steadily, never a whip`,
       (bioTurn * 180) / Math.PI < 0.2,
       `${((bioTurn * 180) / Math.PI).toFixed(3)}° a pixel`,
+    );
+    check(
+      `${viewport}: the descent after Survue turns steadily`,
+      (descentTurn * 180) / Math.PI < 0.2,
+      `${((descentTurn * 180) / Math.PI).toFixed(3)}° a pixel`,
     );
     check(
       `${viewport}: the camera holds at the bio while the sentence goes`,

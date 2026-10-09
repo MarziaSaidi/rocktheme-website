@@ -47,6 +47,8 @@ export type JourneyStops = Readonly<{
   workStart: number;
   /** Selected Work stage unpins. */
   workEnd: number;
+  /** The camera is back at the water after the last project's descent. */
+  descentEnd?: number;
   /** How I Work sits in the middle of the screen. */
   about: number;
   /** The camera sets off from the bio for Contact (defaults to `about`). */
@@ -84,6 +86,8 @@ export type JourneyInput = Readonly<{
    * eased through instead.
    */
   departures?: readonly (readonly ArrivalKeyframe[] | null)[];
+  /** From the last project, held high, down to the water. */
+  descent?: readonly ArrivalKeyframe[];
   /**
    * The bio's two shots as keyframed timelines: from the last stone to the
    * bio, and from the bio to Contact. Without them the waypoints are eased
@@ -394,8 +398,23 @@ export function evaluateJourney(input: JourneyInput, out: CameraPose): JourneySt
   }
 
   // ------------------------------ last stone → How I Work, turning away
+  const descentEnd = Math.min(
+    stops.about,
+    Math.max(stops.workEnd, stops.descentEnd ?? stops.workEnd),
+  );
+  if (scroll < descentEnd && input.descent && input.descent.length > 1) {
+    const progress = clamp01((scroll - stops.workEnd) / Math.max(1, descentEnd - stops.workEnd));
+    sampleArrival(input.descent, progress, out);
+    return {
+      from: "selected-work",
+      to: "selected-work",
+      blend: 0,
+      arrival: null,
+      revealed: stations.length,
+    };
+  }
   if (scroll < stops.about) {
-    const progress = clamp01((scroll - stops.workEnd) / Math.max(1, stops.about - stops.workEnd));
+    const progress = clamp01((scroll - descentEnd) / Math.max(1, stops.about - descentEnd));
     const u = smootherstep(progress);
     if (shots) sampleArrival(shots.toBio, progress, out);
     else sampleLeg(makeLeg([last, ...waypoints.departure, rests.about]), u, out);
