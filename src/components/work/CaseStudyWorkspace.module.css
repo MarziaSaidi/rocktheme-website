@@ -1176,7 +1176,8 @@ video.visualMedia[data-fit="cover"] {
 }
 
 .story .eyebrow .word {
-  animation: eyebrow-in 160ms var(--motion-ease-interface) both;
+  /* Backwards only: once in, the words carry no leftover translate. */
+  animation: eyebrow-in 160ms var(--motion-ease-interface) backwards;
 }
 
 .story h2 .word {
