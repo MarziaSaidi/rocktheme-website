@@ -160,6 +160,40 @@
   stroke: var(--color-accent);
 }
 
+/*
+ * The plane listens (ContactListen.tsx). As a mouse approaches, the plane
+ * leans toward it within 3° of its shipped pose (`--lean-x/y`, -1..1, sprung
+ * in script, so no transition on transform), in place of the hover's snap to a
+ * second angle. Keyboard focus keeps the snap. With the pointer on the plane,
+ * a moonlit band follows it along the waveform.
+ */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) and (min-width: 48rem) {
+  .plane[data-lean],
+  .plane[data-lean]:hover {
+    transform: rotateY(calc(-11deg + var(--lean-x, 0) * 3deg))
+      rotateX(calc(var(--lean-y, 0) * -1.5deg)) rotateZ(calc(-1.6deg + var(--lean-x, 0) * 0.6deg));
+    transition:
+      border-color var(--duration-interface) var(--ease-interface),
+      scale var(--motion-press-out) var(--motion-ease-interface);
+  }
+}
+
+.bandEdge {
+  stop-color: var(--color-text-secondary);
+}
+
+.bandCore {
+  stop-color: color-mix(
+    in srgb,
+    var(--color-text-moonlit) calc(var(--band-glow, 0) * 100%),
+    var(--color-text-secondary)
+  );
+}
+
+.plane .waveform[data-band] polyline {
+  stroke: url(#contact-wave-band);
+}
+
 /* ---------------------------------------------------------------- baseline */
 
 .baseline {
