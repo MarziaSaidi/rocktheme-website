@@ -1,14 +1,14 @@
-import type { SoundEvent } from "./soundEvents";
+import type { InteractionSoundEvent } from "./soundEvents";
 
 /**
  * Sound configuration.
  *
- * Every level, timing and file in the system is here. Changing how loud a cue
+ * Interaction levels, timings and files are here; thunder uses thunder.ts. Changing how loud a cue
  * is, how the music gives way to it, or which file it plays is an edit to this
  * file and nothing else.
  *
  * The bed is the visitor's chosen music track. Over it, three short samples
- * mark the moments that matter, and nothing else makes a sound: no hover, no
+ * mark interaction moments; main-page thunder lives on a separate bus. No hover or
  * pointer texture. The same transition sample is the site's signature, heard
  * whenever the visitor passes from one place to another.
  */
@@ -83,7 +83,7 @@ export const VOICE_LIMITS = {
     "statement:read": 2,
     "project:open": 1,
     "contact:open": 1.2,
-  } satisfies Record<SoundEvent, number>,
+  } satisfies Record<InteractionSoundEvent, number>,
 } as const;
 
 /** Seconds the master gain takes to fade in and out on enable and disable. */
@@ -126,7 +126,7 @@ export const CUES = {
   "project:open": { sample: "transition", peak: 0.75, lead: 0.4, duck: true },
   /** The contact plane or email link is activated. */
   "contact:open": { sample: "chime", peak: 0.7 },
-} satisfies Record<SoundEvent, CueShape>;
+} satisfies Record<InteractionSoundEvent, CueShape>;
 
 /** Session storage key. The preference lasts for the session, not forever. */
 export const PREFERENCE_KEY = "marzia-saidi:sound";

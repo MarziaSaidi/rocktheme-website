@@ -35,9 +35,17 @@ import {
  * reach it.
  */
 export function SoundProvider() {
-  const reading = usePathname().startsWith("/work/");
+  const pathname = usePathname();
+  const reading = pathname.startsWith("/work/");
+  const weatherActive = pathname === "/";
+  const weatherRef = useRef(weatherActive);
   const readingRef = useRef(reading);
   const engineRef = useRef<SoundEngine | null>(null);
+
+  useEffect(() => {
+    weatherRef.current = weatherActive;
+    engineRef.current?.setWeatherActive(weatherActive);
+  }, [weatherActive]);
 
   useEffect(() => {
     readingRef.current = reading;
@@ -112,6 +120,7 @@ export function SoundProvider() {
         engine = created;
         engineRef.current = created;
         created.setReading(readingRef.current);
+        created.setWeatherActive(weatherRef.current);
         pending = false;
         setSoundState({ ready: true });
         return;

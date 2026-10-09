@@ -1,5 +1,6 @@
 import {
   Box3,
+  Color,
   DoubleSide,
   Group,
   HemisphereLight,
@@ -18,6 +19,7 @@ import { toWorld } from "../core/chapterFrame";
 import { loadRockAsset } from "../loaders/rockAssetLoader";
 import {
   chapterFrames,
+  lightningConfig,
   ROCK_INSTANCE_IDS,
   rockAssets,
   rockInstances,
@@ -26,6 +28,7 @@ import {
   type RockAssetId,
   type RockInstanceId,
 } from "../sceneConfig";
+import type { WeatherState } from "../core/weather";
 import type { EnvironmentLightingConfig } from "../sceneTypes";
 
 type RockInstance = {
@@ -51,6 +54,7 @@ export type Rocks = Readonly<{
     viewer: Vector3,
   ) => void;
   setLighting: (config: EnvironmentLightingConfig) => void;
+  setWeather: (weather: WeatherState) => void;
   resize: (width: number) => void;
   reflectionExclusions: () => readonly Object3D[];
   destroy: () => void;
@@ -176,6 +180,8 @@ export function createRocks(
   let viewport: SceneViewport = "desktop";
   let destroyed = false;
   let activeLighting = lighting;
+  const baseSky = new Color(lighting.hemisphereSky);
+  const flashSky = new Color(lightningConfig.color);
 
   /*
    * Broad, weak, local lights. The visible glow at the horizon and the light
@@ -296,6 +302,7 @@ export function createRocks(
   return {
     setLighting: (config) => {
       activeLighting = config;
+      baseSky.setHex(config.hemisphereSky);
       hemisphere.color.setHex(config.hemisphereSky);
       hemisphere.groundColor.setHex(config.hemisphereGround);
       hemisphere.intensity = config.hemisphereIntensity;
@@ -310,6 +317,11 @@ export function createRocks(
         light.decay = source.decay;
         light.position.set(...source.position);
       });
+    },
+    setWeather: (weather) => {
+      hemisphere.intensity =
+        activeLighting.hemisphereIntensity * (1 + weather.flash * lightningConfig.rockGain);
+      hemisphere.color.copy(baseSky).lerp(flashSky, weather.flash * 0.06);
     },
     resize: (width) => {
       viewport = sceneViewportForWidth(width);

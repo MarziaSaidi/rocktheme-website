@@ -69,6 +69,32 @@ export const waterTones = {
   reflectance: [0.02, 0.4],
 } as const;
 
+/** Dark sky banks; alpha keeps the existing page atmosphere visible through them. */
+export const stormSkyConfig = {
+  base: sceneColors.aubergine,
+  cloud: 0x30223f,
+  opacity: 0.42,
+  scale: 3.2,
+} as const;
+
+/** Illumination only. Start-to-start gaps use visible, active scene time. */
+export const lightningConfig = {
+  color: 0xc9b6e4,
+  storm: 0.55,
+  firstInterval: [8, 12],
+  interval: [16, 26],
+  groupedInterval: [6.5, 9],
+  quietInterval: [32, 44],
+  groupChance: 0.32,
+  quietChance: 0.18,
+  duration: 1.65,
+  maxFlash: 0.65,
+  skyGain: 0.65,
+  hazeGain: 0.16,
+  mistGain: 0.13,
+  rockGain: 0.055,
+} as const;
+
 export const particleConfig: ParticleConfig = {
   density: {
     high: { perMegapixel: 3000, max: 4100 },
@@ -444,13 +470,13 @@ export const lowMistConfig: LowMistConfig = {
   },
 };
 
-/*
- * No low mist in the hero. Seen this low over the water its slices stack into
- * a pale line along the far edge of the water; the range's own base haze
- * (heroLandscapeConfig.mountainFog) does that job instead. The mist eases in
- * as the journey reaches Selected Work.
- */
-export const heroMistConfig: LowMistConfig = { ...lowMistConfig, opacity: 0 };
+/* Keep the hero banks faint: a dense stack reads as a pale waterline. */
+export const heroMistConfig: LowMistConfig = {
+  ...lowMistConfig,
+  opacity: 0.16,
+  height: 2.8,
+  nearHeight: 0.45,
+};
 
 export const environmentLightingConfig: EnvironmentLightingConfig = {
   /*
@@ -627,6 +653,8 @@ export const distanceFogConfig: DistanceFogConfig = {
   height: 7,
   heightDensity: 0.45,
   maxAmount: 0.86,
+  lowColor: 0x302a3c,
+  valleyMist: 0.28,
 };
 
 /*
@@ -876,6 +904,8 @@ export const heroLandscapeConfig: HeroLandscapeConfig = {
     height: 13 * RANGE_RECESSION,
     heightDensity: 0.35,
     maxAmount: 0.85,
+    lowColor: 0x302a3c,
+    valleyMist: 0.22,
   },
   // Both are applied after the albedo is matched to the footer stone.
   mountainShade: 1,

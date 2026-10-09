@@ -1,4 +1,13 @@
 import {
+  createThunderSelector,
+  thunderDistance,
+  THUNDER,
+  THUNDER_SAMPLES,
+  THUNDER_DISABLED_SAMPLES,
+} from "./thunder";
+import { getSoundState } from "./soundStore";
+import { thunderAudit } from "./thunderAudit";
+import {
   BACKGROUND_TRACK,
   CUE_GAIN,
   CUES,
@@ -28,16 +37,18 @@ import { subscribeSoundEvents, type SoundEvent, type SoundEventDetail } from "./
  *
  * The graph:
  *
- *   players ×2 → music gain ─┐
- *   cues       → cue gain  ──┴→ master gain → limiter → destination
+ *   players ×2 → music gain → weather music duck ─┐
+ *   cues       → cue gain  ──┤
+ *   thunder    → thunder bus ┴→ master gain → limiter → destination
  *
  * A limiter sits on the output so no combination of cues can spike, and every
  * voice disconnects itself when it finishes.
  */
 
 type Voice = {
-  stop: () => void;
+  stop: (release?: number, reason?: string) => void;
   endsAt: number;
+  retiring?: boolean;
 };
 
 export type SoundEngine = Readonly<{
@@ -54,6 +65,8 @@ export type SoundEngine = Readonly<{
   resume: () => Promise<void>;
   /** Lowers the music while a case study is being read. */
   setReading: (reading: boolean) => void;
+  /** Only the main portfolio may own weather voices. */
+  setWeatherActive: (active: boolean) => void;
   /** Disconnects every node, removes every listener, closes the context. */
   destroy: () => Promise<void>;
   /** Live counts, for verification. */
@@ -62,6 +75,8 @@ export type SoundEngine = Readonly<{
     state: AudioContextState | "closed";
     suppressed: number;
     samples: number;
+    thunderVoices: number;
+    thunderSamples: number;
   };
 }>;
 
@@ -105,7 +120,42 @@ export function createSoundEngine(): SoundEngine | null {
    */
   const musicGain = context.createGain();
   musicGain.gain.value = MUSIC_GAIN;
-  musicGain.connect(master);
+  // Separate weather-only stage: reading/transition automation and interaction cues stay independent.
+  const weatherMusicGain = context.createGain();
+  weatherMusicGain.gain.value = 1;
+  musicGain.connect(weatherMusicGain).connect(master);
+  let thunderDuckUntil = 0;
+
+  const resetThunderMusic = () => {
+    thunderDuckUntil = 0;
+    const now = context.currentTime;
+    weatherMusicGain.gain.cancelAndHoldAtTime(now);
+    weatherMusicGain.gain.linearRampToValueAtTime(1, now + 0.2);
+    thunderAudit("music:thunder-reset", { restoreAt: now + 0.2 });
+  };
+
+  const duckMusicForThunder = (start: number, duration: number) => {
+    const now = context.currentTime;
+    const duck = THUNDER.musicDuck;
+    const depth = 10 ** (-duck.depthDb / 20);
+    const body = Math.min(duck.maxBody, Math.max(8, duration * duck.bodyFraction));
+    thunderDuckUntil = Math.max(thunderDuckUntil, start + body);
+    // Schedule on the actual source start, including its existing distance delay.
+    // Overlapping tails extend one envelope rather than multiplying duck depths.
+    const level = weatherMusicGain.gain.value;
+    weatherMusicGain.gain.cancelAndHoldAtTime(now);
+    weatherMusicGain.gain.setValueAtTime(level, start);
+    weatherMusicGain.gain.linearRampToValueAtTime(depth, start + duck.attack);
+    weatherMusicGain.gain.setValueAtTime(depth, thunderDuckUntil);
+    weatherMusicGain.gain.linearRampToValueAtTime(1, thunderDuckUntil + duck.recover);
+    thunderAudit("music:thunder-duck", {
+      start,
+      depth,
+      depthDb: duck.depthDb,
+      holdUntil: thunderDuckUntil,
+      restoreAt: thunderDuckUntil + duck.recover,
+    });
+  };
 
   const players = [0, 1].map(() => {
     const element = new Audio(BACKGROUND_TRACK);
@@ -224,8 +274,217 @@ export function createSoundEngine(): SoundEngine | null {
     window.setTimeout(() => voices.delete(voice), (duration + 0.2) * 1000);
   };
 
+  // ------------------------------------------------------------- storm audio
+  const thunderBus = context.createGain();
+  thunderBus.gain.value = 1;
+  thunderBus.connect(master);
+  const thunderBuffers = new Map<number, AudioBuffer>();
+  const thunderVoices = new Set<Voice>();
+  const seenStrikes = new Set<number>();
+  const selectThunder = createThunderSelector();
+  const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let weatherActive = false;
+  let thunderLoading: AbortController | null = null;
+  let thunderLoadTask: Promise<void> | null = null;
+
+  const balanceThunder = (preserveAttack = false) => {
+    if (destroyed || !running || !weatherActive || document.hidden || motionQuery.matches) return;
+    const now = context.currentTime;
+    thunderBus.gain.cancelAndHoldAtTime(now);
+    const target = 1 / Math.sqrt(Math.max(1, thunderVoices.size));
+    if (preserveAttack && thunderVoices.size === 1) thunderBus.gain.setValueAtTime(target, now);
+    else thunderBus.gain.linearRampToValueAtTime(target, now + 0.08);
+  };
+  const cancelThunder = (reason = "weather-stop") => {
+    resetThunderMusic();
+    thunderAudit("cancel:all", { reason, activeVoices: thunderVoices.size, state: context.state });
+    thunderBus.gain.cancelAndHoldAtTime(context.currentTime);
+    thunderBus.gain.linearRampToValueAtTime(0, context.currentTime + THUNDER.fadeOut);
+    thunderVoices.forEach((voice) => voice.stop(THUNDER.fadeOut, reason));
+    thunderVoices.clear();
+  };
+  const loadThunder = (): Promise<void> => {
+    if (thunderLoadTask) return thunderLoadTask;
+    if (destroyed || !weatherActive || motionQuery.matches || !running) return Promise.resolve();
+    const controller = new AbortController();
+    thunderLoading = controller;
+    const signal = controller.signal;
+    const task = Promise.all(
+      THUNDER_SAMPLES.map(async (name, index) => {
+        if (THUNDER_DISABLED_SAMPLES.includes(name) || thunderBuffers.has(index)) return;
+        try {
+          const response = await fetch(`/audio/effects/thunder/${name}.mp3`, { signal });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const buffer = await context.decodeAudioData(await response.arrayBuffer());
+          if (!signal.aborted && !destroyed && weatherActive && !motionQuery.matches) {
+            thunderBuffers.set(index, buffer);
+            thunderAudit("buffer:decoded", { index, kept: true, duration: buffer.duration });
+          }
+        } catch (error) {
+          thunderAudit("buffer:failed", { index, aborted: signal.aborted, reason: String(error) });
+        }
+      }),
+    )
+      .then(() => undefined)
+      .finally(() => {
+        // An aborted old generation must never clear a newer route's load handle.
+        if (thunderLoading === controller) {
+          thunderLoading = null;
+          thunderLoadTask = null;
+        }
+      });
+    thunderLoadTask = task;
+    return task;
+  };
+  const abortThunderLoad = () => {
+    thunderLoading?.abort();
+    thunderLoading = null;
+    thunderLoadTask = null;
+  };
+  const handleMotion = () => {
+    if (motionQuery.matches) {
+      cancelThunder("reduced-motion");
+      abortThunderLoad();
+      thunderBuffers.clear();
+    } else if (weatherActive) void loadThunder();
+  };
+  motionQuery.addEventListener("change", handleMotion);
+
+  const playThunder = (detail: SoundEventDetail) => {
+    const audit = (stage: string, extra: Record<string, unknown> = {}) =>
+      thunderAudit(stage, {
+        weatherEventId: detail.weatherEventId,
+        firstVisibleAt: detail.firstVisibleAt,
+        state: context.state,
+        running,
+        weatherActive,
+        voices: voices.size + thunderVoices.size,
+        interactionVoices: voices.size,
+        thunderVoices: thunderVoices.size,
+        buffers: thunderBuffers.size,
+        ...extra,
+      });
+    audit("decision:received");
+    const reason = destroyed
+      ? "disposed"
+      : !running || !getSoundState().enabled
+        ? "muted"
+        : !weatherActive || window.location.pathname !== "/"
+          ? "not-main-page"
+          : document.hidden
+            ? "hidden"
+            : motionQuery.matches
+              ? "reduced-motion"
+              : context.state !== "running"
+                ? `context-${context.state}`
+                : null;
+    if (reason) {
+      audit("decision:ineligible", { reason });
+      return;
+    }
+    const eventId = detail.weatherEventId;
+    if (eventId !== undefined && seenStrikes.has(eventId)) {
+      audit("decision:duplicate", { reason: "already-scheduled" });
+      return;
+    }
+    // Retry incomplete loads on the next real strike; use a ready recording now.
+    // No late replay and no independent weather clock.
+    if (thunderBuffers.size < THUNDER_SAMPLES.length - THUNDER_DISABLED_SAMPLES.length)
+      void loadThunder();
+    const plan = selectThunder(
+      thunderDistance(detail.intensity ?? 0.8),
+      detail.intensity ?? 0.8,
+      detail.storm,
+      [...thunderBuffers.keys()],
+    );
+    const buffer = plan && thunderBuffers.get(plan.index);
+    if (!plan || !buffer) {
+      suppressed++;
+      audit("decision:unavailable", { reason: "no-decoded-recordings" });
+      return;
+    }
+    const now = context.currentTime;
+    thunderVoices.forEach((voice) => {
+      if (voice.endsAt <= now) thunderVoices.delete(voice);
+    });
+    // Interaction voices have their own existing budget. They cannot discard a storm.
+    // At capacity, release the oldest tail smoothly while preserving this new impact.
+    if (thunderVoices.size >= THUNDER.maxConcurrent) {
+      const oldest = [...thunderVoices].find((voice) => !voice.retiring);
+      if (oldest) {
+        oldest.retiring = true;
+        oldest.stop(1.2, "overlap-tail-release");
+        audit("overlap:tail-release", { release: 1.2, protectedImpact: THUNDER.impactProtection });
+      }
+    }
+    if (eventId !== undefined) {
+      seenStrikes.add(eventId);
+      if (seenStrikes.size > 64) seenStrikes.delete(seenStrikes.values().next().value!);
+    }
+    const source = context.createBufferSource();
+    audit("source:created", {
+      index: plan.index,
+      sample: THUNDER_SAMPLES[plan.index],
+      delay: plan.delay,
+    });
+    source.buffer = buffer;
+    source.playbackRate.value = plan.rate;
+    const filter = context.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = plan.lowpass;
+    filter.Q.value = 0.65;
+    const gain = context.createGain();
+    const start = now + plan.delay;
+    const duration = buffer.duration / plan.rate;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(plan.gain, start + 0.003);
+    gain.gain.setValueAtTime(plan.gain, start + Math.max(0.04, duration - 0.7));
+    gain.gain.linearRampToValueAtTime(0, start + duration);
+    source.connect(filter).connect(gain).connect(thunderBus);
+    let cancelled = false;
+    const voice: Voice = {
+      endsAt: start + duration,
+      stop: (release = THUNDER.fadeOut, cancellation = "weather-stop") => {
+        cancelled = true;
+        const time =
+          cancellation === "overlap-tail-release"
+            ? Math.max(context.currentTime, start + THUNDER.impactProtection)
+            : context.currentTime;
+        audit("source:cancelled", { reason: cancellation, release, releaseAt: time });
+        gain.gain.cancelAndHoldAtTime(time);
+        gain.gain.linearRampToValueAtTime(0, time + release);
+        try {
+          source.stop(time + release);
+        } catch {
+          /* Already ended. */
+        }
+      },
+    };
+    source.onended = () => {
+      thunderVoices.delete(voice);
+      audit("source:completed", { cancelled });
+      source.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+      if (thunderVoices.size) balanceThunder();
+    };
+    thunderVoices.add(voice);
+    balanceThunder(true);
+    duckMusicForThunder(start, duration);
+    source.start(start);
+    audit("source:started", { index: plan.index, start, audioNow: context.currentTime, duration });
+  };
+
   // --------------------------------------------------------------- the cues
   const play = (event: SoundEvent, detail: SoundEventDetail) => {
+    if (event === "weather:stop") {
+      cancelThunder();
+      return;
+    }
+    if (event === "weather:lightning") {
+      playThunder(detail);
+      return;
+    }
     const now = context.currentTime;
     reap(now);
 
@@ -336,6 +595,7 @@ export function createSoundEngine(): SoundEngine | null {
       }
 
       running = false;
+      cancelThunder("muted");
       unsubscribe?.();
       unsubscribe = null;
       fadeMaster(0, FADE_SECONDS.out);
@@ -351,12 +611,25 @@ export function createSoundEngine(): SoundEngine | null {
     },
 
     suspend: async () => {
+      cancelThunder("hidden");
       if (destroyed || context.state !== "running") {
         return;
       }
       parked = players.map(({ element }) => element).filter((element) => !element.paused);
       pauseAll();
       await context.suspend();
+    },
+
+    setWeatherActive: (active: boolean) => {
+      if (destroyed || active === weatherActive) return;
+      weatherActive = active;
+      if (active) {
+        if (!motionQuery.matches) loadThunder();
+      } else {
+        cancelThunder("navigation");
+        abortThunderLoad();
+        thunderBuffers.clear();
+      }
     },
 
     setReading: (next: boolean) => {
@@ -369,6 +642,11 @@ export function createSoundEngine(): SoundEngine | null {
       if (destroyed || !running || context.state !== "suspended") {
         return;
       }
+      // Hidden-tab cancellation must not resume even the release tail.
+      thunderBus.gain.cancelScheduledValues(context.currentTime);
+      thunderBus.gain.setValueAtTime(0, context.currentTime);
+      weatherMusicGain.gain.cancelScheduledValues(context.currentTime);
+      weatherMusicGain.gain.setValueAtTime(1, context.currentTime);
       await context.resume();
       await Promise.all(parked.map((element) => element.play().catch(() => undefined)));
       parked = [];
@@ -381,6 +659,10 @@ export function createSoundEngine(): SoundEngine | null {
 
       destroyed = true;
       running = false;
+      cancelThunder("disposed");
+      abortThunderLoad();
+      thunderBuffers.clear();
+      motionQuery.removeEventListener("change", handleMotion);
       loading.abort();
       unsubscribe?.();
       unsubscribe = null;
@@ -401,11 +683,13 @@ export function createSoundEngine(): SoundEngine | null {
       voices.clear();
       lastFired.clear();
 
+      thunderBus.disconnect();
       cueBus.disconnect();
       players.forEach(({ source, gain }) => {
         source.disconnect();
         gain.disconnect();
       });
+      weatherMusicGain.disconnect();
       musicGain.disconnect();
       master.disconnect();
       limiter.disconnect();
@@ -416,10 +700,12 @@ export function createSoundEngine(): SoundEngine | null {
     },
 
     stats: () => ({
-      voices: voices.size,
+      voices: voices.size + thunderVoices.size,
       state: destroyed ? "closed" : context.state,
       suppressed,
       samples: samples.size,
+      thunderVoices: thunderVoices.size,
+      thunderSamples: thunderBuffers.size,
     }),
   };
 }
