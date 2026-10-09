@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { createFrameGuard } from "./frameGuard";
 import { createPointerSource } from "./pointerSource";
 import styles from "./HeroField.module.css";
 
@@ -23,20 +24,10 @@ import styles from "./HeroField.module.css";
  * Performance guard: weight and width cost layout, so they run only where the
  * scene runs at its high tier, and the whole field rests for the visit once
  * frames start to slip (the moonlight alone, repainting a clipped gradient over
- * very large type, still cost a struggling device frames). It follows the
- * scene's quality manager (src/webgl/core/quality.ts): a frame over budget
- * charges a bucket, at most 50 ms so one long frame can't trip it, and a frame
- * within budget drains it; the field gives up after 160 ms of net overload,
- * not the scene's 1.2 s, because it is optional. Fast frames drain that bucket,
- * so stutter (slow frames between quick ones) never fills it; 4 slow frames
- * within 60 also trip it. The scene times its own render work; the field's
- * cost lands in the browser's style, layout and paint, so it times whole
- * frames instead, against the display's own cadence (the shortest recent
- * frame): a frame is over budget above 1.2 cadences and slow above 1.5, never
- * below 20 and 25 ms. A browser pacing at 30 fps (a sleeping display, power
- * saving) therefore doesn't trip it on every frame. The 3 frames after a
- * split are its own one-off measurement, a warm-up that doesn't count. Once
- * tripped, it lets go on the quick springs it uses when the camera leaves.
+ * very large type, still cost a struggling device frames). The test is the
+ * shared frame guard (frameGuard.ts); the 3 frames after a split are the
+ * field's own one-off measurement and don't count. Once tripped, it lets go on
+ * the quick springs it uses when the camera leaves.
  */
 
 /** The approved 3 px cap. */
@@ -58,23 +49,8 @@ const AT_REST = 0.0005;
  * invisible tail would keep the letters split for seconds.
  */
 const SETTLED = { letter: 0.5 / LEVELS, light: 0.005 };
-const GUARD = {
-  budgetMs: 20,
-  maxChargeMs: 50,
-  patienceMs: 160,
-  /** Stutter: this many frames over `stutterMs` within the last `windowFrames`. */
-  stutterMs: 25,
-  stutterFrames: 4,
-  /** Over budget, and slow, measured in display cadences. */
-  budgetCadences: 1.2,
-  stutterCadences: 1.5,
-  windowFrames: 60,
-  /**
-   * Frames right after a split don't count toward stutter: the split's own
-   * measurement and first lifts are a one-off, as the scene's warm-up is.
-   */
-  warmupFrames: 3,
-};
+/** The split's own measurement frames, which the guard doesn't count. */
+const SPLIT_WARMUP_FRAMES = 3;
 
 type Letter = {
   el: HTMLSpanElement;
@@ -142,16 +118,11 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
     let presenceV = 0;
     let frame = 0;
     let last = 0;
-    let guardTripped = false;
-    let overBudgetMs = 0;
-    const stutters: number[] = [];
-    /** Recent frame intervals; the shortest is the display's cadence. */
-    const intervals: number[] = [];
-    let warmup = 0;
+    const guard = createFrameGuard();
 
     const arrival = () => parseFloat(root.style.getPropertyValue("--arrival")) || 0;
     const ready = () => heading.dataset.ripple === "done";
-    const axesAllowed = () => !guardTripped && root.dataset.sceneTier === "high";
+    const axesAllowed = () => !guard.tripped && root.dataset.sceneTier === "high";
 
     const fieldRect = () => {
       if (!field) {
@@ -246,7 +217,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
         el.style.removeProperty("--d");
       });
       split = lines.length > 0;
-      warmup = GUARD.warmupFrames;
+      guard.warmUp(SPLIT_WARMUP_FRAMES);
     };
 
     // Back to the server markup, exactly: the original nodes, not a copy.
@@ -269,7 +240,6 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
     };
 
     const tripGuard = () => {
-      guardTripped = true;
       // Readable in the inspector and by the checks: the field is light only now.
       heading.dataset.fieldGuard = "tripped";
       // Nothing holds the loop open any more: it releases, unsplits and parks.
@@ -293,30 +263,12 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
       last = now;
       // Every frame the field runs counts, at any tier; the loop's first frame
       // after waking has no previous frame to measure from.
-      if (!guardTripped && measured && elapsed < 500) {
-        intervals.push(elapsed);
-        if (intervals.length > GUARD.windowFrames) intervals.shift();
-        const cadence = Math.min(...intervals);
-        const budget = Math.max(GUARD.budgetMs, cadence * GUARD.budgetCadences);
-        const slow = Math.max(GUARD.stutterMs, cadence * GUARD.stutterCadences);
-        if (warmup > 0) {
-          warmup -= 1;
-        } else {
-          overBudgetMs =
-            elapsed > budget
-              ? overBudgetMs + Math.min(elapsed, GUARD.maxChargeMs)
-              : Math.max(0, overBudgetMs - elapsed);
-          stutters.push(elapsed > slow ? 1 : 0);
-          if (stutters.length > GUARD.windowFrames) stutters.shift();
-        }
-        const stuttering = stutters.reduce((sum, slow) => sum + slow, 0) >= GUARD.stutterFrames;
-        if (overBudgetMs >= GUARD.patienceMs || stuttering) tripGuard();
-      }
+      if (!guard.tripped && measured && guard.sample(elapsed)) tripGuard();
       const dt = Math.min(elapsed / 1000, 1 / 30);
       const atRest = arrival() < AT_REST;
       if (!atRest) inside = false;
       // Once the guard trips, the field lets go on its springs and stays at rest.
-      const on = ready() && atRest && inside && !guardTripped;
+      const on = ready() && atRest && inside && !guard.tripped;
       setStone(on);
       const sx = FIELD.sx * em;
       const sy = FIELD.sy * em;
@@ -333,7 +285,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
           }
           // Leaving with the camera, or after the guard trips, is the quick release.
           const rate =
-            target > letter.s ? RATE.in : atRest && !guardTripped ? RATE.out : RATE.release;
+            target > letter.s ? RATE.in : atRest && !guard.tripped ? RATE.out : RATE.release;
           [letter.s, letter.v] = spring(letter.s, letter.v, target, rate, dt);
           if (letter.s < 0) {
             letter.s = 0;
@@ -360,7 +312,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
 
       const want = on ? 1 : 0;
       // The light leaves with the camera as quickly as the letters do.
-      const lightRate = want > presence ? 7 : atRest && !guardTripped ? 4 : RATE.release;
+      const lightRate = want > presence ? 7 : atRest && !guard.tripped ? 4 : RATE.release;
       [presence, presenceV] = spring(presence, presenceV, want, lightRate, dt);
       if (Math.abs(want - presence) > SETTLED.light || Math.abs(presenceV) > 0.01) moving = true;
       const follow = 1 - Math.exp(-9 * dt);
@@ -416,7 +368,7 @@ export function HeroField({ targetId }: Readonly<{ targetId: string }>) {
 
     const pointer = createPointerSource();
     const unsubscribe = pointer.subscribe((sample) => {
-      if (!ready() || guardTripped) return;
+      if (!ready() || guard.tripped) return;
       if (arrival() >= AT_REST || !sample.inside) {
         field = null;
         if (inside) {
