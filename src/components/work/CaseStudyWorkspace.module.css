@@ -1323,3 +1323,52 @@ video.visualMedia[data-fit="cover"] {
     font-weight: 620;
   }
 }
+
+/* ===================================================== case-study title */
+
+/*
+ * The project's title rests in the same moonlight it has when the camera
+ * stands at it in Selected Work (MonolithGallery.module.css, .titleInner):
+ * it gathers once the title has risen, and stays.
+ */
+@property --title-rest {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.titleInner {
+  color: transparent;
+  background-image: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-text-moonlit) 92%, var(--color-text-primary)) 0%,
+    color-mix(in srgb, var(--color-text-moonlit) 45%, var(--color-text-primary))
+      calc(var(--title-rest) * 72%),
+    var(--color-text-primary) calc(var(--title-rest) * 100% + min(var(--title-rest) * 5, 1) * 22%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/*
+ * The light gathers on the mask, once the title has risen, and the title
+ * inherits it. On the mask because a module-local keyframe name can't be
+ * listed beside the shared var() one in the title's own animation.
+ */
+.titleMask {
+  animation: case-title-light 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--motion-case-title-at) + var(--motion-display-duration));
+}
+
+@keyframes case-title-light {
+  to {
+    --title-rest: 0.2;
+  }
+}
+
+/* Reduced motion: the title stands in plain porcelain, as in Selected Work. */
+@media (prefers-reduced-motion: reduce) {
+  .titleMask {
+    animation: none;
+  }
+}
