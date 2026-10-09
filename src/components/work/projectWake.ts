@@ -30,6 +30,8 @@ const WAKE_LIGHT = 0.62;
 const DWELL_MS = 140;
 /** Leaving one part for another (title → link) shouldn't flicker the wake. */
 const HANDOFF_MS = 90;
+/** How long a phone's arrival wake holds before it settles back. */
+const ARRIVAL_WAKE_MS = 1400;
 /** Screen boxes are read at most this often, never once per move. */
 const RECT_MS = 200;
 
@@ -52,6 +54,14 @@ export function bindProjectWake(project: HTMLElement): () => void {
   let restOn = false;
   let pieces: Animation[] = [];
   let releaseTimer = 0;
+  /*
+   * A phone has no hover, so the project wakes once, by itself, when the
+   * camera arrives at it, and settles back after a beat (§13, Mobile). Never
+   * again during the visit; a pointer that can hover gets the hover instead.
+   */
+  const noHover = window.matchMedia("(hover: none)").matches;
+  let arrivalWoken = false;
+  let arrivalTimer = 0;
   let dwellTimer = 0;
   let rects: DOMRect[] | null = null;
   let rectsAt = 0;
@@ -87,6 +97,13 @@ export function bindProjectWake(project: HTMLElement): () => void {
     if (on === restOn) return;
     restOn = on;
     rest = animateLight("--title-rest", on ? REST_LIGHT : 0, on, rest);
+    if (on && noHover && !arrivalWoken) {
+      arrivalWoken = true;
+      wake();
+      arrivalTimer = window.setTimeout(() => {
+        if (over.size === 0) release();
+      }, ARRIVAL_WAKE_MS);
+    }
   };
 
   const screens = () =>
@@ -233,6 +250,7 @@ export function bindProjectWake(project: HTMLElement): () => void {
     settled.disconnect();
     window.clearTimeout(releaseTimer);
     window.clearTimeout(dwellTimer);
+    window.clearTimeout(arrivalTimer);
     // The card is leaving (its frozen exit is starting): everything drains, quickly.
     over.clear();
     release(true);
