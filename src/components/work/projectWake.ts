@@ -56,8 +56,20 @@ export function bindProjectWake(project: HTMLElement): () => void {
   let rects: DOMRect[] | null = null;
   let rectsAt = 0;
 
-  const animateLight = (property: "--title-rest" | "--title-rise", to: number, rising: boolean) =>
-    light.animate([{ [property]: numberOf(light, property) }, { [property]: to }], {
+  /**
+   * Animates one title light from wherever it is now. The current value is
+   * read before the previous animation is cancelled: cancelling first would
+   * drop the light to 0 and the release would be a cut, not a drain.
+   */
+  const animateLight = (
+    property: "--title-rest" | "--title-rise",
+    to: number,
+    rising: boolean,
+    previous: Animation | null,
+  ) => {
+    const from = numberOf(light, property);
+    previous?.cancel();
+    return light.animate([{ [property]: from }, { [property]: to }], {
       duration: rising
         ? property === "--title-rest"
           ? 900
@@ -68,13 +80,13 @@ export function bindProjectWake(project: HTMLElement): () => void {
       easing: rising || property === "--title-rise" ? EASE_IN : EASE_OUT,
       fill: "forwards",
     });
+  };
 
   const syncRest = () => {
     const on = root.hasAttribute("data-camera-settled");
     if (on === restOn) return;
     restOn = on;
-    rest?.cancel();
-    rest = animateLight("--title-rest", on ? REST_LIGHT : 0, on);
+    rest = animateLight("--title-rest", on ? REST_LIGHT : 0, on, rest);
   };
 
   const screens = () =>
@@ -84,8 +96,7 @@ export function bindProjectWake(project: HTMLElement): () => void {
     if (awake) return;
     awake = true;
     project.dataset.wake = "";
-    rise?.cancel();
-    rise = animateLight("--title-rise", WAKE_LIGHT, true);
+    rise = animateLight("--title-rise", WAKE_LIGHT, true, rise);
     link.dispatchEvent(new Event(REPLAY_EVENT));
     // The composition opens around its main screen; nothing scales.
     const all = screens();
@@ -123,8 +134,7 @@ export function bindProjectWake(project: HTMLElement): () => void {
     if (!awake) return;
     awake = false;
     delete project.dataset.wake;
-    rise?.cancel();
-    rise = animateLight("--title-rise", 0, false);
+    rise = animateLight("--title-rise", 0, false, rise);
     if (quick) rise.updatePlaybackRate(2);
     // Back the way they came, slower than they arrived (a negative rate keeps the reverse).
     pieces.forEach((animation) => {
@@ -193,7 +203,16 @@ export function bindProjectWake(project: HTMLElement): () => void {
   link.addEventListener("pointerleave", linkLeave);
   link.addEventListener("focus", focus);
   link.addEventListener("blur", blur);
+  // The screens are hit-tested from moves, so a pointer leaving the window
+  // over them never reports leaving them: let everything go then.
+  const away = () => {
+    window.clearTimeout(dwellTimer);
+    dwellTimer = 0;
+    for (const part of ["visual", "title", "link"]) if (over.has(part)) leave(part);
+  };
   window.addEventListener("pointermove", move, { passive: true });
+  document.documentElement.addEventListener("pointerleave", away);
+  window.addEventListener("blur", away);
   // Filtered to one attribute, so the scene's per-frame style writes never reach it.
   const settled = new MutationObserver(syncRest);
   settled.observe(root, { attributes: true, attributeFilter: ["data-camera-settled"] });
@@ -209,6 +228,8 @@ export function bindProjectWake(project: HTMLElement): () => void {
     link.removeEventListener("focus", focus);
     link.removeEventListener("blur", blur);
     window.removeEventListener("pointermove", move);
+    document.documentElement.removeEventListener("pointerleave", away);
+    window.removeEventListener("blur", away);
     settled.disconnect();
     window.clearTimeout(releaseTimer);
     window.clearTimeout(dwellTimer);
@@ -217,8 +238,7 @@ export function bindProjectWake(project: HTMLElement): () => void {
     release(true);
     if (restOn) {
       restOn = false;
-      rest?.cancel();
-      rest = animateLight("--title-rest", 0, false);
+      rest = animateLight("--title-rest", 0, false, rest);
     }
   };
 }
