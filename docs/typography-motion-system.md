@@ -776,6 +776,52 @@ After stage 10: a full-site recording at real speed on desktop and phone, a
 real-device pass (Safari and Chrome on a Mac, iPhone Safari, Android Chrome),
 and the prototype's temporary launch entries removed.
 
+### Milestone 2, as built
+
+Stages 6, 7 and 8, plus the keyboard fix in §15. What differs from the plan:
+
+- **Hero field (`src/motion/HeroField.tsx`).** The 3 px cap, as approved.
+  The letters are split only while the field is active; at rest the original
+  server nodes are put back (not a copy), so the markup is identical. Springs
+  count as settled once no visible weight is left to change (half a step of
+  40), which unsplits within about a second instead of waiting on the springs'
+  invisible tail. While the camera is leaving, weight rounds down, so the last
+  step is gone before the exit at `--arrival` 0.03. The cursor's stone state
+  (0.9) is `data-cursor-stone` on the root, applied only while the field
+  answers.
+- **Selected Work (`src/components/work/projectWake.ts`).** As approved, with
+  one correction to the prototype: the screens already drift on `translate`
+  (an ambient CSS animation), so the wake's offset is added to it
+  (`composite: "add"`) rather than replacing it, and the release reverses
+  with a negative rate (the prototype's positive rate replayed it forward).
+  The main screen brightens through its image's `filter`, because the piece's
+  own `filter` belongs to the frozen assembly.
+- **Contact (`src/motion/ContactListen.tsx`).** The plane's lean replaces the
+  hover snap only for a mouse at desktop widths; keyboard focus keeps the
+  -6° pose. The band uses a gradient defined in the footer's SVG, so nothing
+  is injected.
+
+Measured in the running scene (1440 × 900, Chrome):
+
+| Check                                     | Result                                                                                   |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Hero letter travel (21 pointer positions) | 2.44 px at most                                                                          |
+| Hero markup at rest                       | Identical to the server's                                                                |
+| Hero weight at `--arrival` 0.03           | 860 (rest)                                                                               |
+| Selected Work frozen timings              | Transitions, transforms and opacity identical (M1's press `scale` aside)                 |
+| Contact plane after the pointer leaves    | Shipped pose, matrix difference 6e-10                                                    |
+| Browser checks                            | 162 pass (keyboard 78, M1 28, crossfade 13, hero 13, wake 17, contact 13)                |
+| Main thread, pointer sweeps, 1× CPU       | Hero 33.1 → 36.7%, work 34.6 → 31.1%, contact 31.0 → 32.9%; 0 slow frames                |
+| Same, 4× CPU                              | Saturated before and after (97–100%); slow frames rise most on the hero (3 → 24 of ~200) |
+
+At 4× the hero's guard watches for 9 of 45 frames over 22 ms, which this
+machine stays just under for much of the sweep; at 6× it trips as designed
+and the light carries on alone. Whether to tighten it is an open decision.
+
+The work figures compare unequal sweeps: the build before has none of the
+wake's markers, so its sweep covered the title only. They show the wake adds
+no measurable cost, not that it saves any.
+
 ## 15. Keyboard access to Selected Work (found in Milestone 1)
 
 Measured with the keyboard only (no mouse, no wheel), on `main` and on this
