@@ -205,9 +205,10 @@
   --motion-press-in: 110ms;
   --motion-press-out: 200ms;
   /* An arrow leaves in its own direction while a copy enters behind it. */
-  --motion-arrow-out: 260ms;
-  --motion-arrow-in: 300ms;
-  --motion-arrow-in-delay: 90ms;
+  /* The copy enters once the arrow has mostly left, so the two never read as one shape. */
+  --motion-arrow-out: 200ms;
+  --motion-arrow-in: 260ms;
+  --motion-arrow-in-delay: 150ms;
   /* The lit line under the current section follows the camera, never the pointer. */
   --motion-lit-duration: 480ms;
   --motion-lit-fade: 320ms;

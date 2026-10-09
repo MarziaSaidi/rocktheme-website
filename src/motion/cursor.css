@@ -42,13 +42,15 @@ html[data-custom-cursor] summary {
 }
 
 /*
- * Always 48px in layout. Its size changes by `scale`, so the per-frame loop
- * in CustomCursor.tsx only ever writes a translate.
+ * Always 48px in layout, centred on the root's origin, so `scale` (its size)
+ * always works around its own centre. CustomCursor.tsx moves it with the
+ * `translate` property, which applies after `scale`; the per-frame loop only
+ * ever writes that.
  */
 [data-cursor-ring] {
   position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
+  inset-block-start: -24px;
+  inset-inline-start: -24px;
   width: 48px;
   height: 48px;
   border: 1px solid color-mix(in srgb, var(--color-focus) 60%, transparent);
@@ -57,7 +59,7 @@ html[data-custom-cursor] summary {
     border-color 220ms var(--motion-ease-interface),
     scale var(--motion-cursor-duration) var(--motion-ease-interface);
   /* Both, so the size change stays on the compositor with the position. */
-  will-change: transform, scale;
+  will-change: translate, scale;
 }
 
 [data-cursor-root][data-cursor-interactive] [data-cursor-ring] {

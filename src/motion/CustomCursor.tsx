@@ -68,7 +68,9 @@ export function CustomCursor() {
       ringX += (pointerX - ringX) * RING_EASE;
       ringY += (pointerY - ringY) * RING_EASE;
 
-      ring.style.transform = `translate3d(${ringX.toFixed(2)}px, ${ringY.toFixed(2)}px, 0) translate(-50%, -50%)`;
+      // The `translate` property, not `transform`: it applies after the ring's
+      // `scale`, so a size change never moves the ring off the pointer.
+      ring.style.translate = `${ringX.toFixed(2)}px ${ringY.toFixed(2)}px`;
       // The dot is never eased. It is the true pointer position.
       dot.style.transform = `translate3d(${pointerX.toFixed(2)}px, ${pointerY.toFixed(2)}px, 0) translate(-50%, -50%)`;
 
