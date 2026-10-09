@@ -606,10 +606,7 @@ video.visualMedia[data-fit="cover"] {
   color: var(--color-text-secondary);
 }
 
-/*
- * Colour marks the current stage, and its label sits at the signal weight
- * (WeightLabel's crossfade on aria-current), so no label changes width.
- */
+/* Colour and the gold line mark the current stage, so no label changes width. */
 .stageNav button[aria-current="step"] {
   color: var(--color-text-primary);
 }

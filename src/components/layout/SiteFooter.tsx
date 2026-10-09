@@ -1,6 +1,5 @@
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
-import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
@@ -105,7 +104,8 @@ export function SiteFooter() {
                     ? { target: "_blank", rel: "noreferrer noopener" }
                     : {})}
                 >
-                  <WeightLabel text={link.label} />
+                  {/* Manrope: colour answers, never weight, so the word never widens. */}
+                  {link.label}
                 </a>
               </li>
             ))}
@@ -113,7 +113,7 @@ export function SiteFooter() {
         </nav>
 
         <a className={styles.backToTop} href={`#${pageLandmarkIds.top}`}>
-          <WeightLabel text={footer.backToTopLabel} />
+          {footer.backToTopLabel}
           <SwapGlyph direction="up">↑</SwapGlyph>
         </a>
       </div>
