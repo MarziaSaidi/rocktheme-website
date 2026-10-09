@@ -104,6 +104,8 @@ export function MobileMenu({ toggleClassName, toggleStyle }: MobileMenuProps) {
                   ref={index === 0 ? firstLinkRef : undefined}
                   className={styles.link}
                   href={item.href}
+                  // Work lands on the first project's details (MonolithGallery).
+                  data-work-entry={item.key === "selected-work" ? "" : undefined}
                   onClick={() => setOpen(false)}
                 >
                   {item.label}

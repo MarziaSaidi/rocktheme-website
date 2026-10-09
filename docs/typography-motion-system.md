@@ -823,6 +823,33 @@ Checks: from a fresh load, keyboard only, both case-study links are reached
 frame of the camera or card sequence differs; axe and the accessibility tree
 are compared against `main`.
 
+### As built (Milestone 2)
+
+The proposal shipped with these differences:
+
+- **Work, for every input.** The header's Work (and the phone menu's) lands on
+  the first project's details whether it is clicked, tapped or pressed; only a
+  keyboard press moves focus. The URL still gets `#selected-work`. Already in
+  the gallery, Work leaves the camera where it is.
+- **Scroll to enter keeps its pointer behaviour.** A click still lands at the
+  top of the gallery. Pressed from the keyboard, it lands on the first
+  project, as Work does.
+- **The way in is a button, "Enter selected work".** It is fixed to the
+  viewport's lower left while focused, so focusing it cannot scroll, and it
+  unmounts while a project is shown. Its accessible name adds the count:
+  "Enter selected work, 2 projects".
+- **Focus follows every step.** Next / Previous project, the arrow and Page
+  keys, and Space all step through the stepper; if focus was in the gallery,
+  it lands on the next card's View case study when the swap completes.
+- **Back from a case study.** The back link and Work, pressed from the
+  keyboard on a case study, return to the project that was opened with its
+  link focused (`watchWorkLinks` in `src/motion/workChannel.ts`).
+
+Measured: 78 keyboard checks across desktop, reduced motion and a phone
+(Tab and Shift+Tab, Enter, Space, the arrow keys, both case studies and back),
+with the page position at each project identical to the wheel path (4028 and
+7853 at 1440 × 900) and the card layer pixel-identical to the build before.
+
 ## 16. Open decisions
 
 1. **Phones (§13):** approve the header label, the hero's single Breath wave

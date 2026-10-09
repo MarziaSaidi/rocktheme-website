@@ -17,7 +17,7 @@ import { stableViewportHeight } from "@/config/viewport";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { DecodeText } from "@/motion/DecodeText";
 import { ProjectStepper } from "@/motion/projectStepper";
-import { publishWorkStation } from "@/motion/workChannel";
+import { isWorkLink, publishWorkStation, takeWorkFocus } from "@/motion/workChannel";
 import { emitSoundEvent } from "@/sound/soundEvents";
 import { setSceneFocus } from "@/webgl/sceneFocus";
 import {
@@ -210,6 +210,10 @@ type MonolithGalleryProps = Readonly<{
   heading: string;
   galleryLabel: string;
   viewLabel: string;
+  /** Keyboard-only controls: entering the gallery, and stepping between projects. */
+  enterLabel: string;
+  nextLabel: string;
+  previousLabel: string;
   /** Backdrop drawn behind the stage, pinned with it. */
   children?: ReactNode;
 }>;
@@ -233,6 +237,25 @@ function stationOffset(
 
 const pad = (value: number) => value.toString().padStart(2, "0");
 
+/**
+ * Moves focus to the shown project's case-study link once its card is
+ * visible, without scrolling: the camera stays where it is. Gives up after a
+ * few seconds (the visitor may have moved on). Returns the cancel.
+ */
+function focusShownProject(runway: HTMLElement): () => void {
+  const until = performance.now() + 3000;
+  const look = () => {
+    const link = runway.querySelector<HTMLElement>("[data-work-view]");
+    if (link && !link.closest("[inert]") && getComputedStyle(link).visibility === "visible") {
+      link.focus({ preventScroll: true, focusVisible: true } as FocusOptions);
+      return;
+    }
+    if (performance.now() < until) frame = requestAnimationFrame(look);
+  };
+  let frame = requestAnimationFrame(look);
+  return () => cancelAnimationFrame(frame);
+}
+
 /** Selected Work: existing compositions, with one completed horizontal swap per gesture. */
 export function MonolithGallery({
   projects,
@@ -240,9 +263,17 @@ export function MonolithGallery({
   heading,
   galleryLabel,
   viewLabel,
+  enterLabel,
+  nextLabel,
+  previousLabel,
   children,
 }: MonolithGalleryProps) {
   const runwayRef = useRef<HTMLDivElement>(null);
+  /** The controller's keyboard entry and project step, for the keyboard-only controls. */
+  const commandRef = useRef<{
+    enter: () => void;
+    step: (direction: number, event: Event) => void;
+  } | null>(null);
   const [active, setActive] = useState(0);
   const [swap, setSwap] = useState<{ from: number; to: number; direction: number } | null>(null);
   /** Whether the visitor is in a controlled project visit. */
@@ -282,6 +313,11 @@ export function MonolithGallery({
     let pendingScroll = { direction: 0, distance: 0 };
     let correcting = false;
     let jumping = false;
+    let cancelFocus = () => {};
+    const focusProject = () => {
+      cancelFocus();
+      cancelFocus = focusShownProject(runway);
+    };
     const position = (station: number) => stationOffset(runway, station, total, stretches);
     const movePage = (y: number) => {
       expectedY = y;
@@ -340,6 +376,8 @@ export function MonolithGallery({
       }
       window.clearTimeout(pendingTimer);
       pendingScroll = { direction: 0, distance: 0 };
+      // Focus inside the gallery goes with the visitor to the next project.
+      const followFocus = runway.contains(document.activeElement);
       setSwap(transition);
       movePage(y);
       timer = window.setTimeout(
@@ -347,6 +385,7 @@ export function MonolithGallery({
           stepper.complete();
           setActive(transition.to);
           setSwap(null);
+          if (followFocus) focusProject();
         },
         reduced.matches ? 0 : PROJECT_SWAP_MS,
       );
@@ -506,8 +545,46 @@ export function MonolithGallery({
         }
       }
     };
+    /*
+     * Keyboard entry (docs/typography-motion-system.md, §15): the nearest
+     * project's details are placed instantly, as a return from a case study
+     * is, and focus moves to its case-study link once the card is shown.
+     */
+    const enterFromKeyboard = (focus: boolean) => {
+      if (stepper.station === null) {
+        const y = window.scrollY;
+        let nearest = 0;
+        for (let station = 1; station < count; station += 1) {
+          const at = position(station);
+          const previous = position(station - 1);
+          if (at !== null && previous !== null && y > (at + previous) / 2) nearest = station;
+        }
+        enter(nearest);
+      }
+      if (focus) focusProject();
+    };
+    commandRef.current = {
+      enter: () => enterFromKeyboard(true),
+      step: (direction, event) => {
+        recentFor = 450;
+        finishArrivalGesture();
+        input(direction, stableViewportHeight(), event);
+      },
+    };
     const navigate = (event: MouseEvent) => {
-      if (event.target instanceof Element && event.target.closest("a[href]")) {
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      // Work, and any link to Selected Work followed from the keyboard, lands on a project.
+      if (
+        link &&
+        isWorkLink(link) &&
+        (link.hasAttribute("data-work-entry") || event.detail === 0)
+      ) {
+        event.preventDefault();
+        if (location.hash !== link.hash) history.pushState(null, "", link.hash);
+        enterFromKeyboard(event.detail === 0);
+        return;
+      }
+      if (link) {
         jumping = true;
         lastUserInput = -Infinity;
         leave();
@@ -539,6 +616,8 @@ export function MonolithGallery({
     window.addEventListener("resize", resize);
     return () => {
       leave();
+      cancelFocus();
+      commandRef.current = null;
       window.removeEventListener("wheel", wheel, true);
       window.removeEventListener("keydown", key, true);
       window.removeEventListener("touchstart", touchStart);
@@ -563,27 +642,33 @@ export function MonolithGallery({
    * Arriving at the gallery by a link (the case study's back link, the nav's
    * Work) lands on the project the visitor opened, on its details point, so
    * they come back to the card they left. With no project to return to it
-   * lands at the top of the gallery. Both are instant: the hash's own smooth
+   * lands on the first project, a usable state for every visitor (§15). Both are instant: the hash's own smooth
    * scroll starts while the scene is still mounting and can stall on the hero.
    */
   useEffect(() => {
     const runway = runwayRef.current;
     if (!runway) return;
+    let cancelFocus = () => {};
     const frame = requestAnimationFrame(() => {
       // Taken whichever way the visitor arrived, so it can't apply to a later visit.
       const slug = takeWorkReturn();
+      // A keyboard arrival from another page (workChannel.ts) brings focus with it.
+      const focus = takeWorkFocus();
       if (location.hash !== `#${sectionAnchors["selected-work"]}`) return;
       const station = featured.findIndex((project) => project.slug === slug);
       // Read the layout now: the journey hook still reports desktop on its first render.
       const journey = window.matchMedia(sceneMediaQueries.desktop).matches
         ? WORK_STRETCHES
         : NARROW_WORK_STRETCHES;
-      const y =
-        station >= 0 ? stationOffset(runway, station, workScreens(count, journey), journey) : null;
+      const y = stationOffset(runway, Math.max(0, station), workScreens(count, journey), journey);
       if (y !== null) window.scrollTo({ top: y, behavior: "instant" });
       else runway.closest("section")?.scrollIntoView({ behavior: "instant" });
+      if (focus) cancelFocus = focusShownProject(runway);
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      cancelFocus();
+    };
     // Once, on arrival: later changes to the journey must not move the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -603,6 +688,18 @@ export function MonolithGallery({
         } as CSSProperties
       }
     >
+      {/*
+       * A keyboard visitor's way in: the next stop after the hero in the tab
+       * order, until a project is shown. Fixed to the viewport, so focusing it
+       * never scrolls the page (and the camera); shown only while focused.
+       */}
+      {shown ? null : (
+        <button type="button" className={styles.entry} onClick={() => commandRef.current?.enter()}>
+          {enterLabel}
+          <span className={styles.hidden}>, {count} projects</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      )}
       <div className={styles.stage}>
         {children}
         <h2 id={headingId} className={styles.hidden}>
@@ -660,6 +757,7 @@ export function MonolithGallery({
                         className={styles.view}
                         href={current.href}
                         data-cursor="action"
+                        data-work-view=""
                         onClick={() => {
                           rememberWorkReturn(current.slug);
                           emitSoundEvent("project:open");
@@ -672,6 +770,35 @@ export function MonolithGallery({
                           →
                         </SwapGlyph>
                       </Link>
+                      {/*
+                       * Keyboard-only steps between projects, shown only while
+                       * focused: the same step a scroll makes, swap and camera
+                       * included. Focus follows to the next project's link.
+                       */}
+                      <div className={styles.steps}>
+                        {station > 0 ? (
+                          <button
+                            type="button"
+                            className={styles.step}
+                            onClick={(event) => commandRef.current?.step(-1, event.nativeEvent)}
+                          >
+                            <span aria-hidden="true">↑</span>
+                            {previousLabel}
+                            <span className={styles.hidden}>: {featured[station - 1]?.title}</span>
+                          </button>
+                        ) : null}
+                        {station < count - 1 ? (
+                          <button
+                            type="button"
+                            className={styles.step}
+                            onClick={(event) => commandRef.current?.step(1, event.nativeEvent)}
+                          >
+                            <span aria-hidden="true">↓</span>
+                            {nextLabel}
+                            <span className={styles.hidden}>: {featured[station + 1]?.title}</span>
+                          </button>
+                        ) : null}
+                      </div>
                     </article>
                   ) : null}
                 </div>

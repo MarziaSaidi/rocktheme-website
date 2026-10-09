@@ -134,6 +134,9 @@ export function SelectedWork({ projects }: SelectedWorkProps) {
         heading={work.displayHeading}
         galleryLabel={work.galleryLabel}
         viewLabel={work.viewLabel}
+        enterLabel={work.enterLabel}
+        nextLabel={work.nextLabel}
+        previousLabel={work.previousLabel}
       >
         {/* Inside the stage so the fallback backdrop stays pinned with it. */}
         <EnvironmentLayer sectionId="selected-work" />

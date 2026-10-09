@@ -16,7 +16,7 @@ import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { siteContent } from "@/content/site/siteContent";
 import { ENTRANCE_DECODE, playDecode, setDecodePhase } from "@/motion/decode";
 import { subscribeHomeSection, type HomeSection } from "@/motion/sectionState";
-import { subscribeWorkStation, type WorkStation } from "@/motion/workChannel";
+import { subscribeWorkStation, watchWorkLinks, type WorkStation } from "@/motion/workChannel";
 
 import styles from "./SiteHeader.module.css";
 
@@ -50,6 +50,9 @@ export function PrimaryNav() {
   }, [onHome]);
 
   useEffect(() => subscribeWorkStation(setStation), []);
+
+  // A keyboard visitor following a link to Selected Work arrives on a project.
+  useEffect(() => watchWorkLinks(), []);
 
   const counter =
     onHome && current === "selected-work" && station
@@ -113,6 +116,8 @@ export function PrimaryNav() {
               className={styles.navLink}
               href={item.href}
               aria-current={current === item.key ? "location" : undefined}
+              // Work lands on the first project's details, whatever the input.
+              data-work-entry={item.key === "selected-work" ? "" : undefined}
             >
               <WeightLabel text={item.label} data-nav-label="" />
               {item.key === "selected-work" && counter ? (
