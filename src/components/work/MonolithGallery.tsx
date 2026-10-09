@@ -704,9 +704,13 @@ export function MonolithGallery({
        * never scrolls the page (and the camera); shown only while focused.
        */}
       {shown ? null : (
-        <button type="button" className={styles.entry} onClick={() => commandRef.current?.enter()}>
+        <button
+          type="button"
+          className={styles.entry}
+          aria-label={`${enterLabel}, ${count} projects`}
+          onClick={() => commandRef.current?.enter()}
+        >
           {enterLabel}
-          <span className={styles.hidden}>, {count} projects</span>
           <span aria-hidden="true">→</span>
         </button>
       )}
@@ -793,22 +797,22 @@ export function MonolithGallery({
                           <button
                             type="button"
                             className={styles.step}
+                            aria-label={`${previousLabel}: ${featured[station - 1]?.title}`}
                             onClick={(event) => commandRef.current?.step(-1, event.nativeEvent)}
                           >
                             <span aria-hidden="true">↑</span>
                             {previousLabel}
-                            <span className={styles.hidden}>: {featured[station - 1]?.title}</span>
                           </button>
                         ) : null}
                         {station < count - 1 ? (
                           <button
                             type="button"
                             className={styles.step}
+                            aria-label={`${nextLabel}: ${featured[station + 1]?.title}`}
                             onClick={(event) => commandRef.current?.step(1, event.nativeEvent)}
                           >
                             <span aria-hidden="true">↓</span>
                             {nextLabel}
-                            <span className={styles.hidden}>: {featured[station + 1]?.title}</span>
                           </button>
                         ) : null}
                       </div>
