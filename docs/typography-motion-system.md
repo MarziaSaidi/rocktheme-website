@@ -776,7 +776,54 @@ After stage 10: a full-site recording at real speed on desktop and phone, a
 real-device pass (Safari and Chrome on a Mac, iPhone Safari, Android Chrome),
 and the prototype's temporary launch entries removed.
 
-## 15. Open decisions
+## 15. Keyboard access to Selected Work (found in Milestone 1)
+
+Measured with the keyboard only (no mouse, no wheel), on `main` and on this
+branch alike. This is existing behaviour; Milestone 1 does not change it.
+
+| Path                                      | What happens                                                                                                                                                                      |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tab from the top                          | Header → Scroll to enter → **Email Marzia** (footer). Selected Work is never reached                                                                                              |
+| Tab to Work, Enter, then Tab              | The page lands at the top of the gallery (y ≈ 2000), before the first project's details, so the card is still inert; Tab continues to About, then the footer                      |
+| Page Down until a project shows, then Tab | The card is shown and its link is focusable, but Tab first reaches the hero's Scroll to enter, the browser scrolls it into view, the camera leaves, and the card goes inert again |
+| Arrow / Page keys                         | Step through both projects (the gallery's own stepper), but never put focus on a case-study link                                                                                  |
+
+Causes: the cards are `inert` until the camera stands at them (correct for
+the visual sequence), nothing focusable stands in for them while they are
+not shown, and the Work link lands before the first project rather than on it.
+
+### Proposal for Milestone 2
+
+Keep the camera and the cards exactly as they are; give the keyboard its own
+way in, made of things the gallery already does.
+
+1. **The Work link lands on the first project.** Arriving at `#selected-work`
+   with no project to return to places the page on the first project's
+   details point (the same `stationOffset` the case-study back link already
+   uses), so the card is shown on arrival. When the link was activated from the
+   keyboard, focus moves to that card's View case study once it is shown.
+2. **A way in from the hero.** Right after Scroll to enter in the tab order, a
+   link that is visually hidden until focused: "Selected work, 2 projects".
+   Focused, it shows as a mono label where the scroll cue is; nothing moves.
+   Enter does what the Work link does (1). Focus alone never moves the camera.
+3. **Between projects.** Inside each card, after View case study, a "Next
+   project" button (and "Previous project" on the second), visually hidden
+   until focused. Enter steps the gallery with its existing stepper, so the
+   camera travels on its approved path, and focus moves to the next card's
+   View case study when it is shown. After the last project, Tab continues to
+   the bio and the footer as today.
+4. **Nothing scrolls under focus.** Focus is placed with `preventScroll` and
+   only once the target card is shown, so the browser never scrolls the page
+   back and undoes the camera.
+5. **Screen readers.** The gallery already announces "Quill & Pigeon, 1 of 2";
+   the hidden controls carry plain names, and the order is linear.
+
+Checks: from a fresh load, keyboard only, both case-study links are reached
+(Tab and Enter only, and Arrow keys too); mouse and touch see no change; no
+frame of the camera or card sequence differs; axe and the accessibility tree
+are compared against `main`.
+
+## 16. Open decisions
 
 1. **Phones (§13):** approve the header label, the hero's single Breath wave
    and the arrival wake for stage 10, or keep phones to the timed half.
