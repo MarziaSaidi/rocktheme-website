@@ -109,9 +109,9 @@
   list-style: none;
 }
 
-/* The desktop nav's voice (mono, uppercase, tracked), sized up for a sheet. */
+/* Proportional navigation, sized up for the phone sheet. */
 .link {
-  composes: microStrong from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   display: inline-flex;
   align-items: center;
   min-height: 3rem;

@@ -72,12 +72,10 @@
     gap: 0.22em;
     margin: 0;
     font-family: var(--font-hero-display);
-    font-weight: 860;
-    font-stretch: 62%;
-    font-variation-settings: "wdth" 62;
+    font-weight: var(--weight-display);
     font-size: min(9vh, 5vw);
-    line-height: 0.86;
-    letter-spacing: -0.012em;
+    line-height: var(--leading-display);
+    letter-spacing: var(--tracking-display);
     text-transform: uppercase;
     pointer-events: none;
   }
@@ -970,7 +968,7 @@
   margin: var(--space-5) 0 0;
   font-family: var(--font-display);
   font-size: clamp(2.5rem, 1.3rem + 2.6vw, 3.75rem);
-  font-weight: 400;
+  font-weight: var(--weight-display);
   line-height: var(--leading-display);
   letter-spacing: var(--tracking-display);
   text-transform: uppercase;
@@ -979,17 +977,18 @@
 }
 
 .role {
-  composes: micro from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   margin: var(--space-3) 0 0;
-  letter-spacing: var(--tracking-micro-tight);
+  letter-spacing: -0.01em;
 }
 
 .description {
   margin: var(--space-6) 0 0;
   max-width: 38ch;
   color: var(--color-text-secondary);
-  font-size: var(--text-body);
-  line-height: var(--leading-body);
+  font-size: var(--text-lead);
+  line-height: 1.55;
+  letter-spacing: var(--tracking-lead);
   text-wrap: pretty;
 }
 
@@ -1001,7 +1000,7 @@
 }
 
 .view {
-  composes: micro from "../../styles/type.module.css";
+  composes: interface from "../../styles/type.module.css";
   display: inline-flex;
   gap: var(--space-3);
   align-items: center;

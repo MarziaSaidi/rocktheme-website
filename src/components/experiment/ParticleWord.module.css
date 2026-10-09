@@ -30,7 +30,7 @@
   background: #82ac33;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
   color: #14210a;
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-family: var(--font-body);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -38,7 +38,9 @@
   white-space: nowrap;
   pointer-events: none;
   transform: translateX(-50%);
-  transition: opacity 0.8s ease, transform 0.3s ease;
+  transition:
+    opacity 0.8s ease,
+    transform 0.3s ease;
 }
 
 .stage[data-theme="dark"] .hint {

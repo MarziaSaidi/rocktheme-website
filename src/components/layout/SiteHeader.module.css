@@ -92,12 +92,15 @@
 
 .navLink {
   composes: micro from "../../styles/type.module.css";
+  font-family: var(--font-body);
+  font-size: var(--text-micro-lg);
+  letter-spacing: 0.08em;
   position: relative;
   display: inline-flex;
   align-items: center;
   min-height: 2.75rem;
   color: var(--color-text-primary);
-  font-weight: var(--weight-signal);
+  font-weight: var(--weight-body-strong);
   text-decoration: none;
   transition:
     color var(--duration-interface) var(--ease-interface),
@@ -105,20 +108,16 @@
     scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
-/*
- * Ordinary navigation answers with weight only: Geist Mono keeps its advance
- * at every weight, so the lift never moves a neighbour. The current section
- * keeps it too. Hover only under a fine pointer, so a tap never leaves it on.
- */
+/* Keep navigation weight stable so proportional labels do not shift on hover. */
 @media (hover: hover) and (pointer: fine) {
   .navLink:hover {
-    font-weight: var(--weight-signal-lift);
+    color: var(--color-text-moonlit);
   }
 }
 
 .navLink:focus-visible,
 .navLink[aria-current] {
-  font-weight: var(--weight-signal-lift);
+  color: var(--color-text-moonlit);
 }
 
 .navLink:active {

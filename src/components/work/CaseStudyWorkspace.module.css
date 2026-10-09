@@ -41,7 +41,7 @@
   margin: var(--space-4) 0 0;
   font-family: var(--font-display);
   font-size: clamp(2rem, 3vw, 3.4rem);
-  font-weight: 400;
+  font-weight: var(--weight-display);
   line-height: 0.95;
   letter-spacing: var(--tracking-display);
   text-transform: uppercase;
@@ -51,7 +51,8 @@
   margin: var(--space-4) 0 0;
   color: var(--color-text-secondary);
   font-size: var(--text-small);
-  line-height: 1.5;
+  line-height: 1.65;
+  letter-spacing: var(--tracking-body);
 }
 
 .facts {
@@ -511,7 +512,8 @@ video.visualMedia[data-fit="cover"] {
 .storyDescription {
   margin: var(--space-5) 0 0;
   color: var(--color-text-secondary);
-  line-height: 1.55;
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-body);
 }
 
 .points {
@@ -553,7 +555,7 @@ video.visualMedia[data-fit="cover"] {
 .metric strong {
   font-family: var(--font-display);
   font-size: var(--text-display-s);
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 .story blockquote {
   font-size: var(--text-lead);
