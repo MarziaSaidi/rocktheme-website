@@ -21,15 +21,17 @@ import {
 
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
+import type { WeatherUniforms } from "../core/weather";
 import type { DistanceFogConfig } from "../sceneTypes";
-import { applyDistanceFog, createDistanceFogUniforms } from "./distanceFog";
+import { applyDistanceFog, createDistanceFogUniforms, updateDistanceFog } from "./distanceFog";
 import { matchStone } from "./stoneMaterial";
 import { Box3, Group, RepeatWrapping, type Object3D, type Texture } from "three";
 
 export type AerialTerrain = Readonly<{
-  /** Altitude of the viewer: below the haze ceiling the terrain is not drawn at all. */
+  /** Camera altitude gates hidden geometry; atmospheric coverage eases above the haze floor. */
   setViewer: (eye: Vector3) => void;
   mesh: () => Mesh | null;
+  updateMist: (elapsed: number, reducedMotion: boolean) => void;
   reflectionExclusions: () => readonly Object3D[];
   destroy: () => void;
 }>;
@@ -45,6 +47,7 @@ export function createAerialTerrain(
   fogColor: number,
   atmosphere: DistanceFogConfig,
   stride = 1,
+  weather?: WeatherUniforms,
 ): AerialTerrain {
   let mesh: Mesh | null = null;
   let destroyed = false;
@@ -58,8 +61,11 @@ export function createAerialTerrain(
   const material = new MeshStandardMaterial({
     roughness: 1,
     metalness: 0,
+    alphaHash: true,
   });
-  applyDistanceFog(material, createDistanceFogUniforms(atmosphere));
+  const fogUniforms = createDistanceFogUniforms(atmosphere, weather);
+  const massifMaterials: MeshStandardMaterial[] = [];
+  applyDistanceFog(material, fogUniforms);
   const fogPatch = material.onBeforeCompile;
   material.onBeforeCompile = (shader, renderer) => {
     fogPatch.call(material, shader, renderer);
@@ -91,7 +97,12 @@ export function createAerialTerrain(
         "#include <clipping_planes_fragment>",
         `#include <clipping_planes_fragment>
          float tDist = distance(vAtmosWorld, cameraPosition);
-         if (tDist > uHazeFar) discard;`,
+        `,
+      )
+      .replace(
+        "#include <alphahash_fragment>",
+        `diffuseColor.a *= 1.0 - smoothstep(uHazeFar * 0.45, uHazeFar, tDist);
+         #include <alphahash_fragment>`,
       )
       .replace(
         "#include <map_fragment>",
@@ -128,8 +139,6 @@ export function createAerialTerrain(
       .replace(
         "#include <dithering_fragment>",
         `#include <dithering_fragment>
-         // The valley haze: near the haze ceiling's far edge the rock sinks into the night air.
-         gl_FragColor.rgb = mix(gl_FragColor.rgb, uHazeColor, smoothstep(uHazeFar * 0.45, uHazeFar, tDist));
          // Air between the ridges glows toward the moon, so the layers separate against each other.
          vec3 tView = normalize(vAtmosWorld - cameraPosition);
          vec3 tMoon = normalize(vec3(0.31, 0.21, -0.93));
@@ -137,7 +146,7 @@ export function createAerialTerrain(
          gl_FragColor.rgb += vec3(0.42, 0.34, 0.58) * tGlow * smoothstep(60.0, 420.0, tDist) * uMoonGlow;`,
       );
   };
-  material.customProgramCacheKey = () => "aerial-terrain";
+  material.customProgramCacheKey = () => "aerial-terrain-optical";
   // The hero range's own rock: its colour and normal maps, sampled in world space.
   /*
    * The hero range's own rock: its colour and normal maps. The terrain samples
@@ -176,7 +185,6 @@ export function createAerialTerrain(
   const massifRoot = new Group();
   massifRoot.name = "aerial-massif";
   scene.add(massifRoot);
-  const fogUniforms = createDistanceFogUniforms(atmosphere);
   Promise.all([
     fetch("/assets/aerial/massif.json").then(
       (r) =>
@@ -206,6 +214,9 @@ export function createAerialTerrain(
           source.roughness = 1;
           source.roughnessMap = null;
           source.normalScale.setScalar(0.6);
+          source.alphaHash = true;
+          source.opacity = material.opacity;
+          massifMaterials.push(source);
           applyDistanceFog(source, fogUniforms);
           const fog = source.onBeforeCompile;
           source.onBeforeCompile = (shader, renderer) => {
@@ -219,15 +230,15 @@ export function createAerialTerrain(
               )
               .replace(
                 "#include <clipping_planes_fragment>",
-                "#include <clipping_planes_fragment>\nfloat tDist = distance(vAtmosWorld, cameraPosition);\nif (tDist > uHazeFar) discard;",
+                "#include <clipping_planes_fragment>\nfloat tDist = distance(vAtmosWorld, cameraPosition);",
               )
               .replace(
-                "#include <dithering_fragment>",
-                "#include <dithering_fragment>\ngl_FragColor.rgb = mix(gl_FragColor.rgb, uHazeColor, smoothstep(uHazeFar * 0.45, uHazeFar, tDist));",
+                "#include <alphahash_fragment>",
+                "diffuseColor.a *= 1.0 - smoothstep(uHazeFar * 0.45, uHazeFar, tDist);\n#include <alphahash_fragment>",
               );
           };
           matchStone(source, 1);
-          source.customProgramCacheKey = () => "aerial-massif";
+          source.customProgramCacheKey = () => "aerial-massif-optical";
         }),
       );
       for (const m of layout) {
@@ -302,12 +313,19 @@ export function createAerialTerrain(
       const eased = t * t * (3 - 2 * t);
       hazeFar.value = LOW_FAR + eased * eased * 2400;
       moonGlow.value = eased;
-      // At or below the haze floor every fragment would be discarded: skip the geometry outright.
+      material.opacity = eased;
+      massifMaterials.forEach((source) => {
+        source.opacity = eased;
+      });
+      // Below the haze floor coverage is zero; skip drawing the hidden geometry.
       const shown = Math.abs(eye.y) > HAZE_FLOOR;
       massifRoot.visible = shown;
       if (mesh) mesh.visible = shown;
     },
     mesh: () => mesh,
+    updateMist: (elapsed, reducedMotion) => {
+      updateDistanceFog(fogUniforms, elapsed, reducedMotion, stride > 1 ? "mobile" : "desktop");
+    },
     reflectionExclusions: () => (mesh ? [mesh, massifRoot] : [massifRoot]),
     destroy: () => {
       destroyed = true;

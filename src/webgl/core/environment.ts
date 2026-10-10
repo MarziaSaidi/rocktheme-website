@@ -356,6 +356,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       maxAmount: 0.72,
     },
     width < 1024 ? 2 : 1,
+    weather.uniforms,
   );
 
   // The patch of water beside the bio that looks down into the winter cabin's world.
@@ -778,6 +779,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     if (debugCamera) {
       view.position.copy(debugCamera.position);
       view.quaternion.copy(debugCamera.quaternion);
+      view.fov = debugCamera.fov;
+      view.updateProjectionMatrix();
       view.updateMatrixWorld();
     }
 
@@ -811,6 +814,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     atmosphere.setIllumination(lights.illumination());
     mist.update(deltaSeconds, sceneTime);
     heroLandscape.updateMist(sceneTime, options.reducedMotion);
+    aerialTerrain.updateMist(sceneTime, options.reducedMotion);
     monolith.updateMist(sceneTime, options.reducedMotion);
     floor.update(deltaSeconds, sceneTime);
 
@@ -995,14 +999,31 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       },
       peakTime: () => weather.peakTime(),
       flickerTimes: () => weather.flickerTimes(),
+      // Development-only matched-frame captures; never changes the journey itself.
+      capturePose: (matrix: number[], fov: number, sceneTime: number) => {
+        debugCamera = view.clone();
+        debugCamera.matrixWorld.fromArray(matrix);
+        debugCamera.matrixWorld.decompose(
+          debugCamera.position,
+          debugCamera.quaternion,
+          debugCamera.scale,
+        );
+        debugCamera.fov = fov;
+        debugSceneTime = sceneTime;
+        debugPaused = true;
+        weather.sample(lightningConfig.duration);
+      },
       diagnostics: () => ({
         toneMapping: renderer.toneMapping,
         exposure: renderer.toneMappingExposure,
+        render: { ...renderer.info.render },
+        memory: { ...renderer.info.memory },
       }),
       state: () => ({
         ...weather.state,
         direction: weather.state.direction.toArray(),
         camera: view.matrixWorld.toArray(),
+        fov: view.fov,
         sceneTime: debugSceneTime ?? elapsed,
       }),
     };

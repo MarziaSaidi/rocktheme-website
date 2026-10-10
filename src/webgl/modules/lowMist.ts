@@ -73,6 +73,7 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec4 uFade;
   /** near ceiling, far ceiling, rise start, rise end */
   uniform vec4 uCeiling;
+  uniform float uSliceStep;
 
   varying vec3 vWorld;
   varying vec2 vUv;
@@ -85,7 +86,6 @@ const FRAGMENT_SHADER = /* glsl */ `
     float ceiling = mix(uCeiling.x, uCeiling.y, smoothstep(uCeiling.z, uCeiling.w, reachXZ));
     // Height through the mist at this point, 0 on the water, 1 at its ceiling.
     float layer = clamp(vWorld.y / ceiling, 0.0, 1.0);
-    if (layer >= 1.0) discard;
 
     vec2 drift = uDrift * uTime;
     // Upper air trails the lower, which shears the banks as they move.
@@ -94,6 +94,10 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 broadP = flow * uScale.x;
     vec2 warp = vec2(fbm(broadP * 0.6 + 3.1), fbm(broadP * 0.6 + vec2(8.3, 1.7))) - 0.5;
     float broad = fbm(broadP + warp * 1.3);
+    // A bank-shaped ceiling, never one horizontal lid across all valleys.
+    ceiling *= mix(0.55, 1.15, smoothstep(0.25, 0.75, broad));
+    layer = clamp(vWorld.y / max(ceiling, 0.05), 0.0, 1.0);
+    if (layer >= 1.0) discard;
     float fine = fbm(flow * uScale.y + warp * 2.4 + vec2(layer * 2.3, -layer * 1.1));
 
     // Summed octaves cluster round 0.5; stretched, the banks separate.
@@ -119,7 +123,11 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec2 edge = min(vUv, 1.0 - vUv);
     float border = smoothstep(0.0, 0.12, edge.x) * smoothstep(0.0, 0.12, edge.y);
 
-    float alpha = body * profile * reach * border * uOpacity;
+    // Thickness through a slice grows at a grazing view; use one extinction
+    // budget instead of multiplying sheet alpha with a second fog tint.
+    float crossing = uSliceStep / max(abs(slope), 0.18);
+    float opticalDepth = body * profile * reach * border * uOpacity * crossing * 0.65;
+    float alpha = 1.0 - exp(-opticalDepth);
     // Denser cores catch a touch more light than the thin fringes.
     vec3 color = uColor * (0.82 + 0.36 * body * broad);
     float weatherCell = weatherHorizonCell(vWorld - cameraPosition);
@@ -170,6 +178,7 @@ export function createLowMist(
     uScale: { value: new Vector2() },
     uFade: { value: new Vector4() },
     uCeiling: { value: new Vector4() },
+    uSliceStep: { value: 1 },
   };
   const scratch = new Color();
 
@@ -238,6 +247,7 @@ export function createLowMist(
       Math.min(config.nearHeight, viewCamera.position.y * EYE_LINE),
     );
     const top = Math.max(nearCeiling, config.height);
+    shared.uSliceStep.value = (top - BASE_HEIGHT) / Math.max(1, slices - 1);
     shared.uCeiling.value.set(nearCeiling, top, config.distance.rise[0], config.distance.rise[1]);
     meshes.forEach((mesh, index) => {
       const layer = slices > 1 ? index / (slices - 1) : 0;
