@@ -1,0 +1,108 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { PerspectiveCamera, Scene } from "three";
+import { createPortalRain, type RainEmitter } from "../src/webgl/modules/portalRain";
+
+const camera = new PerspectiveCamera(50, 1.6, 0.1, 100);
+const emitter: RainEmitter = (_seed, position, outward) => {
+  position.set(2, 8, -8);
+  outward.set(0, 0, 1);
+  return true;
+};
+function positions(scene: Scene) {
+  const mesh = scene.getObjectByName("portal-falling-stars") as import("three").Mesh<
+    import("three").InstancedBufferGeometry
+  >;
+  return { count: mesh.geometry.instanceCount, p: mesh.geometry.getAttribute("iPosition") };
+}
+test("world-space drops continue downward at rest and drain after emission stops", () => {
+  const scene = new Scene();
+  let hits = 0;
+  const rain = createPortalRain(scene, false, (x, z) => {
+    assert.ok(Number.isFinite(x) && Number.isFinite(z));
+    hits++;
+    return true;
+  });
+  rain.setQuality("low");
+  const step = (intensity: number, moving: boolean) =>
+    rain.update(1 / 60, intensity, moving, false, emitter, camera, 1280, 800);
+  for (let i = 0; i < 120; i++) step(1, true);
+  assert.ok(rain.stats().alive > 40);
+  const y = positions(scene).p.getY(0);
+  camera.position.set(10, 2, 6);
+  camera.updateMatrixWorld();
+  step(0, false);
+  assert.ok(
+    positions(scene).p.getY(0) < y,
+    "gravity continues after scrolling stops and camera moves",
+  );
+  for (let i = 0; i < 1100; i++) step(0, false);
+  assert.equal(rain.stats().alive, 0);
+  assert.equal(positions(scene).count, 0);
+  assert.ok(hits > 0);
+  rain.destroy();
+  assert.equal(scene.children.length, 0);
+});
+test("fast intensity changes respect the pool ceiling and keep finite coordinates", () => {
+  const scene = new Scene();
+  const rain = createPortalRain(scene, false, () => false);
+  rain.setQuality("low");
+  for (let i = 0; i < 500; i++) {
+    rain.update(i % 2 ? 0.1 : 1 / 60, i % 3 ? 1 : 0, true, true, emitter, camera, 390, 844);
+    assert.ok(rain.stats().alive <= 450);
+  }
+  const { count, p } = positions(scene);
+  for (let i = 0; i < count; i++) {
+    assert.ok(Number.isFinite(p.getX(i)) && p.getY(i) >= 0 && Number.isFinite(p.getZ(i)));
+  }
+  rain.destroy();
+});
+test("reduced motion creates no dynamic rain or impacts", () => {
+  const scene = new Scene();
+  const rain = createPortalRain(scene, true, () => {
+    throw new Error("unexpected impact");
+  });
+  for (let i = 0; i < 100; i++) rain.update(1 / 60, 1, true, false, emitter, camera, 1280, 800);
+  assert.equal(rain.stats().alive, 0);
+  assert.equal(positions(scene).count, 0);
+  rain.destroy();
+});
+
+test("water impacts use exact world coordinates and dissolve without changing pointer ripples", async () => {
+  const { createReflectiveFloor } = await import("../src/webgl/modules/reflectiveFloor");
+  const floor = createReflectiveFloor({
+    width: 100,
+    depth: 140,
+    reflectionSize: 0,
+    maxRipples: 3,
+    reducedMotion: false,
+  });
+  const material = floor.mesh.material as import("three").ShaderMaterial;
+  floor.setImpactBudget(4);
+  assert.equal(floor.requestLightImpact(-18, 32, 0.4, 0.5), true);
+  assert.equal(
+    floor.requestLightImpact(-18, 32, 0.4, 0.5),
+    false,
+    "selected impacts are throttled",
+  );
+  floor.update(0.12, 0.12);
+  const hits = material.uniforms.uLightImpacts!.value as import("three").Vector4[];
+  assert.equal(hits[0]!.x, -18);
+  assert.equal(hits[0]!.y, 32);
+  assert.ok(hits[0]!.z > 0);
+  assert.equal(floor.activeLightImpacts(), 1);
+  assert.equal(floor.activeRipples(), 0);
+  for (let i = 0; i < 3; i++) {
+    assert.equal(floor.requestLightImpact(-17 + i, 33, 0.6, 0.5), true);
+    floor.update(0.12, 0.24 + i * 0.12);
+  }
+  assert.equal(
+    floor.requestLightImpact(-16, 34, 0.5, 0.5),
+    false,
+    "pool never overwrites live rings",
+  );
+  floor.update(2, 3);
+  assert.equal(floor.activeLightImpacts(), 0);
+  assert.equal(material.uniforms.uImpactCount!.value, 0);
+  floor.destroy();
+});

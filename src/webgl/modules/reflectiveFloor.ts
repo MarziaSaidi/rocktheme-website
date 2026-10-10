@@ -40,6 +40,7 @@ import type { BeaconSource } from "./horizonLights";
 
 const MAX_RIPPLES = 4;
 const MAX_BEACONS = 4;
+const MAX_LIGHT_IMPACTS = 16;
 
 const VERTEX_SHADER = /* glsl */ `
   varying vec2 vUv;
@@ -79,6 +80,9 @@ const FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 uBeaconColor[${MAX_BEACONS}];
   /** x, y in floor UV space, z = age in seconds, w = strength. */
   uniform vec4 uRipples[${MAX_RIPPLES}];
+  uniform vec4 uLightImpacts[${MAX_LIGHT_IMPACTS}]; // world x,z, age, strength
+  uniform vec3 uImpactColours[${MAX_LIGHT_IMPACTS}];
+  uniform int uImpactCount;
   uniform float uRippleRadius;
   uniform float uRippleSeconds;
 
@@ -155,6 +159,23 @@ const FRAGMENT_SHADER = /* glsl */ `
     micro += waveSlope(normalize(vec2(-0.98, 0.19)), 9.3, 0.0027, 0.94, 4.6, q, t);
     micro += waveSlope(normalize(vec2(0.62, -0.78)), 14.1, 0.0015, 1.21, 0.8, q, t);
     slope += micro * detail * uRipple;
+
+    vec3 receivedLight = vec3(0.0);
+    for (int i = 0; i < ${MAX_LIGHT_IMPACTS}; i++) {
+      if (i >= uImpactCount) break;
+      vec4 hit = uLightImpacts[i];
+      float age = hit.z;
+      vec2 d = p - hit.xy;
+      float distance_ = length(d);
+      float radius = 0.035 + age * 0.65;
+      float width_ = 0.025 + age * 0.014;
+      float ring = exp(-pow((distance_ - radius) / width_, 2.0));
+      float decay = pow(max(0.0, 1.0 - age / 1.8), 2.0);
+      slope += d / max(distance_, 0.001) * ring * decay * hit.w * 0.045;
+      float pool = exp(-distance_ * distance_ / (0.012 + age * 0.12)) * exp(-age * 3.8);
+      float flash = exp(-distance_ * distance_ / 0.004) * exp(-age * 18.0);
+      receivedLight += uImpactColours[i] * hit.w * (ring * decay * 0.16 + pool * 0.22 + flash * 0.7);
+    }
 
     // Pointer ripples disturb the surface. They tilt the normal so the
     // reflections bend through the ring; they do not draw a ring.
@@ -264,6 +285,7 @@ const FRAGMENT_SHADER = /* glsl */ `
      * cuts a hard line across the frame where the surface simply stops. Fading
      * it out first lets the mist carry the last stretch instead.
      */
+    colour += receivedLight * (1.0 - haze);
     gl_FragColor = vec4(colour, 1.0 - smoothstep(62.0, 100.0, vDepth));
   }
 `;
@@ -296,6 +318,9 @@ export type ReflectiveFloor = Readonly<{
    * the pointer is inside the lower band of the viewport.
    */
   requestRipple: (viewportX: number, viewportY: number, speed: number) => boolean;
+  requestLightImpact: (x: number, z: number, colour: number, strength: number) => boolean;
+  setImpactBudget: (count: number) => void;
+  activeLightImpacts: () => number;
   setReflectionSize: (size: number) => void;
   setConfig: (config: WaterConfig) => void;
   /** Ripples currently alive, for reporting. */
@@ -312,6 +337,11 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
   const rippleData: number[] = new Array(MAX_RIPPLES * 4).fill(0);
   const beaconData = Array.from({ length: MAX_BEACONS }, () => new Vector4());
   const beaconColor = Array.from({ length: MAX_BEACONS }, () => new Color());
+  const lightImpacts = Array.from({ length: MAX_LIGHT_IMPACTS }, () => new Vector4(0, 0, 2, 0));
+  const impactColours = Array.from({ length: MAX_LIGHT_IMPACTS }, () => new Color());
+  let impactBudget = MAX_LIGHT_IMPACTS;
+  let impactCooldown = 0;
+  let impactCount = 0;
   let rippleCooldown = 0;
   let target: WebGLRenderTarget | null = null;
   let reflectionSize = options.reflectionSize;
@@ -339,6 +369,9 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
       uBeacon: { value: beaconData },
       uBeaconColor: { value: beaconColor },
       uRipples: { value: rippleData },
+      uLightImpacts: { value: lightImpacts },
+      uImpactColours: { value: impactColours },
+      uImpactCount: { value: 0 },
       uRippleRadius: { value: 0.055 },
       uRippleSeconds: { value: config.rippleSeconds },
     },
@@ -452,7 +485,41 @@ export function createReflectiveFloor(options: ReflectiveFloorOptions): Reflecti
       });
     },
 
+    requestLightImpact: (x, z, colour, strength) => {
+      if (options.reducedMotion || impactCooldown > 0) return false;
+      let slot = -1;
+      for (let i = 0; i < impactBudget; i++) {
+        if (lightImpacts[i]!.w === 0) {
+          slot = i;
+          break;
+        }
+      }
+      if (slot < 0) return false;
+      lightImpacts[slot]!.set(x, z, 0, Math.min(1, strength * 1.6));
+      impactColours[slot]!.setRGB(0.3 + colour * 0.45, 0.55 - colour * 0.15, 1);
+      impactCooldown = 0.11;
+      return true;
+    },
+    setImpactBudget: (count) => {
+      impactBudget = Math.min(MAX_LIGHT_IMPACTS, count);
+    },
+    activeLightImpacts: () => impactCount,
     update: (deltaSeconds, elapsedSeconds) => {
+      impactCooldown = Math.max(0, impactCooldown - deltaSeconds);
+      impactCount = 0;
+      let lastImpact = 0;
+      for (let i = 0; i < MAX_LIGHT_IMPACTS; i++) {
+        const hit = lightImpacts[i]!;
+        if (hit.w === 0) continue;
+        hit.z += deltaSeconds;
+        if (hit.z >= 1.8) {
+          hit.w = 0;
+          continue;
+        }
+        impactCount++;
+        lastImpact = i + 1;
+      }
+      material.uniforms.uImpactCount!.value = lastImpact;
       material.uniforms.uTime!.value = options.reducedMotion ? 0 : elapsedSeconds;
 
       rippleCooldown = Math.max(0, rippleCooldown - deltaSeconds);

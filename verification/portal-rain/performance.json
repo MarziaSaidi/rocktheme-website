@@ -1,0 +1,352 @@
+{
+  "environment": {
+    "browser": "155.0.8059.39",
+    "platform": "darwin",
+    "arch": "arm64",
+    "mode": "headless Chrome; mobile viewport emulation, not physical phone; no video recording"
+  },
+  "runs": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "baseline": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 1,
+        "alive": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "frameCpuMs": {
+          "mean": 3.9687707647928763,
+          "p50": 3.800000011920929,
+          "p95": 5.099999964237213,
+          "max": 5.800000011920929
+        },
+        "observedIntervalMs": {
+          "mean": 16.648504983388708,
+          "p50": 16.69999999999709,
+          "p95": 16.700000000000728,
+          "max": 16.799999999999272
+        },
+        "drawCalls": {
+          "mean": 110,
+          "p50": 110,
+          "p95": 110,
+          "max": 110
+        },
+        "activeImpacts": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "updateMs": {
+          "mean": 0.006312292279595157,
+          "p50": 0,
+          "p95": 0.09999996423721313,
+          "max": 0.10000002384185791
+        },
+        "emissionPerSecond": {
+          "mean": 2.8589685040265113e-7,
+          "p50": 4.1492013116122876e-8,
+          "p95": 0.000001518291477492464,
+          "max": 0.000002265024724341513
+        }
+      },
+      "peak": {
+        "samples": 421,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 1,
+        "alive": {
+          "mean": 1759.1140142517816,
+          "p50": 1761,
+          "p95": 1792,
+          "max": 1809
+        },
+        "frameCpuMs": {
+          "mean": 4.4292161500085845,
+          "p50": 4.400000035762787,
+          "p95": 5.100000023841858,
+          "max": 6.699999988079071
+        },
+        "observedIntervalMs": {
+          "mean": 16.636817102109454,
+          "p50": 16.69999999999709,
+          "p95": 16.799999999995634,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 111,
+          "p50": 111,
+          "p95": 111,
+          "max": 111
+        },
+        "activeImpacts": {
+          "mean": 14.247030878859858,
+          "p50": 14,
+          "p95": 15,
+          "max": 16
+        },
+        "updateMs": {
+          "mean": 0.198099759440524,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "max": 0.40000003576278687
+        },
+        "emissionPerSecond": {
+          "mean": 631.2741849039802,
+          "p50": 631.5293207994581,
+          "p95": 631.5773952257342,
+          "max": 631.5778910957586
+        }
+      },
+      "rest": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 1,
+        "alive": {
+          "mean": 499.2923588039867,
+          "p50": 500,
+          "p95": 509,
+          "max": 513
+        },
+        "frameCpuMs": {
+          "mean": 3.92259136386884,
+          "p50": 3.700000047683716,
+          "p95": 5,
+          "max": 6.799999952316284
+        },
+        "observedIntervalMs": {
+          "mean": 16.63687707645157,
+          "p50": 16.69999999999709,
+          "p95": 16.700000000004366,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 111,
+          "p50": 111,
+          "p95": 111,
+          "max": 111
+        },
+        "activeImpacts": {
+          "mean": 11.980066445182723,
+          "p50": 12,
+          "p95": 13,
+          "max": 13
+        },
+        "updateMs": {
+          "mean": 0.053488372766298316,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "max": 0.19999998807907104
+        },
+        "emissionPerSecond": {
+          "mean": 176.86659069224586,
+          "p50": 176.845658831853,
+          "p95": 176.97213879634023,
+          "max": 177.03609249948076
+        }
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "dpr": 2,
+      "baseline": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 2,
+        "alive": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "frameCpuMs": {
+          "mean": 3.263122922954369,
+          "p50": 3.399999976158142,
+          "p95": 4.300000011920929,
+          "max": 5.5
+        },
+        "observedIntervalMs": {
+          "mean": 16.636877076491164,
+          "p50": 16.700000000000728,
+          "p95": 16.700000000000728,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 63,
+          "p50": 63,
+          "p95": 63,
+          "max": 63
+        },
+        "activeImpacts": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "updateMs": {
+          "mean": 0.020265781008127915,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "max": 0.19999998807907104
+        },
+        "emissionPerSecond": {
+          "mean": 1.8584670799485788e-7,
+          "p50": 2.696987206549763e-8,
+          "p95": 9.870497007690836e-7,
+          "max": 0.0000014725051214067443
+        }
+      },
+      "peak": {
+        "samples": 421,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 2,
+        "alive": {
+          "mean": 1093.270783847981,
+          "p50": 1090,
+          "p95": 1122,
+          "max": 1130
+        },
+        "frameCpuMs": {
+          "mean": 2.6220902595270843,
+          "p50": 2.800000011920929,
+          "p95": 3.300000011920929,
+          "max": 4.800000011920929
+        },
+        "observedIntervalMs": {
+          "mean": 16.64726840857938,
+          "p50": 16.69999999999709,
+          "p95": 16.799999999999272,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 64,
+          "p50": 64,
+          "p95": 64,
+          "max": 64
+        },
+        "activeImpacts": {
+          "mean": 13.505938242280285,
+          "p50": 14,
+          "p95": 14,
+          "max": 15
+        },
+        "updateMs": {
+          "mean": 0.25011876614813,
+          "p50": 0.2999999523162842,
+          "p95": 0.40000003576278687,
+          "max": 0.6000000238418579
+        },
+        "emissionPerSecond": {
+          "mean": 410.3235432562695,
+          "p50": 410.4932970246198,
+          "p95": 410.52528307986944,
+          "max": 410.5256130815665
+        }
+      },
+      "rest": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 2,
+        "alive": {
+          "mean": 309.78073089700996,
+          "p50": 311,
+          "p95": 319,
+          "max": 324
+        },
+        "frameCpuMs": {
+          "mean": 2.589700995489608,
+          "p50": 2.799999952316284,
+          "p95": 3.900000035762787,
+          "max": 4.700000047683716
+        },
+        "observedIntervalMs": {
+          "mean": 16.653488372172227,
+          "p50": 16.69999999999709,
+          "p95": 16.700000000004366,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 64,
+          "p50": 64,
+          "p95": 64,
+          "max": 64
+        },
+        "activeImpacts": {
+          "mean": 9.617940199335548,
+          "p50": 9,
+          "p95": 12,
+          "max": 13
+        },
+        "updateMs": {
+          "mean": 0.08604651075660984,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "max": 0.3999999761581421
+        },
+        "emissionPerSecond": {
+          "mean": 114.96328129065333,
+          "p50": 114.94967787106442,
+          "p95": 115.03187669161366,
+          "max": 115.07346011928837
+        }
+      },
+      "errors": []
+    }
+  ],
+  "reducedMotion": {
+    "stats": {
+      "alive": 0,
+      "budget": 2400,
+      "emissionPerSecond": 0,
+      "totalBirths": 0,
+      "totalImpacts": 0,
+      "updateMs": 0,
+      "tier": "high",
+      "frameCpuMs": 0,
+      "frameIntervalMs": 0,
+      "drawCalls": 27,
+      "activeImpacts": 0,
+      "reflectionSize": 512,
+      "width": 390,
+      "height": 844,
+      "pixelRatio": 1,
+      "scroll": 6802,
+      "stops": {
+        "workStart": 844,
+        "workEnd": 5317,
+        "about": 6801.78125,
+        "aboutLeave": 8109.78125,
+        "contact": 9286
+      },
+      "camera": [
+        -11.999999999999998,
+        1.5500000000000003,
+        14
+      ],
+      "reducedMotion": true
+    },
+    "text": "I’m Marzia.\nI make ideas real.\n\nI’m a design engineer working between an idea and a real product.\n\nI’m most useful when things are still a little unclear.\n\nFrom the first question to the final detail.\n\nI figure out what a product should do, design how it should feel, and get close enough to the code to make sure the idea survives implementation.\n\nI care about the small interaction details, and whether the thing actually works.\n\nCuriosity usually becomes a prototype.\n\nLately, I’m exploring what changes when AI becomes part of the product itself, and how people and AI make decisions together.\n\nMostly, I like making things. If an idea stays with me, I build it."
+  }
+}

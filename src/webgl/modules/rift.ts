@@ -89,6 +89,8 @@ export type Rift = Readonly<{
   screenAnchor: (camera: PerspectiveCamera) => RiftAnchor | null;
   /** How far in front of the camera the opening stands, in metres, while it is there. */
   openingDepth: (camera: PerspectiveCamera) => number | null;
+  /** Samples measured opening rows into world space without moving the mountain. */
+  sampleRainEmission: (seed: number, position: Vector3, outward: Vector3) => boolean;
   /** Objects the water should not mirror. */
   reflectionExclusions: () => readonly Object3D[];
   destroy: () => void;
@@ -332,6 +334,7 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
   let plume: RiftVapour | null = null;
   /** Points inside the opening, in the mountain's units: the dust's way in and out. */
   const crackPoints: Vector3[] = [];
+  let emissionRows: readonly [number, number, number][] = [];
 
   // ---------------------------------------------------------------- loading
   const load = async () => {
@@ -374,6 +377,7 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
     // The opening, as measured: left edges up, right edges down, a little
     // wider so the rock overlaps it everywhere, and on below the waterline.
     const rows = outline.rows;
+    emissionRows = rows;
     // Where the bio's dust comes from and returns to: inside the opening,
     // across its width, from low down to two-thirds of the way up.
     for (let k = 0; k < 24; k += 1) {
@@ -741,6 +745,18 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
         .copy(flight.target)
         .lerp(centre, smootherstep(t / 0.35))
         .lerp(beyond, smootherstep((t - 0.3) / 0.6));
+      return true;
+    },
+
+    sampleRainEmission: (seed, position, outward) => {
+      if (!loaded || emissionRows.length === 0) return false;
+      const row =
+        emissionRows[
+          Math.min(emissionRows.length - 1, Math.floor(emissionRows.length * (0.18 + seed * 0.75)))
+        ]!;
+      const across = 0.15 + ((seed * 173.31) % 1) * 0.7;
+      model.localToWorld(position.set(row[1] + (row[2] - row[1]) * across, row[0], 0.008));
+      outward.copy(facing);
       return true;
     },
 
