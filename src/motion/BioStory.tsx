@@ -15,8 +15,6 @@ const TURNS = [0.32, 0.67] as const;
 const READING = { from: 0.04, span: 0.62 } as const;
 /** Slack, as a share of the viewport, in deciding that the sticky stage is pinned. */
 const PINNED = 0.02;
-/** Seconds the incoming title waits for the outgoing one, so the streams never cross. */
-const HANDOFF_DELAY = 0.7;
 
 type Passage = {
   element: HTMLElement;
@@ -29,10 +27,10 @@ type Passage = {
 /**
  * One owner for the bio's motion. Native scroll chooses the passage and moves
  * the reading light; time plays each hand-off, so a quick flick never leaves
- * lines half-way.
+ * lines half-way. The outgoing title disappears before the next arrival starts.
  *
  * Leaving, the quiet text goes first (aside, then body) and the title
- * crumbles back into the rift last. Arriving, the title streams out of the
+ * crumbles into the water last. Arriving, the title streams out of the
  * rift and the copy rises after it. Scrolling back up rewinds: lines leave
  * downwards and arrive from above, and the dust takes the rift's other lane.
  */
@@ -144,7 +142,7 @@ export function BioStory() {
           });
         };
 
-        const leave = (passage: Passage, direction: 1 | -1) => {
+        const leave = (passage: Passage, direction: 1 | -1, onGone: () => void) => {
           delete passage.element.dataset.keep;
           handoff.cancel(passage);
           const [body, aside] = passage.splits;
@@ -154,7 +152,10 @@ export function BioStory() {
           gsap.to(aside?.lines ?? [], { ...out, stagger: 0.03 });
           gsap.to(body?.lines ?? [], { ...out, stagger: 0.03, delay: 0.05 });
           const hide = () => {
-            if (passage.element.dataset.keep === undefined) delete passage.element.dataset.on;
+            if (passage.element.dataset.keep === undefined) {
+              delete passage.element.dataset.on;
+              onGone();
+            }
           };
           const flew = handoff.crumble(passage, passage.words, {
             start: clock() + 0.1,
@@ -204,13 +205,23 @@ export function BioStory() {
         };
 
         let active = -1;
+        let displayed: Passage | undefined;
+        let leaving = false;
+        let latestDirection: 1 | -1 = 1;
         const show = (next: number, direction: 1 | -1) => {
           if (next === active) return;
-          const previous = passages[active];
           active = next;
-          if (previous) leave(previous, direction);
-          const incoming = passages[next];
-          if (incoming) arrive(incoming, direction, previous ? HANDOFF_DELAY : 0.05);
+          latestDirection = direction;
+          if (leaving) return;
+          const enterLatest = () => {
+            leaving = false;
+            displayed = passages[active];
+            if (displayed) arrive(displayed, latestDirection, 0.05);
+          };
+          if (displayed) {
+            leaving = true;
+            leave(displayed, direction, enterLatest);
+          } else enterLatest();
         };
 
         const sync = (direction: 1 | -1) => {

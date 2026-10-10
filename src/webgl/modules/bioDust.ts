@@ -98,6 +98,8 @@ void main() {
 `;
 
 export type BioDust = Readonly<{
+  mesh: Mesh;
+  count: () => number;
   /** Places the page's grains at `focus` (metres from the viewer) along their lines of sight. */
   update: (
     camera: PerspectiveCamera,
@@ -150,9 +152,12 @@ export function createBioDust(scene: Scene): BioDust {
   let visible = true;
 
   return {
+    mesh,
+    count: () => geometry.instanceCount,
     update: (camera, frame, focus, width, height) => {
       if (!visible || !frame || focus === null || frame.count === 0) {
         geometry.instanceCount = 0;
+        mesh.visible = false;
         return;
       }
       camera.updateMatrixWorld();
@@ -197,6 +202,7 @@ export function createBioDust(scene: Scene): BioDust {
       velocities.needsUpdate = true;
       looks.needsUpdate = true;
       geometry.instanceCount = count;
+      mesh.visible = count > 0;
       (material.uniforms.uViewport!.value as Vector2).set(width, height);
       material.uniforms.uExposure!.value = frame.exposure;
     },

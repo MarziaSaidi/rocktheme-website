@@ -1,0 +1,186 @@
+
+section and scene registry
+  [pass] section identities are unique
+  [pass] hero has a scene configuration
+  [pass] hero configuration identifies its own section — received hero
+  [pass] hero has at most four horizon sources — 2 configured
+  [pass] hero mist is built from overlapping sheets — 3 layers
+  [pass] hero mist sheets differ in depth, drift and noise
+  [pass] hero no mist sheet is opaque enough to read as a wall
+  [pass] hero horizon sources are wider than they are tall
+  [pass] hero rock lights stay local rather than global
+  [pass] hero fog colour matches the DOM background — 0x100b18
+  [pass] hero horizon sources sit at distinct depths
+  [pass] selected-work has a scene configuration
+  [pass] selected-work configuration identifies its own section — received selected-work
+  [pass] selected-work has at most four horizon sources — 3 configured
+  [pass] selected-work mist is built from overlapping sheets — 3 layers
+  [pass] selected-work mist sheets differ in depth, drift and noise
+  [pass] selected-work no mist sheet is opaque enough to read as a wall
+  [pass] selected-work horizon sources are wider than they are tall
+  [pass] selected-work rock lights stay local rather than global
+  [pass] selected-work fog colour matches the DOM background — 0x100b18
+  [pass] selected-work horizon sources sit at distinct depths
+  [pass] about has a scene configuration
+  [pass] about configuration identifies its own section — received about
+  [pass] about has at most four horizon sources — 3 configured
+  [pass] about mist is built from overlapping sheets — 3 layers
+  [pass] about mist sheets differ in depth, drift and noise
+  [pass] about no mist sheet is opaque enough to read as a wall
+  [pass] about horizon sources are wider than they are tall
+  [pass] about rock lights stay local rather than global
+  [pass] about fog colour matches the DOM background — 0x100b18
+  [pass] about horizon sources sit at distinct depths
+  [pass] footer has a scene configuration
+  [pass] footer configuration identifies its own section — received footer
+  [pass] footer has at most four horizon sources — 3 configured
+  [pass] footer mist is built from overlapping sheets — 3 layers
+  [pass] footer mist sheets differ in depth, drift and noise
+  [pass] footer no mist sheet is opaque enough to read as a wall
+  [pass] footer horizon sources are wider than they are tall
+  [pass] footer rock lights stay local rather than global
+  [pass] footer fog colour matches the DOM background — 0x100b18
+  [pass] footer horizon sources sit at distinct depths
+
+rock assets and instances
+  [pass] rock asset ids are unique
+  [pass] rock instance ids are unique
+  [pass] intro-rock registry key matches its id
+  [pass] intro-rock GLB exists — /assets/rocks/intro-rock.glb
+  [pass] intro-rock GLB stays below 12 MiB
+  [pass] footer-rock registry key matches its id
+  [pass] footer-rock GLB exists — /assets/rocks/footer-rock.glb
+  [pass] footer-rock GLB stays below 12 MiB
+  [pass] footer-dominant-right registry key matches its id
+  [pass] footer-dominant-right references a known asset — footer-rock
+  [pass] footer-dominant-right references a known section — footer
+  [pass] footer-dominant-right asset allows footer
+  [pass] footer-dominant-right.desktop position is finite
+  [pass] footer-dominant-right.desktop rotation is finite
+  [pass] footer-dominant-right.desktop scale is positive — 8, 5.2, 8
+  [pass] footer-dominant-right.tablet position is finite
+  [pass] footer-dominant-right.tablet rotation is finite
+  [pass] footer-dominant-right.tablet scale is positive — 8, 5.2, 8
+  [pass] footer-dominant-right.mobile position is finite
+  [pass] footer-dominant-right.mobile rotation is finite
+  [pass] footer-dominant-right.mobile scale is positive — 5.5, 3.85, 5.5
+  [pass] footer references known rock instance footer-dominant-right
+  [pass] footer owns rock instance footer-dominant-right
+
+pointer influence zones
+  [pass] beyond the awareness radius there is no force
+  [pass] inside ~142px particles react — force 6.9
+  [pass] inside ~72px the force grows into an orbit — force 58.7
+  [pass] inside ~28px particles divide around the pointer — force 293.2
+  [pass] the split is mostly tangential
+
+particle composition
+  [pass] spawning is identical across reloads
+  [pass] reduced-motion particles remain still
+  [pass] reduced-motion composition is sparse
+  [pass] mobile density is further reduced
+
+reflective floor pointer gating
+  [pass] the upper viewport never touches the water
+  [pass] just above the 34% band is still ignored
+  [pass] inside the lower band a ripple forms
+  [pass] a second ripple is throttled by the interval
+  [pass] ripple count is capped — 3 alive, cap 3
+  [pass] ripples decay away
+  [pass] reduced motion never ripples
+  [pass] reduced-motion water time stays fixed
+
+horizon light/reflection alignment
+  [pass] reduced-motion light intensity stays fixed
+  [pass] every configured light publishes one beacon
+  [pass] beacon world positions track their meshes
+  [pass] mobile cropping keeps every beacon in frame
+
+quality manager
+  [pass] a weak device starts low
+  [pass] a mid device starts medium
+  [pass] a strong device starts high
+  [pass] pixel ratio is capped on every tier
+  [pass] the low tier drops the reflection pass
+  [pass] particle density falls with the tier
+  [pass] particle count scales with viewport area, not just tier — 1440x900 → 3888, 390x844 → 612
+  [pass] a huge viewport stays under the ceiling
+  [FAIL] sustained slow frames downgrade the tier — now null
+  [pass] healthy frames never downgrade
+  [pass] a tab-switch stall is not mistaken for slowness
+
+selected work monolith
+  [pass] /assets/selected-work/monolith.glb exists
+  [pass] /assets/selected-work/monolith.glb stays below 12 MiB
+  [pass] /assets/selected-work/mountains.glb exists
+  [pass] /assets/selected-work/mountains.glb stays below 12 MiB
+  [pass] monolith belongs to Selected Work, which has no other rock
+  [FAIL] one stone per featured project
+  [FAIL] desktop: one camera station per stone
+  [FAIL] tablet: one camera station per stone
+  [FAIL] mobile: one camera station per stone
+
+selected work journey
+  [pass] the stage runs approach + two holds + one travel
+  [pass] the far view shows no details
+  [pass] no details during the approach
+  [pass] details once settled at the first stone
+  [pass] details once settled at the second stone
+  [pass] details only ever show while the camera holds still
+  [pass] the card only changes project while it is hidden
+  [pass] details wait for the camera to settle — 1.78, 6.03
+  [pass] the card is gone well before the camera moves on
+  [pass] the camera travels to the second stone
+  [pass] the stage ends settled at the last stone
+
+camera journey
+  [pass] desktop: the journey starts at the hero composition
+  [pass] desktop: the arrival passes keyframe 1
+  [pass] desktop: the arrival passes keyframe 2
+  [pass] desktop: the arrival passes keyframe 3
+  [pass] desktop: the arrival passes keyframe 4
+  [pass] desktop: the arrival passes keyframe 5
+  [pass] desktop: the arrival passes keyframe 6
+  [pass] desktop: the arrival passes keyframe 7
+  [pass] desktop: the arrival ends settled at the first stone
+  [pass] desktop: the camera does not stop during the arrival — 0
+  [pass] desktop: the camera settles at stone 1 while its details show
+  [pass] desktop: the camera settles at stone 2 while its details show
+  [pass] desktop: the stage ends settled at the last stone
+  [pass] desktop: How I Work rests at its composition
+  [pass] desktop: Contact rests at its composition
+  [pass] desktop: no jump between scroll pixels — 0.050
+  [pass] desktop: no sudden turn between scroll pixels — 0.13°
+  [pass] desktop: the bio's shots turn steadily, never a whip — 0.131° a pixel
+  [pass] desktop: the camera holds at the bio while the sentence goes
+  [pass] desktop: the camera keeps clear of both stones — Infinity
+  [pass] desktop: the camera keeps clear of every rock — 3.03
+  [pass] desktop: scrolling back returns the same pose
+  [pass] desktop: reduced motion near the top cuts to the hero
+  [pass] desktop: reduced motion on the way in cuts to the first stone
+  [pass] desktop: reduced motion inside the stage cuts to a settled project
+  [pass] mobile: the journey starts at the hero composition
+  [pass] mobile: the arrival passes keyframe 1
+  [pass] mobile: the arrival passes keyframe 2
+  [pass] mobile: the arrival passes keyframe 3
+  [pass] mobile: the arrival passes keyframe 4
+  [pass] mobile: the arrival passes keyframe 5
+  [pass] mobile: the arrival ends settled at the first stone
+  [pass] mobile: the camera does not stop during the arrival — 0
+  [pass] mobile: the camera settles at stone 1 while its details show
+  [pass] mobile: the camera settles at stone 2 while its details show
+  [pass] mobile: the stage ends settled at the last stone
+  [pass] mobile: How I Work rests at its composition
+  [pass] mobile: Contact rests at its composition
+  [pass] mobile: no jump between scroll pixels — 0.043
+  [pass] mobile: no sudden turn between scroll pixels — 0.15°
+  [pass] mobile: the bio's shots turn steadily, never a whip — 0.152° a pixel
+  [pass] mobile: the camera holds at the bio while the sentence goes
+  [pass] mobile: the camera keeps clear of both stones — Infinity
+  [pass] mobile: the camera keeps clear of every rock — 5.69
+  [pass] mobile: scrolling back returns the same pose
+  [pass] mobile: reduced motion near the top cuts to the hero
+  [pass] mobile: reduced motion on the way in cuts to the first stone
+  [pass] mobile: reduced motion inside the stage cuts to a settled project
+
+5 scene check(s) failed.

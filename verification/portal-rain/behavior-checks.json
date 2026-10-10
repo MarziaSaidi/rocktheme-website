@@ -1,0 +1,698 @@
+{
+  "environment": {
+    "browser": "155.0.8059.39",
+    "platform": "darwin",
+    "arch": "arm64",
+    "mode": "headless Chrome; mobile viewport emulation, not physical phone; no video recording"
+  },
+  "runs": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "baseline": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 1,
+        "alive": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "frameCpuMs": {
+          "mean": 3.71627906885654,
+          "p50": 3.5,
+          "p95": 4.100000023841858,
+          "max": 10.900000035762787
+        },
+        "observedIntervalMs": {
+          "mean": 16.633222591243314,
+          "p50": 16.69999999999709,
+          "p95": 16.700000000000728,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 110,
+          "p50": 110,
+          "p95": 110,
+          "max": 110
+        },
+        "activeImpacts": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "updateMs": {
+          "mean": 0.0029900329453604563,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.10000002384185791
+        },
+        "emissionPerSecond": {
+          "mean": 2.9359879662815223e-7,
+          "p50": 4.2608492904730944e-8,
+          "p95": 0.000001559395612619134,
+          "max": 0.0000023259727028921677
+        }
+      },
+      "peak": {
+        "samples": 421,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 1,
+        "alive": {
+          "mean": 1757.7102137767222,
+          "p50": 1764,
+          "p95": 1795,
+          "max": 1805
+        },
+        "frameCpuMs": {
+          "mean": 4.0733966746692705,
+          "p50": 4,
+          "p95": 4.800000011920929,
+          "max": 6.600000023841858
+        },
+        "observedIntervalMs": {
+          "mean": 16.651543942936247,
+          "p50": 16.69999999999709,
+          "p95": 16.700000000004366,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 111,
+          "p50": 111,
+          "p95": 111,
+          "max": 111
+        },
+        "activeImpacts": {
+          "mean": 14.48456057007126,
+          "p50": 14,
+          "p95": 15,
+          "max": 16
+        },
+        "updateMs": {
+          "mean": 0.16745843357824655,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "max": 0.5
+        },
+        "emissionPerSecond": {
+          "mean": 631.2957199213132,
+          "p50": 631.5328250783879,
+          "p95": 631.5775048271237,
+          "max": 631.5779657902776
+        }
+      },
+      "rest": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 1,
+        "alive": {
+          "mean": 502.86378737541526,
+          "p50": 501,
+          "p95": 518,
+          "max": 524
+        },
+        "frameCpuMs": {
+          "mean": 3.8093023262546706,
+          "p50": 3.699999988079071,
+          "p95": 4.699999988079071,
+          "max": 6.400000035762787
+        },
+        "observedIntervalMs": {
+          "mean": 16.64418604643242,
+          "p50": 16.69999999999709,
+          "p95": 16.799999999995634,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 111,
+          "p50": 111,
+          "p95": 111,
+          "max": 111
+        },
+        "activeImpacts": {
+          "mean": 11.345514950166113,
+          "p50": 11,
+          "p95": 13,
+          "max": 14
+        },
+        "updateMs": {
+          "mean": 0.0647840521660358,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "max": 0.20000004768371582
+        },
+        "emissionPerSecond": {
+          "mean": 176.86594470997488,
+          "p50": 176.84556513826308,
+          "p95": 176.96871032497035,
+          "max": 177.03097782121606
+        }
+      },
+      "reverse": {
+        "alive": 803,
+        "budget": 2400,
+        "emissionPerSecond": 250.27488115577344,
+        "totalBirths": 10000,
+        "totalImpacts": 166,
+        "updateMs": 0.19999998807907104,
+        "tier": "high",
+        "frameCpuMs": 3.399999976158142,
+        "frameIntervalMs": 16.69999999999709,
+        "drawCalls": 111,
+        "activeImpacts": 11,
+        "reflectionSize": 512,
+        "width": 1440,
+        "height": 900,
+        "pixelRatio": 1,
+        "scroll": 10642,
+        "stops": {
+          "workStart": 2070,
+          "workEnd": 8550,
+          "about": 10537.671875,
+          "aboutLeave": 12877.671875,
+          "contact": 14398
+        },
+        "camera": [
+          -11.999999999999998,
+          1.55,
+          14
+        ],
+        "reducedMotion": false
+      },
+      "exit": {
+        "alive": 0,
+        "budget": 2400,
+        "emissionPerSecond": 0.000005690911316666524,
+        "totalBirths": 10154,
+        "totalImpacts": 200,
+        "updateMs": 0,
+        "tier": "high",
+        "frameCpuMs": 3,
+        "frameIntervalMs": 16.69999999999709,
+        "drawCalls": 31,
+        "activeImpacts": 0,
+        "reflectionSize": 512,
+        "width": 1440,
+        "height": 900,
+        "pixelRatio": 1,
+        "scroll": 14078,
+        "stops": {
+          "workStart": 2070,
+          "workEnd": 8550,
+          "about": 10537.671875,
+          "aboutLeave": 12877.671875,
+          "contact": 14398
+        },
+        "camera": [
+          -11.221992951110002,
+          2.036254405556244,
+          35.47619038485431
+        ],
+        "reducedMotion": false
+      },
+      "reentry": {
+        "alive": 470,
+        "budget": 2400,
+        "emissionPerSecond": 175.9099246938953,
+        "totalBirths": 10720,
+        "totalImpacts": 205,
+        "updateMs": 0,
+        "tier": "high",
+        "frameCpuMs": 3.5,
+        "frameIntervalMs": 16.599999999998545,
+        "drawCalls": 111,
+        "activeImpacts": 5,
+        "reflectionSize": 512,
+        "width": 1440,
+        "height": 900,
+        "pixelRatio": 1,
+        "scroll": 11942,
+        "stops": {
+          "workStart": 2070,
+          "workEnd": 8550,
+          "about": 10537.671875,
+          "aboutLeave": 12877.671875,
+          "contact": 14398
+        },
+        "camera": [
+          -11.999999999999998,
+          1.55,
+          14
+        ],
+        "reducedMotion": false
+      },
+      "low": {
+        "samples": 241,
+        "tier": "high",
+        "budget": 450,
+        "reflectionSize": 512,
+        "pixelRatio": 1,
+        "alive": {
+          "mean": 197.04149377593362,
+          "p50": 198,
+          "p95": 304,
+          "max": 310
+        },
+        "frameCpuMs": {
+          "mean": 3.626556015855544,
+          "p50": 3.599999964237213,
+          "p95": 4.099999964237213,
+          "max": 4.600000023841858
+        },
+        "observedIntervalMs": {
+          "mean": 16.598340248814285,
+          "p50": 16.69999999999709,
+          "p95": 16.70000000001164,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 111,
+          "p50": 111,
+          "p95": 111,
+          "max": 111
+        },
+        "activeImpacts": {
+          "mean": 3.095435684647303,
+          "p50": 3,
+          "p95": 4,
+          "max": 4
+        },
+        "updateMs": {
+          "mean": 0.0307053940919425,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "max": 0.19999998807907104
+        },
+        "emissionPerSecond": {
+          "mean": 99.18024178674028,
+          "p50": 108.97259476118329,
+          "p95": 117.11636775220566,
+          "max": 117.37401849046448
+        }
+      },
+      "resized": {
+        "alive": 273,
+        "budget": 450,
+        "emissionPerSecond": 23.719446353594662,
+        "totalBirths": 11554,
+        "totalImpacts": 229,
+        "updateMs": 0.19999998807907104,
+        "tier": "high",
+        "frameCpuMs": 3.599999964237213,
+        "frameIntervalMs": 16.69999999999709,
+        "drawCalls": 111,
+        "activeImpacts": 4,
+        "reflectionSize": 512,
+        "width": 1280,
+        "height": 800,
+        "pixelRatio": 1,
+        "scroll": 12105,
+        "stops": {
+          "workStart": 1840,
+          "workEnd": 7600,
+          "about": 9372.953125,
+          "aboutLeave": 11452.953125,
+          "contact": 12833
+        },
+        "camera": [
+          -9.622638677197882,
+          3.035850826751323,
+          24.96330555600776
+        ],
+        "reducedMotion": false
+      },
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "dpr": 2,
+      "baseline": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 2,
+        "alive": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "frameCpuMs": {
+          "mean": 1.1767441856108631,
+          "p50": 1.100000023841858,
+          "p95": 1.5999999642372131,
+          "max": 2.800000011920929
+        },
+        "observedIntervalMs": {
+          "mean": 16.657475083096077,
+          "p50": 16.69999999999709,
+          "p95": 16.700000000000728,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 63,
+          "p50": 63,
+          "p95": 63,
+          "max": 63
+        },
+        "activeImpacts": {
+          "mean": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "updateMs": {
+          "mean": 0.003654485327064793,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.10000002384185791
+        },
+        "emissionPerSecond": {
+          "mean": 1.8583623102221573e-7,
+          "p50": 2.6973880792613346e-8,
+          "p95": 9.870384743132267e-7,
+          "max": 0.0000014722527942097194
+        }
+      },
+      "peak": {
+        "samples": 421,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 2,
+        "alive": {
+          "mean": 1089.8479809976247,
+          "p50": 1090,
+          "p95": 1104,
+          "max": 1114
+        },
+        "frameCpuMs": {
+          "mean": 2.21448931246642,
+          "p50": 2.100000023841858,
+          "p95": 3.5,
+          "max": 4.400000035762787
+        },
+        "observedIntervalMs": {
+          "mean": 16.652256532038194,
+          "p50": 16.69999999999709,
+          "p95": 16.799999999995634,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 64,
+          "p50": 64,
+          "p95": 64,
+          "max": 64
+        },
+        "activeImpacts": {
+          "mean": 13.536817102137768,
+          "p50": 14,
+          "p95": 15,
+          "max": 15
+        },
+        "updateMs": {
+          "mean": 0.19168646247822996,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "max": 0.5
+        },
+        "emissionPerSecond": {
+          "mean": 410.32354037153937,
+          "p50": 410.493298028226,
+          "p95": 410.5252829976579,
+          "max": 410.52561302562555
+        }
+      },
+      "rest": {
+        "samples": 301,
+        "tier": "high",
+        "budget": 2400,
+        "reflectionSize": 512,
+        "pixelRatio": 2,
+        "alive": {
+          "mean": 306.5614617940199,
+          "p50": 307,
+          "p95": 313,
+          "max": 316
+        },
+        "frameCpuMs": {
+          "mean": 2.4681063090447966,
+          "p50": 2.399999976158142,
+          "p95": 3.799999952316284,
+          "max": 6.299999952316284
+        },
+        "observedIntervalMs": {
+          "mean": 16.6156146180194,
+          "p50": 16.69999999999709,
+          "p95": 16.799999999995634,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 64,
+          "p50": 64,
+          "p95": 64,
+          "max": 64
+        },
+        "activeImpacts": {
+          "mean": 9.926910299003323,
+          "p50": 9,
+          "p95": 13,
+          "max": 13
+        },
+        "updateMs": {
+          "mean": 0.07740863830940271,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "max": 0.20000004768371582
+        },
+        "emissionPerSecond": {
+          "mean": 114.96328409314695,
+          "p50": 114.94967824052783,
+          "p95": 115.03190373572677,
+          "max": 115.0734601150213
+        }
+      },
+      "reverse": {
+        "alive": 523,
+        "budget": 2400,
+        "emissionPerSecond": 164.02198345915278,
+        "totalBirths": 6453,
+        "totalImpacts": 146,
+        "updateMs": 0.09999996423721313,
+        "tier": "high",
+        "frameCpuMs": 1.600000023841858,
+        "frameIntervalMs": 16.700000000004366,
+        "drawCalls": 64,
+        "activeImpacts": 10,
+        "reflectionSize": 512,
+        "width": 390,
+        "height": 844,
+        "pixelRatio": 2,
+        "scroll": 6906,
+        "stops": {
+          "workStart": 844,
+          "workEnd": 5317,
+          "about": 6801.78125,
+          "aboutLeave": 8995.78125,
+          "contact": 10172
+        },
+        "camera": [
+          -11.999999999999998,
+          1.5500000000000003,
+          14
+        ],
+        "reducedMotion": false
+      },
+      "exit": {
+        "alive": 0,
+        "budget": 2400,
+        "emissionPerSecond": 0.000003729637419221485,
+        "totalBirths": 6554,
+        "totalImpacts": 171,
+        "updateMs": 0,
+        "tier": "high",
+        "frameCpuMs": 0.8999999761581421,
+        "frameIntervalMs": 16.60000000000582,
+        "drawCalls": 26,
+        "activeImpacts": 0,
+        "reflectionSize": 512,
+        "width": 390,
+        "height": 844,
+        "pixelRatio": 2,
+        "scroll": 10172,
+        "stops": {
+          "workStart": 844,
+          "workEnd": 5317,
+          "about": 6801.78125,
+          "aboutLeave": 8995.78125,
+          "contact": 10172
+        },
+        "camera": [
+          -11.999999999999998,
+          1.5500000000000003,
+          37.999999999999986
+        ],
+        "reducedMotion": false
+      },
+      "reentry": {
+        "alive": 292,
+        "budget": 2400,
+        "emissionPerSecond": 114.34145105168196,
+        "totalBirths": 6922,
+        "totalImpacts": 177,
+        "updateMs": 0,
+        "tier": "high",
+        "frameCpuMs": 1.0999999642372131,
+        "frameIntervalMs": 16.69999999999709,
+        "drawCalls": 64,
+        "activeImpacts": 6,
+        "reflectionSize": 512,
+        "width": 390,
+        "height": 844,
+        "pixelRatio": 2,
+        "scroll": 8118,
+        "stops": {
+          "workStart": 844,
+          "workEnd": 5317,
+          "about": 6801.78125,
+          "aboutLeave": 8995.78125,
+          "contact": 10172
+        },
+        "camera": [
+          -11.999999999999998,
+          1.5500000000000003,
+          14
+        ],
+        "reducedMotion": false
+      },
+      "low": {
+        "samples": 241,
+        "tier": "high",
+        "budget": 450,
+        "reflectionSize": 512,
+        "pixelRatio": 2,
+        "alive": {
+          "mean": 126.4356846473029,
+          "p50": 122,
+          "p95": 196,
+          "max": 199
+        },
+        "frameCpuMs": {
+          "mean": 1.2937759329174565,
+          "p50": 1.2000000476837158,
+          "p95": 1.699999988079071,
+          "max": 3.199999988079071
+        },
+        "observedIntervalMs": {
+          "mean": 16.65145228225658,
+          "p50": 16.69999999999709,
+          "p95": 16.70000000001164,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "mean": 64,
+          "p50": 64,
+          "p95": 64,
+          "max": 64
+        },
+        "activeImpacts": {
+          "mean": 3.4149377593360994,
+          "p50": 4,
+          "p95": 4,
+          "max": 4
+        },
+        "updateMs": {
+          "mean": 0.020746887719482802,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "max": 0.10000002384185791
+        },
+        "emissionPerSecond": {
+          "mean": 64.46639324890108,
+          "p50": 70.83218644754618,
+          "p95": 76.12563901860447,
+          "max": 76.29303713542683
+        }
+      },
+      "resized": {
+        "alive": 177,
+        "budget": 450,
+        "emissionPerSecond": 28.776204466943646,
+        "totalBirths": 7490,
+        "totalImpacts": 204,
+        "updateMs": 0,
+        "tier": "high",
+        "frameCpuMs": 1.899999976158142,
+        "frameIntervalMs": 16.60000000000582,
+        "drawCalls": 64,
+        "activeImpacts": 3,
+        "reflectionSize": 512,
+        "width": 430,
+        "height": 932,
+        "pixelRatio": 2,
+        "scroll": 8273,
+        "stops": {
+          "workStart": 932,
+          "workEnd": 5872,
+          "about": 7504.140625,
+          "aboutLeave": 9927.140625,
+          "contact": 11164
+        },
+        "camera": [
+          -11.999999999999998,
+          1.5500000000000003,
+          14
+        ],
+        "reducedMotion": false
+      },
+      "errors": []
+    }
+  ],
+  "reducedMotion": {
+    "stats": {
+      "alive": 0,
+      "budget": 2400,
+      "emissionPerSecond": 0,
+      "totalBirths": 0,
+      "totalImpacts": 0,
+      "updateMs": 0,
+      "tier": "high",
+      "frameCpuMs": 0,
+      "frameIntervalMs": 0,
+      "drawCalls": 27,
+      "activeImpacts": 0,
+      "reflectionSize": 512,
+      "width": 390,
+      "height": 844,
+      "pixelRatio": 1,
+      "scroll": 6802,
+      "stops": {
+        "workStart": 844,
+        "workEnd": 5317,
+        "about": 6801.78125,
+        "aboutLeave": 8109.78125,
+        "contact": 9286
+      },
+      "camera": [
+        -11.999999999999998,
+        1.5500000000000003,
+        14
+      ],
+      "reducedMotion": true
+    },
+    "text": "I’m Marzia.\nI make ideas real.\n\nI’m a design engineer working between an idea and a real product.\n\nI’m most useful when things are still a little unclear.\n\nFrom the first question to the final detail.\n\nI figure out what a product should do, design how it should feel, and get close enough to the code to make sure the idea survives implementation.\n\nI care about the small interaction details, and whether the thing actually works.\n\nCuriosity usually becomes a prototype.\n\nLately, I’m exploring what changes when AI becomes part of the product itself, and how people and AI make decisions together.\n\nMostly, I like making things. If an idea stays with me, I build it."
+  }
+}

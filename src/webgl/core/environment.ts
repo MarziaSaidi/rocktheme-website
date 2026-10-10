@@ -30,8 +30,9 @@ import {
 import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflectiveFloor";
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
 import { createRift, type Rift } from "../modules/rift";
-import { createBioDust, type BioDust } from "../modules/bioDust";
-import { readBioDust } from "../bioDustChannel";
+import { createPortalRain } from "../modules/portalRain";
+import { createBioDust } from "../modules/bioDust";
+import { consumeBioRain, readBioDust } from "../bioDustChannel";
 import {
   announceRiftMoment,
   publishRiftAnchor,
@@ -363,8 +364,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   // The split mountain beside the bio: the way into /my-world.
   const rift: Rift = createRift(worldScene, options.reducedMotion);
   rift.setViewport(width, height, cappedRatio());
-  // The bio's dust, in the same air as the rift it comes out of.
-  const bioDust: BioDust = createBioDust(worldScene);
+  const bioDust = createBioDust(worldScene);
+  // Falling light belongs to the world independently of the mountain lifecycle.
+  const portalRain = createPortalRain(worldScene, options.reducedMotion, floor.requestLightImpact);
+  portalRain.setQuality(settings.tier);
+  floor.setImpactBudget(settings.tier === "high" ? 16 : settings.tier === "medium" ? 8 : 4);
 
   const monolith: Monolith = createMonolith(
     worldScene,
@@ -761,6 +765,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   const applySettings = (next: QualitySettings) => {
     settings = next;
+    portalRain.setQuality(next.tier);
+    floor.setImpactBudget(next.tier === "high" ? 16 : next.tier === "medium" ? 8 : 4);
     renderer.setPixelRatio(cappedRatio());
     renderer.setSize(width, height, false);
     rift.setViewport(width, height, cappedRatio());
@@ -771,6 +777,19 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     options.onQualityChange?.(next);
   };
 
+  let rainEnabled = true;
+  const releaseBioBirths = (data: Float32Array, count: number) => {
+    if (!rainEnabled || options.reducedMotion) return;
+    const depth = rift.openingDepth(view);
+    if (depth === null) return;
+    for (let i = 0; i < count; i++) {
+      const j = i * 3;
+      portalRain.releaseFromBio(data[j]!, data[j + 1]!, data[j + 2]!, view, depth, width, height);
+    }
+  };
+  let frameCpuMs = 0;
+  let frameIntervalMs = 0;
+  let totalDrawCalls = 0;
   let debugCamera: PerspectiveCamera | undefined;
   let debugPaused = false;
   let debugSceneTime: number | undefined;
@@ -835,13 +854,29 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     });
     // It can only be crossed while the camera is at rest at the bio.
     publishRiftRect(riftAtRest ? rift.screenRect(view) : null);
-    // The bio's dust streams out of the other world through the rift, and back.
+    // Restore the approved mountain → words path. Leaving words then fall to water.
     publishRiftAnchor(rift.screenAnchor(view));
-    // The page moves the dust; it is drawn here, at the opening's depth, where
-    // the stone hides it going in and the water mirrors it. It stays behind on a crossing.
-    view.updateMatrixWorld();
     bioDust.setVisible(rift.departure() < 0.3);
     bioDust.update(view, readBioDust(), rift.openingDepth(view), width, height);
+    consumeBioRain(releaseBioBirths);
+    portalRain.setPointer(
+      riftAtRest && viewport === "desktop" && pointer?.active && pointer.inside
+        ? { x: pointer.x, y: pointer.y }
+        : null,
+      view,
+      width,
+      height,
+    );
+    portalRain.update(
+      deltaSeconds,
+      0,
+      false,
+      viewport !== "desktop",
+      rift.sampleRainEmission,
+      view,
+      width,
+      height,
+    );
 
     heroLandscape.update(deltaSeconds, {
       pointer: pointer?.active && pointer.inside ? { x: normalisedX, y: -normalisedY } : null,
@@ -871,7 +906,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     // The floor must not sample itself, and the reflection is only for the
     // objects standing on the floor.
+    renderer.info.reset();
+    renderer.info.autoReset = false;
     floor.renderReflection(renderer, worldScene, view, [
+      bioDust.mesh,
+      portalRain.mesh,
       floor.mesh,
       floorBeyond,
       lights.group,
@@ -889,6 +928,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     // Once the camera is on its way through, the drifting particles stay behind.
     if (rift.departure() < 0.3) renderer.render(particles.scene, particles.camera);
     drawFrontLayer();
+    totalDrawCalls = renderer.info.render.calls;
   };
 
   const loop = (time: number) => {
@@ -902,7 +942,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
     const frameStart = performance.now();
     renderOnce(deltaSeconds);
-    const changed = quality.sample(performance.now() - frameStart);
+    frameCpuMs = performance.now() - frameStart;
+    frameIntervalMs = deltaSeconds * 1000;
+    totalDrawCalls = renderer.info.render.calls;
+    const changed = quality.sample(frameCpuMs);
 
     if (changed) {
       applySettings(changed);
@@ -1026,6 +1069,53 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
         fov: view.fov,
         sceneTime: debugSceneTime ?? elapsed,
       }),
+    };
+  }
+
+  const rainDebugHost = window as typeof window & { __portalRainDebug?: unknown };
+  if (
+    process.env.NODE_ENV !== "production" &&
+    new URLSearchParams(location.search).has("rainDebug")
+  ) {
+    rainDebugHost.__portalRainDebug = {
+      stats: () => ({
+        ...portalRain.stats(),
+        mountainGrains: bioDust.count(),
+        tier: settings.tier,
+        frameCpuMs,
+        frameIntervalMs,
+        drawCalls: totalDrawCalls,
+        activeImpacts: floor.activeLightImpacts(),
+        reflectionSize: settings.reflectionSize,
+        width,
+        height,
+        pixelRatio: renderer.getPixelRatio(),
+        scroll: targetScroll,
+        stops,
+        camera: view.position.toArray(),
+        reducedMotion: options.reducedMotion,
+      }),
+      setRainEnabled: (enabled: boolean) => {
+        rainEnabled = enabled;
+      },
+      setRainTier: (tier: "high" | "medium" | "low") => {
+        portalRain.setQuality(tier);
+        floor.setImpactBudget(tier === "high" ? 16 : tier === "medium" ? 8 : 4);
+      },
+      closeWater: () => {
+        const point = new Vector3();
+        const outward = new Vector3();
+        if (!rift.sampleRainEmission(0.3, point, outward)) return;
+        debugCamera = view.clone();
+        debugCamera.position.copy(point).setY(1.7).addScaledVector(outward, 7);
+        point.y = 0.2;
+        point.addScaledVector(outward, 2);
+        debugCamera.lookAt(point);
+        debugCamera.updateMatrixWorld();
+      },
+      releaseCamera: () => {
+        debugCamera = undefined;
+      },
     };
   }
 
@@ -1159,7 +1249,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       averageFrameMs: quality.averageFrameMs(),
       disturbedParticles: particles.disturbedCount(),
       reflectionSize: settings.reflectionSize,
-      drawCalls: renderer.info.render.calls,
+      drawCalls: totalDrawCalls,
       activeRipples: floor.activeRipples(),
     }),
 
@@ -1168,6 +1258,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       unsubscribeExperience();
       weather.destroy();
       delete debugHost.__portfolioWeatherDebug;
+      delete rainDebugHost.__portalRainDebug;
       options.canvas.removeEventListener("webglcontextlost", handleContextLost);
       options.canvas.removeEventListener("webglcontextrestored", handleContextRestored);
 
@@ -1179,6 +1270,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       aerialTerrain.destroy();
       rift.destroy();
       bioDust.destroy();
+      portalRain.destroy();
       publishRiftRect(null);
       publishRiftAnchor(null);
       monolith.destroy();

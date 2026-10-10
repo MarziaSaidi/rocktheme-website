@@ -51,33 +51,28 @@ export const siteContent = {
     previousLabel: "Previous project",
   },
   statement: {
-    /**
-     * Three passages that take turns beside the rift. `emphasis` settles in
-     * lavender as it is read. `signature` is each passage's one moment: a title
-     * word that snaps together ("snap") or is printed ("print"), or a body word
-     * that light passes through ("sweep").
-     */
+    /** Three connected thoughts; line breaks belong to the editorial composition. */
     passages: [
       {
-        title: "I’m Marzia.\nI make ideas real.",
-        body: "I’m a design engineer working between an idea and a real product.",
-        aside: "I’m most useful when things are still a little unclear.",
-        emphasis: ["design", "engineer"],
-        signature: { word: "real.", motion: "snap" },
+        moment: "thought",
+        title: "I have a habit of\nturning questions\ninto things.",
+        body: "",
+        aside: "",
       },
       {
-        title: "From the first question to the final detail.",
-        body: "I figure out what a product should do, design how it should feel, and get close enough to the code to make sure the idea survives implementation.",
-        aside: "I care about the small interaction details, and whether the thing actually works.",
-        emphasis: ["small", "interaction", "details"],
-        signature: { word: "detail.", motion: "print" },
+        moment: "possibilities",
+        title:
+          "Sometimes it's a prototype.\nSometimes it's a product.\nSometimes it's an entire world you can explore.",
+        body: "",
+        aside: "",
       },
       {
-        title: "Curiosity usually becomes a prototype.",
-        body: "Lately, I’m exploring what changes when AI becomes part of the product itself, and how people and AI make decisions together.",
-        aside: "Mostly, I like making things. If an idea stays with me, I build it.",
-        emphasis: ["AI"],
-        signature: { word: "AI", motion: "sweep" },
+        moment: "person",
+        title:
+          "I'm Marzia,\na design engineer who loves figuring out how things should feel, how they should work, and how to bring them to life.",
+        body: "I studied computer science, but I've always been drawn to the space where design meets engineering.",
+        aside:
+          "I like getting my hands into the details, from the first rough idea to the moment something actually works.",
       },
     ],
   },

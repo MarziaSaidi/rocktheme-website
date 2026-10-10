@@ -503,28 +503,12 @@ function validateSiteContent(): void {
   }
 
   siteContent.statement.passages.forEach((passage, index) => {
-    validateStringArray(
-      [passage.title, passage.body, passage.aside],
-      `site.statement.passages[${index}]`,
-    );
     const location = `site.statement.passages[${index}]`;
-    const words = (text: string) => text.split(/\s+/);
-    const bare = (text: string) => words(text).map((word) => word.replace(/[.,;:!?’']+$/u, ""));
-    const copy = [...bare(passage.body), ...bare(passage.aside)];
-    if (validateStringArray(passage.emphasis, `${location}.emphasis`)) {
-      passage.emphasis.forEach((term) => {
-        if (!copy.includes(term))
-          addError(`${location}.emphasis`, `"${term}" is not a word of the body or aside`);
-      });
+    validateRequiredString(passage.title, `${location}.title`);
+    if (passage.moment === "person") {
+      validateRequiredString(passage.body, `${location}.body`);
+      validateRequiredString(passage.aside, `${location}.aside`);
     }
-    // The title's signature is a whole word as written; the body's is a bare word.
-    const { word, motion } = passage.signature;
-    const found = motion === "sweep" ? copy.includes(word) : words(passage.title).includes(word);
-    if (!found)
-      addError(
-        `${location}.signature`,
-        `"${word}" is not a word of the ${motion === "sweep" ? "body or aside" : "title"}`,
-      );
   });
 
   validateStringArray(siteContent.contact.displayLines, "site.contact.displayLines");
