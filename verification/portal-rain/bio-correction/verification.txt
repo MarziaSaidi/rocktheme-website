@@ -1,0 +1,110 @@
+desktop initial 0
+desktop falling {
+  alive: 1705,
+  budget: 2400,
+  emissionPerSecond: 0,
+  totalBirths: 1705,
+  totalImpacts: 0,
+  updateMs: 0.10000002384185791,
+  tier: 'high',
+  frameCpuMs: 3.800000011920929,
+  frameIntervalMs: 16.600000000000364,
+  drawCalls: 111,
+  activeImpacts: 0,
+  reflectionSize: 512,
+  width: 1440,
+  height: 900,
+  pixelRatio: 1,
+  scroll: 11357,
+  stops: {
+    workStart: 2070,
+    workEnd: 8550,
+    about: 10537.671875,
+    aboutLeave: 12877.671875,
+    contact: 14398
+  },
+  camera: [ -11.999999999999998, 1.55, 14 ],
+  reducedMotion: false
+}
+desktop finished {
+  alive: 0,
+  budget: 2400,
+  emissionPerSecond: 0,
+  totalBirths: 3330,
+  totalImpacts: 22,
+  updateMs: 0,
+  tier: 'high',
+  frameCpuMs: 3.5,
+  frameIntervalMs: 16.700000000000728,
+  drawCalls: 110,
+  activeImpacts: 0,
+  reflectionSize: 512,
+  width: 1440,
+  height: 900,
+  pixelRatio: 1,
+  scroll: 12222,
+  stops: {
+    workStart: 2070,
+    workEnd: 8550,
+    about: 10537.671875,
+    aboutLeave: 12877.671875,
+    contact: 14398
+  },
+  camera: [ -11.999999999999998, 1.55, 14 ],
+  reducedMotion: false
+}
+mobile initial 0
+mobile falling {
+  alive: 858,
+  budget: 2400,
+  emissionPerSecond: 0,
+  totalBirths: 858,
+  totalImpacts: 0,
+  updateMs: 0.09999996423721313,
+  tier: 'high',
+  frameCpuMs: 1.300000011920929,
+  frameIntervalMs: 16.700000000000728,
+  drawCalls: 64,
+  activeImpacts: 0,
+  reflectionSize: 512,
+  width: 390,
+  height: 844,
+  pixelRatio: 1,
+  scroll: 7570,
+  stops: {
+    workStart: 844,
+    workEnd: 5317,
+    about: 6801.78125,
+    aboutLeave: 8995.78125,
+    contact: 10172
+  },
+  camera: [ -11.999999999999998, 1.5500000000000003, 14 ],
+  reducedMotion: false
+}
+mobile finished {
+  alive: 0,
+  budget: 2400,
+  emissionPerSecond: 0,
+  totalBirths: 1706,
+  totalImpacts: 17,
+  updateMs: 0,
+  tier: 'high',
+  frameCpuMs: 1.399999976158142,
+  frameIntervalMs: 16.700000000000728,
+  drawCalls: 63,
+  activeImpacts: 0,
+  reflectionSize: 512,
+  width: 390,
+  height: 844,
+  pixelRatio: 1,
+  scroll: 8381,
+  stops: {
+    workStart: 844,
+    workEnd: 5317,
+    about: 6801.78125,
+    aboutLeave: 8995.78125,
+    contact: 10172
+  },
+  camera: [ -11.999999999999998, 1.5500000000000003, 14 ],
+  reducedMotion: false
+}

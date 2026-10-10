@@ -1,3 +1,5 @@
+> Superseded source direction: the corrected prototype now releases the bio’s own glyph particles into water. See [bio correction](bio-correction/README.md). The recordings and performance numbers below describe the earlier portal-source version.
+
 # Phase 3 — Portal falling stars
 
 Branch: `codex/portal-star-shower`. Local prototype only; no merge, push, or deployment.

@@ -32,9 +32,9 @@ type Passage = {
  * lines half-way.
  *
  * Leaving, the quiet text goes first (aside, then body) and the title
- * crumbles back into the rift last. Arriving, the title streams out of the
- * rift and the copy rises after it. Scrolling back up rewinds: lines leave
- * downwards and arrive from above, and the dust takes the rift's other lane.
+ * releases its glyph particles into the water last. Arriving, the title
+ * reveals in place and the copy rises after it. Reverse scrolling changes
+ * the HTML entrance direction; released particles always fall downward.
  */
 export function BioStory() {
   useEffect(() => {

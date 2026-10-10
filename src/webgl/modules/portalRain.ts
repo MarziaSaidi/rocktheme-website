@@ -47,6 +47,7 @@ void main() {
 `;
 const FRAGMENT = /* glsl */ `
 precision highp float;
+uniform vec2 uFogRange;
 varying vec2 vCorner;
 varying vec4 vLook;
 varying float vStretch;
@@ -63,7 +64,7 @@ void main() {
   vec3 colour = mix(vec3(0.24, 0.64, 1.0), vec3(0.72, 0.39, 1.0), smoothstep(0.0, 0.5, vLook.y));
   colour = mix(colour, vec3(0.93, 0.40, 0.84), smoothstep(0.5, 0.88, vLook.y));
   colour = mix(colour, vec3(0.83, 0.94, 1.0), smoothstep(0.94, 1.0, vLook.y));
-  float atmosphere = 1.0 - smoothstep(19.0, 58.0, vDepth);
+  float atmosphere = 1.0 - smoothstep(uFogRange.x, uFogRange.y, vDepth);
   float alpha = shape * vLook.z * atmosphere;
   if (alpha < 0.003) discard;
   gl_FragColor = vec4(colour * alpha, alpha);
@@ -94,7 +95,11 @@ export function createPortalRain(
   const material = new ShaderMaterial({
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
-    uniforms: { uViewport: { value: new Vector2() }, uPixelScale: { value: 1 } },
+    uniforms: {
+      uViewport: { value: new Vector2() },
+      uFogRange: { value: new Vector2(19, 70) },
+      uPixelScale: { value: 1 },
+    },
     transparent: true,
     depthWrite: false,
     depthTest: true,
@@ -120,6 +125,8 @@ export function createPortalRain(
   const hitAge = new Float32Array(CAPACITY);
   const birth = new Vector3();
   const outward = new Vector3();
+  const ray = new Vector3();
+  const forward = new Vector3();
   let next = 0,
     alive = 0,
     rate = 0,
@@ -165,6 +172,45 @@ export function createPortalRain(
   };
   return {
     mesh,
+    releaseFromBio: (
+      x: number,
+      y: number,
+      seed: number,
+      camera: PerspectiveCamera,
+      depth: number,
+      width: number,
+      height: number,
+    ) => {
+      if (reducedMotion || alive >= budget) return;
+      camera.updateMatrixWorld();
+      forward.set(0, 0, -1).applyQuaternion(camera.quaternion);
+      ray
+        .set((x / width) * 2 - 1, 1 - (y / height) * 2, 0.5)
+        .unproject(camera)
+        .sub(camera.position)
+        .normalize();
+      birth.copy(camera.position).addScaledVector(ray, depth / Math.max(0.1, ray.dot(forward)));
+      if (birth.y < 0.1) return;
+      const i = freeSlot();
+      if (i < 0) return;
+      const j = i * 3;
+      p[j] = birth.x;
+      p[j + 1] = birth.y;
+      p[j + 2] = birth.z;
+      v[j] = (seed - 0.5) * 0.7;
+      v[j + 1] = -0.12 - seed * 0.3;
+      v[j + 2] = (Math.random() - 0.5) * 0.5;
+      age[i] = 0;
+      lifetime[i] = 12;
+      seeds[i] = Math.random() * 100;
+      kind[i] = Math.random();
+      colours[i] = 0.2 + Math.random() * 0.8;
+      sizes[i] = 0.035 + Math.pow(seed, 3) * 0.055;
+      brightness[i] = kind[i]! > 0.97 ? 1.15 : 0.5 + seed * 0.5;
+      state[i] = 1;
+      alive++;
+      totalBirths++;
+    },
     setQuality: (tier: QualityTier) => {
       budget = BUDGET[tier];
     },
@@ -281,6 +327,7 @@ export function createPortalRain(
       geometry.instanceCount = count;
       mesh.visible = count > 0;
       (material.uniforms.uViewport!.value as Vector2).set(width, height);
+      (material.uniforms.uFogRange!.value as Vector2).set(compact ? 32 : 19, compact ? 95 : 70);
       material.uniforms.uPixelScale!.value = height / (2 * Math.tan((camera.fov * Math.PI) / 360));
       updateMs = performance.now() - start;
     },

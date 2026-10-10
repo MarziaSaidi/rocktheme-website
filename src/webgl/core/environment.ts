@@ -31,6 +31,7 @@ import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflecti
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
 import { createRift, type Rift } from "../modules/rift";
 import { createPortalRain } from "../modules/portalRain";
+import { consumeBioRain } from "../bioDustChannel";
 import {
   announceRiftMoment,
   publishRiftAnchor,
@@ -735,8 +736,15 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   };
 
   let rainEnabled = true;
-  let rainLastScroll = 0;
-  let rainLastMoved = -100;
+  const releaseBioBirths = (data: Float32Array, count: number) => {
+    if (!rainEnabled || options.reducedMotion) return;
+    const depth = rift.openingDepth(view);
+    if (depth === null) return;
+    for (let i = 0; i < count; i++) {
+      const j = i * 3;
+      portalRain.releaseFromBio(data[j]!, data[j + 1]!, data[j + 2]!, view, depth, width, height);
+    }
+  };
   let frameCpuMs = 0;
   let frameIntervalMs = 0;
   let totalDrawCalls = 0;
@@ -801,21 +809,13 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     });
     // It can only be crossed while the camera is at rest at the bio.
     publishRiftRect(riftAtRest ? rift.screenRect(view) : null);
-    // Phase 3: the existing HTML titles reveal in place, without travelling dust.
+    // The bio is the source. Glyph samples become world-space drops once, then fall independently.
     publishRiftAnchor(null);
-    const storyDistance = Math.max(1, (stops.aboutLeave ?? stops.about) - stops.about);
-    const storyProgress = (targetScroll - stops.about) / storyDistance;
-    const entry = smootherstep((targetScroll - stops.about + height * 0.65) / (height * 0.65));
-    const exit =
-      1 - smootherstep((targetScroll - (stops.aboutLeave ?? stops.about)) / (height * 0.65));
-    const richness = 0.12 + 0.88 * smootherstep(Math.max(0, storyProgress) / 0.55);
-    const moving = Math.abs(targetScroll - rainLastScroll) > 0.5;
-    if (moving) rainLastMoved = elapsed;
-    rainLastScroll = targetScroll;
+    consumeBioRain(releaseBioBirths);
     portalRain.update(
       deltaSeconds,
-      stopsKnown && rainEnabled ? entry * exit * richness * (1 - rift.departure()) : 0,
-      elapsed - rainLastMoved < 0.22,
+      0,
+      false,
       viewport !== "desktop",
       rift.sampleRainEmission,
       view,

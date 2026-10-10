@@ -38,3 +38,20 @@ export function readBioDust() {
 export function sceneDrawsBioDust() {
   return performance.now() - readAt < 250;
 }
+
+/** One-time glyph birth events. The 3D simulation owns each drop after consuming it. */
+const BIO_RAIN_CAPACITY = 512;
+const birthData = new Float32Array(BIO_RAIN_CAPACITY * 3);
+const birthBatch = { grains: birthData, count: 0 };
+export function queueBioRain(x: number, y: number, seed: number) {
+  if (birthBatch.count >= BIO_RAIN_CAPACITY) return;
+  const i = birthBatch.count++ * 3;
+  birthData[i] = x;
+  birthData[i + 1] = y;
+  birthData[i + 2] = seed;
+}
+export function consumeBioRain(consume: (data: Float32Array, count: number) => void) {
+  readAt = performance.now();
+  consume(birthData, birthBatch.count);
+  birthBatch.count = 0;
+}

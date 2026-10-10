@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PerspectiveCamera, Scene } from "three";
+import { PerspectiveCamera, Scene, Vector3 } from "three";
 import { createPortalRain, type RainEmitter } from "../src/webgl/modules/portalRain";
 
 const camera = new PerspectiveCamera(50, 1.6, 0.1, 100);
@@ -105,4 +105,26 @@ test("water impacts use exact world coordinates and dissolve without changing po
   assert.equal(floor.activeLightImpacts(), 0);
   assert.equal(material.uniforms.uImpactCount!.value, 0);
   floor.destroy();
+});
+
+test("bio glyph births align with the text and stay in world space as the camera moves", () => {
+  const scene = new Scene();
+  const view = new PerspectiveCamera(50, 1440 / 900, 0.1, 100);
+  view.position.set(0, 1.55, 0);
+  view.lookAt(0, 1.55, -20);
+  view.updateMatrixWorld();
+  const rain = createPortalRain(scene, false, () => false);
+  rain.releaseFromBio(300, 250, 0.6, view, 24, 1440, 900);
+  rain.update(0, 0, false, false, emitter, view, 1440, 900);
+  const position = positions(scene).p;
+  const world = new Vector3(position.getX(0), position.getY(0), position.getZ(0));
+  const projected = world.clone().project(view);
+  assert.ok(Math.abs((projected.x * 0.5 + 0.5) * 1440 - 300) < 0.01);
+  assert.ok(Math.abs((-projected.y * 0.5 + 0.5) * 900 - 250) < 0.01);
+  view.position.x += 4;
+  view.updateMatrixWorld();
+  rain.update(0, 0, false, false, emitter, view, 1440, 900);
+  assert.equal(positions(scene).p.getX(0), world.x);
+  assert.equal(positions(scene).p.getY(0), world.y);
+  rain.destroy();
 });
