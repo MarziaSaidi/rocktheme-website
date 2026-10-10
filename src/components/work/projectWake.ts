@@ -1,4 +1,5 @@
 import { REPLAY_EVENT } from "@/motion/DecodeText";
+import { createFrameGuard } from "@/motion/frameGuard";
 
 /**
  * Selected Work: the project wakes together (docs/typography-motion-system.md,
@@ -19,7 +20,20 @@ import { REPLAY_EVENT } from "@/motion/DecodeText";
  * `--title-rise`, the screens' `translate`, the main image's `filter`), with
  * the Web Animations API, never by rewriting a transition. Mouse and keyboard
  * only; touch never wakes anything. Nothing runs with reduced motion.
+ *
+ * Performance guard: while a wake or its release is animating, frames are
+ * sampled by the shared frame guard (frameGuard.ts). If they slip, the wake
+ * lets go and rests for the rest of the visit, on every project: the title
+ * light, the opening screens and the replay it gives the link. Everything
+ * else stays as it is: the link's own decode on hover and focus, the resting
+ * light while the camera stands at a project, the screens' drift, and the
+ * frozen entrances and exits.
  */
+
+/** One guard for the whole visit: once the wake has cost frames, it rests on every project. */
+const wakeGuard = createFrameGuard();
+/** The wake's first frames read the screens' boxes and start its animations: a one-off. */
+const WAKE_WARMUP_FRAMES = 2;
 
 const EASE_IN = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_OUT = "cubic-bezier(0.5, 0, 0.75, 0)";
@@ -109,9 +123,36 @@ export function bindProjectWake(project: HTMLElement): () => void {
   const screens = () =>
     visual ? [...visual.querySelectorAll<HTMLElement>("[data-placement]")] : [];
 
+  // Frames are sampled only while the wake or its release animates.
+  let sampleFrame = 0;
+  let sampleLast = 0;
+  let sampleUntil = 0;
+  const tripGuard = () => {
+    const section = project.closest("section");
+    if (section) section.dataset.wakeGuard = "tripped";
+    over.clear();
+    release(true);
+  };
+  const sampleTick = (now: number) => {
+    if (sampleLast !== 0 && !wakeGuard.tripped && wakeGuard.sample(now - sampleLast)) tripGuard();
+    sampleLast = now;
+    if (now < sampleUntil && !wakeGuard.tripped) sampleFrame = requestAnimationFrame(sampleTick);
+    else {
+      sampleFrame = 0;
+      sampleLast = 0;
+    }
+  };
+  const sampleFor = (ms: number) => {
+    if (wakeGuard.tripped) return;
+    sampleUntil = Math.max(sampleUntil, performance.now() + ms);
+    if (!sampleFrame) sampleFrame = requestAnimationFrame(sampleTick);
+  };
+
   const wake = () => {
-    if (awake) return;
+    if (awake || wakeGuard.tripped) return;
     awake = true;
+    wakeGuard.warmUp(WAKE_WARMUP_FRAMES);
+    sampleFor(460);
     project.dataset.wake = "";
     rise = animateLight("--title-rise", WAKE_LIGHT, true, rise);
     link.dispatchEvent(new Event(REPLAY_EVENT));
@@ -158,6 +199,7 @@ export function bindProjectWake(project: HTMLElement): () => void {
       animation.reverse();
       animation.updatePlaybackRate(quick ? -2 : -0.65);
     });
+    sampleFor(quick ? 340 : 680);
   };
 
   const enter = (part: string) => {
@@ -254,6 +296,8 @@ export function bindProjectWake(project: HTMLElement): () => void {
     // The card is leaving (its frozen exit is starting): everything drains, quickly.
     over.clear();
     release(true);
+    if (sampleFrame) cancelAnimationFrame(sampleFrame);
+    sampleFrame = 0;
     if (restOn) {
       restOn = false;
       rest = animateLight("--title-rest", 0, false, rest);
