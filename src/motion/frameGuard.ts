@@ -8,13 +8,20 @@
  * that bucket, so stutter (slow frames between quick ones) never fills it; 4
  * slow frames within 60 also trip it. The scene times its own render work; an
  * effect's cost lands in the browser's style, layout and paint, so this times
- * whole frames instead, against the display's own cadence (the shortest recent
- * frame): a frame is over budget above 1.2 cadences and slow above 1.5, never
+ * whole frames instead, against the display's own cadence: a frame is over
+ * budget above 1.2 cadences and slow above 1.5, never
  * below 20 and 25 ms. A browser pacing at 30 fps (a sleeping display, power
  * saving) therefore doesn't trip it on every frame.
  *
  * Measured at 60 Hz with the scene running: never trips at 1x or 2x CPU; at
  * 4x the hero's field trips in 0.32-0.44 s.
+ *
+ * The cadence is the shortest frame seen this visit: by a short probe when the
+ * first guard is made (40 frames, then it stops) and by every guard's samples
+ * since. A machine that later slows under load is still measured against its
+ * real refresh rate; uniformly slow frames would otherwise pass for a 30 Hz
+ * display and never trip. A display that really paces at 30 Hz calibrates at
+ * 30 Hz, so it is not tripped on every frame.
  */
 const GUARD = {
   budgetMs: 20,
@@ -38,12 +45,33 @@ export type FrameGuard = Readonly<{
   readonly tripped: boolean;
 }>;
 
+/** The display's cadence: the shortest frame interval seen this visit. */
+let displayCadence = Infinity;
+let probed = false;
+const PROBE_FRAMES = 40;
+
+/** Measures the refresh rate once, early, before any effect has run. */
+function probeDisplay() {
+  if (probed || typeof window === "undefined") return;
+  probed = true;
+  let last = 0;
+  let count = 0;
+  const step = (now: number) => {
+    if (last !== 0) displayCadence = Math.min(displayCadence, now - last);
+    last = now;
+    count += 1;
+    if (count < PROBE_FRAMES) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 export function createFrameGuard(): FrameGuard {
+  probeDisplay();
   let tripped = false;
   let overBudgetMs = 0;
   let warmup = 0;
   const stutters: number[] = [];
-  /** Recent frame intervals; the shortest is the display's cadence. */
+  /** Recent frame intervals, alongside the visit's shortest. */
   const intervals: number[] = [];
 
   return {
@@ -58,7 +86,8 @@ export function createFrameGuard(): FrameGuard {
       if (tripped || elapsed >= 500) return tripped;
       intervals.push(elapsed);
       if (intervals.length > GUARD.windowFrames) intervals.shift();
-      const cadence = Math.min(...intervals);
+      displayCadence = Math.min(displayCadence, elapsed);
+      const cadence = Math.min(displayCadence, ...intervals);
       const budget = Math.max(GUARD.budgetMs, cadence * GUARD.budgetCadences);
       const slow = Math.max(GUARD.stutterMs, cadence * GUARD.stutterCadences);
       if (warmup > 0) {
