@@ -2,8 +2,37 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { PerspectiveCamera, Scene, Vector3 } from "three";
 import { createPortalRain, type RainEmitter } from "../src/webgl/modules/portalRain";
+import { createBioDust } from "../src/webgl/modules/bioDust";
 
 const camera = new PerspectiveCamera(50, 1.6, 0.1, 100);
+
+test("restored mountain stream uses scene depth testing and hides its empty draw", () => {
+  const scene = new Scene();
+  const view = new PerspectiveCamera(50, 1440 / 900, 0.1, 100);
+  view.updateMatrixWorld();
+  const dust = createBioDust(scene);
+  dust.update(
+    view,
+    {
+      grains: new Float32Array([1100, 360, 1.2, 0.5, 0.8, -120, 30, 0]),
+      count: 1,
+      exposure: 1 / 120,
+    },
+    24,
+    1440,
+    900,
+  );
+  const position = dust.mesh.geometry.getAttribute("iPosition");
+  const point = new Vector3(position.getX(0), position.getY(0), position.getZ(0)).project(view);
+  assert.ok(Math.abs((point.x * 0.5 + 0.5) * 1440 - 1100) < 0.01);
+  assert.ok(Math.abs((-point.y * 0.5 + 0.5) * 900 - 360) < 0.01);
+  assert.equal((dust.mesh.material as import("three").ShaderMaterial).depthTest, true);
+  assert.equal(dust.count(), 1);
+  dust.update(view, null, 24, 1440, 900);
+  assert.equal(dust.count(), 0);
+  assert.equal(dust.mesh.visible, false);
+  dust.destroy();
+});
 const emitter: RainEmitter = (_seed, position, outward) => {
   position.set(2, 8, -8);
   outward.set(0, 0, 1);

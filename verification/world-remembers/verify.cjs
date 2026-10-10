@@ -6,19 +6,25 @@ const fs = require("node:fs");
 const out = require("node:path").resolve("verification/world-remembers");
 const summarize = (rows) =>
   Object.fromEntries(
-    ["alive", "frameCpuMs", "frameIntervalMs", "drawCalls", "activeImpacts", "updateMs"].map(
-      (key) => {
-        const a = rows.map((r) => r[key]).sort((a, b) => a - b);
-        return [
-          key,
-          {
-            p50: a[Math.floor(a.length * 0.5)],
-            p95: a[Math.floor(a.length * 0.95)],
-            max: a.at(-1),
-          },
-        ];
-      },
-    ),
+    [
+      "alive",
+      "mountainGrains",
+      "frameCpuMs",
+      "frameIntervalMs",
+      "drawCalls",
+      "activeImpacts",
+      "updateMs",
+    ].map((key) => {
+      const a = rows.map((r) => r[key]).sort((a, b) => a - b);
+      return [
+        key,
+        {
+          p50: a[Math.floor(a.length * 0.5)],
+          p95: a[Math.floor(a.length * 0.95)],
+          max: a.at(-1),
+        },
+      ];
+    }),
   );
 (async () => {
   const browser = await chromium.launch({ channel: "chrome", headless: true });
@@ -107,7 +113,7 @@ const summarize = (rows) =>
     await jump(1.2);
     await page.waitForTimeout(13000);
     const drained = await page.evaluate(() => window.__portalRainDebug.stats());
-    if (drained.alive !== 0 || drained.activeImpacts !== 0)
+    if (drained.alive !== 0 || drained.activeImpacts !== 0 || drained.mountainGrains !== 0)
       throw Error("Released matter did not drain");
     console.log(name, JSON.stringify(observations));
     for (const o of observations)
@@ -162,6 +168,8 @@ const summarize = (rows) =>
         },
         { story, p, ms },
       );
+    await move(-0.25, 400);
+    await film.waitForTimeout(1200);
     const trim = await film.evaluate(() => performance.now() / 1000);
     await move(0.08, 450);
     await film.waitForTimeout(2200);

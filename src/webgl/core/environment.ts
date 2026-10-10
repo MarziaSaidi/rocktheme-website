@@ -31,7 +31,8 @@ import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflecti
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
 import { createRift, type Rift } from "../modules/rift";
 import { createPortalRain } from "../modules/portalRain";
-import { consumeBioRain } from "../bioDustChannel";
+import { createBioDust } from "../modules/bioDust";
+import { consumeBioRain, readBioDust } from "../bioDustChannel";
 import {
   announceRiftMoment,
   publishRiftAnchor,
@@ -340,6 +341,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   // The split mountain beside the bio: the way into /my-world.
   const rift: Rift = createRift(worldScene, options.reducedMotion);
   rift.setViewport(width, height, cappedRatio());
+  const bioDust = createBioDust(worldScene);
   // Falling light belongs to the world independently of the mountain lifecycle.
   const portalRain = createPortalRain(worldScene, options.reducedMotion, floor.requestLightImpact);
   portalRain.setQuality(settings.tier);
@@ -809,8 +811,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     });
     // It can only be crossed while the camera is at rest at the bio.
     publishRiftRect(riftAtRest ? rift.screenRect(view) : null);
-    // The bio is the source. Glyph samples become world-space drops once, then fall independently.
-    publishRiftAnchor(null);
+    // Restore the approved mountain → words path. Leaving words then fall to water.
+    publishRiftAnchor(rift.screenAnchor(view));
+    bioDust.setVisible(rift.departure() < 0.3);
+    bioDust.update(view, readBioDust(), rift.openingDepth(view), width, height);
     consumeBioRain(releaseBioBirths);
     portalRain.setPointer(
       riftAtRest && viewport === "desktop" && pointer?.active && pointer.inside
@@ -862,6 +866,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     renderer.info.reset();
     renderer.info.autoReset = false;
     floor.renderReflection(renderer, worldScene, view, [
+      bioDust.mesh,
       portalRain.mesh,
       floor.mesh,
       floorBeyond,
@@ -1013,6 +1018,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     rainDebugHost.__portalRainDebug = {
       stats: () => ({
         ...portalRain.stats(),
+        mountainGrains: bioDust.count(),
         tier: settings.tier,
         frameCpuMs,
         frameIntervalMs,
@@ -1199,6 +1205,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       rocks.destroy();
       heroLandscape.destroy();
       rift.destroy();
+      bioDust.destroy();
       portalRain.destroy();
       publishRiftRect(null);
       publishRiftAnchor(null);

@@ -15,14 +15,19 @@
       "reflectionSize": 512,
       "peak": {
         "alive": {
-          "p50": 372,
-          "p95": 1742,
-          "max": 1742
+          "p50": 361,
+          "p95": 1719,
+          "max": 1719
+        },
+        "mountainGrains": {
+          "p50": 0,
+          "p95": 6032,
+          "max": 6032
         },
         "frameCpuMs": {
-          "p50": 3.899999976158142,
-          "p95": 5.299999952316284,
-          "max": 5.900000035762787
+          "p50": 4.799999952316284,
+          "p95": 5.300000011920929,
+          "max": 5.800000011920929
         },
         "frameIntervalMs": {
           "p50": 16.700000000000728,
@@ -31,18 +36,18 @@
         },
         "drawCalls": {
           "p50": 111,
-          "p95": 111,
-          "max": 111
+          "p95": 112,
+          "max": 112
         },
         "activeImpacts": {
-          "p50": 2,
+          "p50": 1,
           "p95": 14,
           "max": 15
         },
         "updateMs": {
           "p50": 0.09999996423721313,
           "p95": 0.20000004768371582,
-          "max": 0.5
+          "max": 0.3999999761581421
         }
       },
       "observations": [
@@ -59,19 +64,18 @@
           "horizontalOverflow": false
         }
       ],
-      "rapid": [
-        "possibilities"
-      ],
+      "rapid": ["possibilities"],
       "drained": {
         "alive": 0,
         "budget": 2400,
         "emissionPerSecond": 0,
-        "totalBirths": 5016,
-        "totalImpacts": 45,
+        "totalBirths": 4999,
+        "totalImpacts": 44,
         "updateMs": 0,
+        "mountainGrains": 0,
         "tier": "high",
-        "frameCpuMs": 3.800000011920929,
-        "frameIntervalMs": 16.60000000000582,
+        "frameCpuMs": 3.700000047683716,
+        "frameIntervalMs": 16.599999999998545,
         "drawCalls": 110,
         "activeImpacts": 0,
         "reflectionSize": 512,
@@ -86,15 +90,11 @@
           "aboutLeave": 12877.671875,
           "contact": 14398
         },
-        "camera": [
-          -10.49405310178074,
-          2.491216811387038,
-          19.186117514061312
-        ],
+        "camera": [-10.49405310178074, 2.491216811387038, 19.186117514061312],
         "reducedMotion": false
       },
       "errors": [],
-      "videoTrimSeconds": 7.5445
+      "videoTrimSeconds": 9.394
     },
     {
       "name": "mobile",
@@ -107,14 +107,19 @@
       "reflectionSize": 512,
       "peak": {
         "alive": {
-          "p50": 849,
-          "p95": 849,
-          "max": 849
+          "p50": 883,
+          "p95": 883,
+          "max": 883
+        },
+        "mountainGrains": {
+          "p50": 0,
+          "p95": 3143,
+          "max": 3143
         },
         "frameCpuMs": {
-          "p50": 2.799999952316284,
-          "p95": 3.5,
-          "max": 4.100000023841858
+          "p50": 2.100000023841858,
+          "p95": 3.300000011920929,
+          "max": 3.5
         },
         "frameIntervalMs": {
           "p50": 16.69999999999709,
@@ -123,18 +128,18 @@
         },
         "drawCalls": {
           "p50": 64,
-          "p95": 64,
-          "max": 64
+          "p95": 65,
+          "max": 65
         },
         "activeImpacts": {
           "p50": 0,
-          "p95": 4,
-          "max": 7
+          "p95": 5,
+          "max": 8
         },
         "updateMs": {
           "p50": 0.10000002384185791,
           "p95": 0.30000001192092896,
-          "max": 0.5
+          "max": 0.3999999761581421
         }
       },
       "observations": [
@@ -151,19 +156,18 @@
           "horizontalOverflow": false
         }
       ],
-      "rapid": [
-        "possibilities"
-      ],
+      "rapid": ["possibilities"],
       "drained": {
         "alive": 0,
         "budget": 2400,
         "emissionPerSecond": 0,
-        "totalBirths": 2463,
+        "totalBirths": 2499,
         "totalImpacts": 32,
-        "updateMs": 0,
+        "updateMs": 0.09999996423721313,
+        "mountainGrains": 0,
         "tier": "high",
-        "frameCpuMs": 2.800000011920929,
-        "frameIntervalMs": 16.700000000004366,
+        "frameCpuMs": 1.5,
+        "frameIntervalMs": 16.599999999998545,
         "drawCalls": 63,
         "activeImpacts": 0,
         "reflectionSize": 512,
@@ -178,15 +182,11 @@
           "aboutLeave": 8995.78125,
           "contact": 10172
         },
-        "camera": [
-          -10.563801936111528,
-          2.780392149641681,
-          21.335952924625122
-        ],
+        "camera": [-10.563801936111528, 2.780392149641681, 21.335952924625122],
         "reducedMotion": false
       },
       "errors": [],
-      "videoTrimSeconds": 7.493400000035763
+      "videoTrimSeconds": 8.999399999976157
     }
   ],
   "reduced-mobile": {
@@ -212,6 +212,7 @@
       "totalBirths": 0,
       "totalImpacts": 0,
       "updateMs": 0,
+      "mountainGrains": 0,
       "tier": "high",
       "frameCpuMs": 0,
       "frameIntervalMs": 0,
@@ -229,11 +230,7 @@
         "aboutLeave": 7983.78125,
         "contact": 9159
       },
-      "camera": [
-        -11.999999999999998,
-        1.5500000000000003,
-        14
-      ],
+      "camera": [-11.999999999999998, 1.5500000000000003, 14],
       "reducedMotion": true
     }
   },
@@ -260,9 +257,10 @@
       "totalBirths": 0,
       "totalImpacts": 0,
       "updateMs": 0,
+      "mountainGrains": 0,
       "tier": "high",
-      "frameCpuMs": 2,
-      "frameIntervalMs": 100,
+      "frameCpuMs": 1.199999988079071,
+      "frameIntervalMs": 16.699999999999818,
       "drawCalls": 66,
       "activeImpacts": 0,
       "reflectionSize": 512,
@@ -277,11 +275,7 @@
         "aboutLeave": 4226,
         "contact": 5247
       },
-      "camera": [
-        -11.999999999999998,
-        1.5500000000000003,
-        14
-      ],
+      "camera": [-11.999999999999998, 1.5500000000000003, 14],
       "reducedMotion": false
     }
   }

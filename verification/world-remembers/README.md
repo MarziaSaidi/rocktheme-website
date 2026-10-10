@@ -4,7 +4,7 @@ Branch: `codex/world-remembers-about`. This is a local visual-review prototype. 
 
 The existing mountain-crack plume, glitter and motes remain intact. The existing bio-to-water particle pool, falling motion, trails, selected splashes, impact rings, depth testing and reflection exclusions remain intact. Mountain assets, portal lighting/materials, water appearance and camera poses were not changed.
 
-The About section now uses the supplied copy verbatim (with editorial line breaks), three distinct compositions, locally hosted Source Serif 4 display type and the existing Manrope reading type. Supporting copy no longer depends on scroll-based word lighting. Full HTML arrives in 300ms, or 120ms during rapid transitions. A sparse 240ms glyph sketch hints at the words in the HTML layer; the outgoing glyph samples still enter the existing world-space falling simulation. Only desktop hovering at the About rest adds a restrained local air current; gravity is unchanged.
+The About section now uses the supplied copy verbatim (with editorial line breaks), three distinct compositions, locally hosted Source Serif 4 display type and the existing Manrope reading type. Supporting copy no longer depends on scroll-based word lighting. Full HTML arrives in 300ms, or 120ms during rapid transitions. The original mountain-to-word particle controller is restored: grains emerge from the low mouth of the crack, follow curved paths into the bio words, then departing glyph samples enter the existing world-space falling simulation. The separate in-place 240ms sketch has been removed. Only desktop hovering at the About rest adds a restrained local air current; gravity is unchanged.
 
 All text remains selectable HTML. Reduced motion and short viewports use normal document flow with all three passages visible. Fast forward/reverse scrolling cancels pending transitions and suppresses unnecessary intermediate emissions. Released world grains continue independently and finish in the water.
 
@@ -20,18 +20,18 @@ Approximate sequence in the full recordings: opening/crack effect and first stat
 
 Measured independently from recording, with local `next dev`, headless Chrome 155 on this Mac. Mobile is viewport/DPR emulation, not a physical phone. Each run sampled approximately 7 seconds spanning a real first-to-second transition. Scene CPU timing covers world update/render submission, not GPU completion. Draw calls cover the full Three.js frame including its reflection pass.
 
-| Viewport | Peak falling grains | Frame interval p50 / p95 | Scene CPU p50 / p95 | Peak WebGL draw calls |
-|---|---:|---:|---:|---:|
-| Desktop 1440×900, DPR 1 | 1,742 | 16.7 / 16.7ms | 3.9 / 5.3ms | 111 |
-| Mobile 390×844, DPR 2 | 849 | 16.7 / 16.7ms | 2.8 / 3.5ms | 64 |
+| Viewport                | Peak incoming / falling grains | Frame interval p50 / p95 | Scene CPU p50 / p95 | Peak WebGL draw calls |
+| ----------------------- | -----------------------------: | -----------------------: | ------------------: | --------------------: |
+| Desktop 1440×900, DPR 1 |                  6,032 / 1,719 |            16.7 / 16.7ms |         4.8 / 5.3ms |                   112 |
+| Mobile 390×844, DPR 2   |                    3,143 / 883 |            16.7 / 16.7ms |         2.1 / 3.3ms |                    65 |
 
-The falling pool has a 3,000-slot allocation and live quality budgets of 2,400 / 1,200 / 450. Glyph sampling targets 1,700 desktop or 850 compact grains, with sampling variance; these are initial visual budgets. Brief recognition sketches target 220 desktop / 110 mobile points and are drawn in 2D, not included in the falling-pool count. The preserved crack system separately allocates 460 wisps + 320 glitter + 260 motes on desktop, or 180 + 110 + 90 compact, plus its existing mist, shafts and ribbons. Both performance runs remained at high quality with 512px reflections.
+The falling pool has a 3,000-slot allocation and live quality budgets of 2,400 / 1,200 / 450. Glyph sampling targets 1,700 desktop or 850 compact grains, with sampling variance; these are initial visual budgets. The restored arrival controller targets 6,000 desktop / 3,200 compact grains, with glyph-sampling variance, in a 16,000-slot buffer. Incoming and falling grains are reported separately. Both meshes are depth-tested and excluded from water reflections. The preserved crack system separately allocates 460 wisps + 320 glitter + 260 motes on desktop, or 180 + 110 + 90 compact, plus its existing mist, shafts and ribbons. Both performance runs remained at high quality with 512px reflections.
 
 `performance.json` contains raw summary fields, readable-copy checks, fast-scroll checks, departure completion, reduced-motion results and the short-screen fallback. Both departures drained to zero falling grains and zero active water impacts. `responsive.json` adds tablet/small-desktop/small-phone layout checks. Earlier `layout-check.json` is preliminary audit evidence; final screenshots use the local font.
 
 ## Validation
 
-Production build, TypeScript, content validation, changed-file lint and formatting passed. Six particle/water tests plus ten existing scroll tests passed. Browser checks verified full title/copy opacity at 350ms, no horizontal overflow, no stale passage after fast direction changes, and natural particle completion. Reduced-motion and short-screen checks preserve all three passages as visible HTML.
+Production build, TypeScript, content validation, changed-file lint and formatting passed. Seven particle/water tests plus ten existing scroll tests passed. Browser checks verified full title/copy opacity at 350ms, no horizontal overflow, no stale passage after fast direction changes, and natural particle completion. Reduced-motion and short-screen checks preserve all three passages as visible HTML.
 
 Repository-wide lint still reports existing CommonJS/import errors in unrelated screenshot harnesses and older capture scripts. These were not changed as part of this About-only task. Physical-phone performance remains unverified.
 
