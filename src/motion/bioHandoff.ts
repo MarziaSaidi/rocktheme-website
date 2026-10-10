@@ -25,6 +25,20 @@ type Release = {
 export function createBioHandoff(): BioHandoff {
   const scratch = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
   let releases: Release[] = [];
+  // A short recognition sketch belongs to the HTML layer. Once released, the
+  // existing Three.js pool owns gravity, rock occlusion and water contact.
+  const sketch = document.createElement("canvas");
+  sketch.setAttribute("aria-hidden", "true");
+  Object.assign(sketch.style, {
+    position: "fixed",
+    inset: "0",
+    pointerEvents: "none",
+    zIndex: "21",
+  });
+  const ink = sketch.getContext("2d")!;
+  let suggestions: { owner: object; start: number; grains: number[] }[] = [];
+  let sketchWidth = 0;
+  let sketchHeight = 0;
   /** Every lit pixel of each word in its settled place, sampled down to the budget. */
   function sample(words: readonly HandoffWord[]) {
     const measured = words.map(({ element, signature }) => {
@@ -72,10 +86,25 @@ export function createBioHandoff(): BioHandoff {
 
   const cancel = (owner: object) => {
     releases = releases.filter((release) => release.owner !== owner);
+    suggestions = suggestions.filter((suggestion) => suggestion.owner !== owner);
   };
   return {
-    // Keep the existing HTML in-place entrance. No particles travel from the portal to words.
-    form: () => false,
+    form: (owner, words, options) => {
+      cancel(owner);
+      const { measured } = sample(words);
+      const total = measured.reduce((sum, word) => sum + word.points.length / 2, 0);
+      const keep = Math.min(1, (window.innerWidth < 768 ? 110 : 220) / Math.max(1, total));
+      const grains: number[] = [];
+      measured.forEach((word) => {
+        for (let k = 0; k < word.points.length; k += 2) {
+          if (Math.random() > keep) continue;
+          grains.push(word.points[k]!, word.points[k + 1]!, Math.random());
+        }
+      });
+      suggestions.push({ owner, start: options.start, grains });
+      if (!sketch.isConnected) document.body.append(sketch);
+      return true;
+    },
     crumble: (owner, words, options) => {
       if (!sceneDrawsBioDust()) return false;
       cancel(owner);
@@ -111,6 +140,37 @@ export function createBioHandoff(): BioHandoff {
     cancel,
     setScrollSpeed: () => {},
     tick: (now) => {
+      suggestions = suggestions.filter((s) => now - s.start < 0.24);
+      if (suggestions.length || sketch.isConnected) {
+        if (sketchWidth !== window.innerWidth || sketchHeight !== window.innerHeight) {
+          sketchWidth = window.innerWidth;
+          sketchHeight = window.innerHeight;
+          const dpr = Math.min(1.5, window.devicePixelRatio);
+          sketch.width = Math.ceil(sketchWidth * dpr);
+          sketch.height = Math.ceil(sketchHeight * dpr);
+          sketch.style.width = `${sketchWidth}px`;
+          sketch.style.height = `${sketchHeight}px`;
+          ink.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        ink.clearRect(0, 0, sketchWidth, sketchHeight);
+        suggestions.forEach((s) => {
+          const t = Math.max(0, (now - s.start) / 0.24);
+          for (let k = 0; k < s.grains.length; k += 3) {
+            const seed = s.grains[k + 2]!;
+            ink.globalAlpha = (1 - t) * (0.35 + seed * 0.45);
+            ink.fillStyle = seed > 0.8 ? "#e7e9f4" : "#aaa0cf";
+            const size = seed > 0.9 ? 1.6 : 0.8;
+            ink.fillRect(
+              s.grains[k]! + (seed - 0.5) * t * 3,
+              s.grains[k + 1]! + t * t * 4,
+              size,
+              size,
+            );
+          }
+        });
+        ink.globalAlpha = 1;
+        if (!suggestions.length) sketch.remove();
+      }
       for (let i = releases.length - 1; i >= 0; i--) {
         const release = releases[i]!;
         while (release.next < release.grains.length && release.grains[release.next]! <= now) {
@@ -130,6 +190,8 @@ export function createBioHandoff(): BioHandoff {
     },
     destroy: () => {
       releases = [];
+      suggestions = [];
+      sketch.remove();
     },
   };
 }

@@ -128,3 +128,34 @@ test("bio glyph births align with the text and stay in world space as the camera
   assert.equal(positions(scene).p.getY(0), world.y);
   rain.destroy();
 });
+
+test("cursor air current stays local and preserves downward gravity", () => {
+  const view = new PerspectiveCamera(50, 1440 / 900, 0.1, 100);
+  view.position.set(0, 1.55, 0);
+  view.lookAt(0, 1.55, -20);
+  view.updateMatrixWorld();
+  const baselineScene = new Scene();
+  const responsiveScene = new Scene();
+  const baseline = createPortalRain(baselineScene, false, () => false);
+  const responsive = createPortalRain(responsiveScene, false, () => false);
+  const random = Math.random;
+  try {
+    // Identical births isolate the cursor force from the existing random wind.
+    Math.random = () => 0.5;
+    baseline.releaseFromBio(300, 250, 0.6, view, 24, 1440, 900);
+    responsive.releaseFromBio(300, 250, 0.6, view, 24, 1440, 900);
+  } finally {
+    Math.random = random;
+  }
+  responsive.setPointer({ x: 310, y: 250 }, view, 1440, 900);
+  baseline.update(1 / 60, 0, false, false, emitter, view, 1440, 900);
+  responsive.update(1 / 60, 0, false, false, emitter, view, 1440, 900);
+  const a = positions(baselineScene).p;
+  const b = positions(responsiveScene).p;
+  assert.equal(a.getY(0), b.getY(0), "the cursor cannot lift or delay falling matter");
+  assert.notEqual(a.getX(0), b.getX(0));
+  assert.ok(Math.abs(a.getX(0) - b.getX(0)) < 0.002, "reaction is restrained");
+  responsive.setPointer(null, view, 1440, 900);
+  baseline.destroy();
+  responsive.destroy();
+});

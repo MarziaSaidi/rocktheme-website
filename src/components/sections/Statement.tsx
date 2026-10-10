@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import localFont from "next/font/local";
 
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
@@ -9,29 +10,31 @@ import { AboutArrival } from "./AboutArrival";
 import styles from "./Statement.module.css";
 
 type Passage = (typeof siteContent.statement.passages)[number];
+const narrativeSerif = localFont({
+  src: "./fonts/SourceSerif4-Regular.woff2",
+  weight: "400",
+  display: "swap",
+  variable: "--font-about-serif",
+});
 
 /**
  * The title as words the dust can land on. A line break in the content is a
  * real one; the title still reads, selects and copies as one sentence.
  */
-function titleWords({ title, signature }: Passage) {
+function titleWords({ title }: Passage) {
   return title.split("\n").map((line, row) => (
     <Fragment key={row}>
-      {row > 0 ? <br /> : null}
-      {line.split(" ").map((word, index, words) => (
-        <Fragment key={index}>
-          <span
-            className={styles.word}
-            data-title-word=""
-            data-signature={
-              signature.motion !== "sweep" && word === signature.word ? signature.motion : undefined
-            }
-          >
-            {word}
-          </span>
-          {index < words.length - 1 ? " " : null}
-        </Fragment>
-      ))}
+      {row > 0 ? " " : null}
+      <span className={styles.titleLine}>
+        {line.split(" ").map((word, index, words) => (
+          <Fragment key={index}>
+            <span className={styles.word} data-title-word="">
+              {word}
+            </span>
+            {index < words.length - 1 ? " " : null}
+          </Fragment>
+        ))}
+      </span>
     </Fragment>
   ));
 }
@@ -39,16 +42,19 @@ function titleWords({ title, signature }: Passage) {
 /**
  * Personal statement.
  *
- * Three passages take turns beside the rift. Each title comes out of it as
- * dust and goes back into it; the copy beneath is read by a light that follows
- * the scroll. Without the motion owner (no JavaScript, reduced motion, a very
- * short screen) the passages simply stack, lit and readable.
+ * Three passages take turns beside the unchanged rift. Language briefly
+ * resembles matter, becomes readable HTML, then leaves grains falling to water.
+ * Without motion, all three passages stack in normal document order.
  */
 export function Statement() {
   const { statement } = siteContent;
 
   return (
-    <section id={sectionAnchors.about} className={styles.section} aria-labelledby="about-title">
+    <section
+      id={sectionAnchors.about}
+      className={`${styles.section} ${narrativeSerif.variable}`}
+      aria-labelledby="about-title"
+    >
       <AboutArrival />
       <BioStory />
       <EnvironmentLayer sectionId="about" />
@@ -62,17 +68,14 @@ export function Statement() {
                   key={passage.title}
                   className={styles.passage}
                   data-bio-passage
-                  data-emphasis={passage.emphasis.join(" ")}
-                  data-sweep={
-                    passage.signature.motion === "sweep" ? passage.signature.word : undefined
-                  }
+                  data-moment={passage.moment}
                 >
                   <Title id={index === 0 ? "about-title" : undefined} className={styles.title}>
                     {titleWords(passage)}
                   </Title>
-                  <div className={styles.copy} data-bio-copy>
-                    <p className={styles.body}>{passage.body}</p>
-                    <p className={styles.aside}>{passage.aside}</p>
+                  <div data-bio-copy>
+                    {passage.body ? <p className={styles.body}>{passage.body}</p> : null}
+                    {passage.aside ? <p className={styles.aside}>{passage.aside}</p> : null}
                   </div>
                 </article>
               );

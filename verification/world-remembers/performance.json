@@ -1,0 +1,288 @@
+{
+  "environment": {
+    "browser": "155.0.8059.39",
+    "mode": "Local next dev, headless Chrome; mobile is viewport/DPR emulation on Mac, not physical phone. CPU timing is scene update and draw submission, not GPU time."
+  },
+  "runs": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "frames": 421,
+      "quality": "high",
+      "budget": 2400,
+      "reflectionSize": 512,
+      "peak": {
+        "alive": {
+          "p50": 372,
+          "p95": 1742,
+          "max": 1742
+        },
+        "frameCpuMs": {
+          "p50": 3.899999976158142,
+          "p95": 5.299999952316284,
+          "max": 5.900000035762787
+        },
+        "frameIntervalMs": {
+          "p50": 16.700000000000728,
+          "p95": 16.700000000000728,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "p50": 111,
+          "p95": 111,
+          "max": 111
+        },
+        "activeImpacts": {
+          "p50": 2,
+          "p95": 14,
+          "max": 15
+        },
+        "updateMs": {
+          "p50": 0.09999996423721313,
+          "p95": 0.20000004768371582,
+          "max": 0.5
+        }
+      },
+      "observations": [
+        {
+          "moment": "possibilities",
+          "titleOpacity": "1",
+          "copyOpacity": "1",
+          "horizontalOverflow": false
+        },
+        {
+          "moment": "person",
+          "titleOpacity": "1",
+          "copyOpacity": "1",
+          "horizontalOverflow": false
+        }
+      ],
+      "rapid": [
+        "possibilities"
+      ],
+      "drained": {
+        "alive": 0,
+        "budget": 2400,
+        "emissionPerSecond": 0,
+        "totalBirths": 5016,
+        "totalImpacts": 45,
+        "updateMs": 0,
+        "tier": "high",
+        "frameCpuMs": 3.800000011920929,
+        "frameIntervalMs": 16.60000000000582,
+        "drawCalls": 110,
+        "activeImpacts": 0,
+        "reflectionSize": 512,
+        "width": 1440,
+        "height": 900,
+        "pixelRatio": 1,
+        "scroll": 13346,
+        "stops": {
+          "workStart": 2070,
+          "workEnd": 8550,
+          "about": 10537.671875,
+          "aboutLeave": 12877.671875,
+          "contact": 14398
+        },
+        "camera": [
+          -10.49405310178074,
+          2.491216811387038,
+          19.186117514061312
+        ],
+        "reducedMotion": false
+      },
+      "errors": [],
+      "videoTrimSeconds": 7.5445
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "dpr": 2,
+      "frames": 421,
+      "quality": "high",
+      "budget": 2400,
+      "reflectionSize": 512,
+      "peak": {
+        "alive": {
+          "p50": 849,
+          "p95": 849,
+          "max": 849
+        },
+        "frameCpuMs": {
+          "p50": 2.799999952316284,
+          "p95": 3.5,
+          "max": 4.100000023841858
+        },
+        "frameIntervalMs": {
+          "p50": 16.69999999999709,
+          "p95": 16.700000000000728,
+          "max": 16.80000000000291
+        },
+        "drawCalls": {
+          "p50": 64,
+          "p95": 64,
+          "max": 64
+        },
+        "activeImpacts": {
+          "p50": 0,
+          "p95": 4,
+          "max": 7
+        },
+        "updateMs": {
+          "p50": 0.10000002384185791,
+          "p95": 0.30000001192092896,
+          "max": 0.5
+        }
+      },
+      "observations": [
+        {
+          "moment": "possibilities",
+          "titleOpacity": "1",
+          "copyOpacity": "1",
+          "horizontalOverflow": false
+        },
+        {
+          "moment": "person",
+          "titleOpacity": "1",
+          "copyOpacity": "1",
+          "horizontalOverflow": false
+        }
+      ],
+      "rapid": [
+        "possibilities"
+      ],
+      "drained": {
+        "alive": 0,
+        "budget": 2400,
+        "emissionPerSecond": 0,
+        "totalBirths": 2463,
+        "totalImpacts": 32,
+        "updateMs": 0,
+        "tier": "high",
+        "frameCpuMs": 2.800000011920929,
+        "frameIntervalMs": 16.700000000004366,
+        "drawCalls": 63,
+        "activeImpacts": 0,
+        "reflectionSize": 512,
+        "width": 390,
+        "height": 844,
+        "pixelRatio": 2,
+        "scroll": 9435,
+        "stops": {
+          "workStart": 844,
+          "workEnd": 5317,
+          "about": 6801.78125,
+          "aboutLeave": 8995.78125,
+          "contact": 10172
+        },
+        "camera": [
+          -10.563801936111528,
+          2.780392149641681,
+          21.335952924625122
+        ],
+        "reducedMotion": false
+      },
+      "errors": [],
+      "videoTrimSeconds": 7.493400000035763
+    }
+  ],
+  "reduced-mobile": {
+    "animated": false,
+    "passages": [
+      {
+        "text": "I have a habit of\nturning questions\ninto things.",
+        "visible": "visible"
+      },
+      {
+        "text": "Sometimes it's a prototype.\nSometimes it's a product.\nSometimes it's an entire world you can explore.",
+        "visible": "visible"
+      },
+      {
+        "text": "I'm Marzia,\na design engineer who loves figuring out how things should feel, how they should work, and how to bring them to life.\n\nI studied computer science, but I've always been drawn to the space where design meets engineering.\n\nI like getting my hands into the details, from the first rough idea to the moment something actually works.",
+        "visible": "visible"
+      }
+    ],
+    "stats": {
+      "alive": 0,
+      "budget": 2400,
+      "emissionPerSecond": 0,
+      "totalBirths": 0,
+      "totalImpacts": 0,
+      "updateMs": 0,
+      "tier": "high",
+      "frameCpuMs": 0,
+      "frameIntervalMs": 0,
+      "drawCalls": 27,
+      "activeImpacts": 0,
+      "reflectionSize": 512,
+      "width": 390,
+      "height": 844,
+      "pixelRatio": 1,
+      "scroll": 6802,
+      "stops": {
+        "workStart": 844,
+        "workEnd": 5317,
+        "about": 6801.78125,
+        "aboutLeave": 7983.78125,
+        "contact": 9159
+      },
+      "camera": [
+        -11.999999999999998,
+        1.5500000000000003,
+        14
+      ],
+      "reducedMotion": true
+    }
+  },
+  "short-landscape": {
+    "animated": false,
+    "passages": [
+      {
+        "text": "I have a habit of\nturning questions\ninto things.",
+        "visible": "visible"
+      },
+      {
+        "text": "Sometimes it's a prototype.\nSometimes it's a product.\nSometimes it's an entire world you can explore.",
+        "visible": "visible"
+      },
+      {
+        "text": "I'm Marzia,\na design engineer who loves figuring out how things should feel, how they should work, and how to bring them to life.\n\nI studied computer science, but I've always been drawn to the space where design meets engineering.\n\nI like getting my hands into the details, from the first rough idea to the moment something actually works.",
+        "visible": "visible"
+      }
+    ],
+    "stats": {
+      "alive": 0,
+      "budget": 2400,
+      "emissionPerSecond": 0,
+      "totalBirths": 0,
+      "totalImpacts": 0,
+      "updateMs": 0,
+      "tier": "high",
+      "frameCpuMs": 2,
+      "frameIntervalMs": 100,
+      "drawCalls": 66,
+      "activeImpacts": 0,
+      "reflectionSize": 512,
+      "width": 844,
+      "height": 390,
+      "pixelRatio": 1,
+      "scroll": 3452,
+      "stops": {
+        "workStart": 608.65625,
+        "workEnd": 2675.65625,
+        "about": 3452,
+        "aboutLeave": 4226,
+        "contact": 5247
+      },
+      "camera": [
+        -11.999999999999998,
+        1.5500000000000003,
+        14
+      ],
+      "reducedMotion": false
+    }
+  }
+}

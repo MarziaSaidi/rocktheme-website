@@ -1,0 +1,36 @@
+[
+  {
+    "name": "tablet",
+    "width": 820,
+    "height": 1180,
+    "overflow": false,
+    "animated": true,
+    "active": "person",
+    "copyBottom": 458.265625
+  },
+  {
+    "name": "small-phone",
+    "width": 320,
+    "height": 700,
+    "overflow": false,
+    "animated": true,
+    "active": "person",
+    "copyBottom": 411.890625
+  },
+  {
+    "name": "short-phone",
+    "width": 375,
+    "height": 667,
+    "overflow": false,
+    "animated": false
+  },
+  {
+    "name": "small-desktop",
+    "width": 1280,
+    "height": 800,
+    "overflow": false,
+    "animated": true,
+    "active": "person",
+    "copyBottom": 564.078125
+  }
+]

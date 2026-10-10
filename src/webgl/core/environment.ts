@@ -812,6 +812,14 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     // The bio is the source. Glyph samples become world-space drops once, then fall independently.
     publishRiftAnchor(null);
     consumeBioRain(releaseBioBirths);
+    portalRain.setPointer(
+      riftAtRest && viewport === "desktop" && pointer?.active && pointer.inside
+        ? { x: pointer.x, y: pointer.y }
+        : null,
+      view,
+      width,
+      height,
+    );
     portalRain.update(
       deltaSeconds,
       0,

@@ -127,6 +127,10 @@ export function createPortalRain(
   const outward = new Vector3();
   const ray = new Vector3();
   const forward = new Vector3();
+  const cursorRay = new Vector3();
+  const cursorOrigin = new Vector3();
+  let cursorActive = false;
+  let cursorCone = 0;
   let next = 0,
     alive = 0,
     rate = 0,
@@ -172,6 +176,22 @@ export function createPortalRain(
   };
   return {
     mesh,
+    setPointer: (
+      pointer: { x: number; y: number } | null,
+      camera: PerspectiveCamera,
+      width: number,
+      height: number,
+    ) => {
+      cursorActive = pointer !== null && !reducedMotion;
+      if (!cursorActive || !pointer) return;
+      cursorOrigin.copy(camera.position);
+      cursorRay
+        .set((pointer.x / width) * 2 - 1, 1 - (pointer.y / height) * 2, 0.5)
+        .unproject(camera)
+        .sub(camera.position)
+        .normalize();
+      cursorCone = (85 / height) * 2 * Math.tan((camera.fov * Math.PI) / 360);
+    },
     releaseFromBio: (
       x: number,
       y: number,
@@ -255,6 +275,25 @@ export function createPortalRain(
           if (state[i] === 1) {
             v[j] = v[j]! + Math.sin(time * 0.7 + seed + p[j + 1]! * 0.4) * dt * 0.16;
             v[j + 2] = v[j + 2]! + Math.cos(time * 0.57 + seed) * dt * 0.11;
+            // A local air current responds to the cursor. Gravity and water
+            // collision stay unchanged; touch and departing scenes never apply it.
+            if (cursorActive && p[j + 1]! > 0.4) {
+              const dx = p[j]! - cursorOrigin.x;
+              const dy = p[j + 1]! - cursorOrigin.y;
+              const dz = p[j + 2]! - cursorOrigin.z;
+              const along = dx * cursorRay.x + dy * cursorRay.y + dz * cursorRay.z;
+              const x = dx - cursorRay.x * along;
+              const y = dy - cursorRay.y * along;
+              const z = dz - cursorRay.z * along;
+              const distance = Math.sqrt(x * x + y * y + z * z);
+              const radius = Math.min(2.5, Math.max(0.5, along * cursorCone));
+              if (along > 0 && distance < radius) {
+                const force =
+                  (Math.pow(1 - distance / radius, 2) * dt * 0.12) / Math.max(0.2, distance);
+                v[j] = v[j]! + x * force;
+                v[j + 2] = v[j + 2]! + z * force;
+              }
+            }
           }
           p[j] = p[j]! + v[j]! * dt;
           p[j + 1] = p[j + 1]! + v[j + 1]! * dt;
