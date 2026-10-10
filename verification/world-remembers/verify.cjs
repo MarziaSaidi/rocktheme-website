@@ -64,10 +64,10 @@ const summarize = (rows) =>
     const observations = [];
     for (const p of [0.43, 0.79]) {
       await jump(p);
-      await page.waitForTimeout(350);
+      await page.waitForTimeout(4500);
       observations.push(
         await page.evaluate(() => {
-          const e = document.querySelector("[data-bio-passage][data-active]");
+          const e = document.querySelector("[data-bio-passage][data-on]");
           return {
             moment: e?.dataset.moment,
             titleOpacity: getComputedStyle(e.querySelector("h2,h3")).opacity,
@@ -90,6 +90,8 @@ const summarize = (rows) =>
             scrollTo({ top: box.top + (box.height - innerHeight) * 0.43, behavior: "instant" });
             switched = true;
           }
+          const visible = document.querySelectorAll("[data-bio-passage][data-on]").length;
+          if (visible > 1) throw Error("Bio passages overlap");
           rows.push(window.__portalRainDebug.stats());
           if (elapsed < 7000) requestAnimationFrame(frame);
           else resolve();
@@ -104,7 +106,7 @@ const summarize = (rows) =>
     await jump(0.79);
     await page.waitForTimeout(30);
     await jump(0.43);
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(4500);
     const rapid = await page.evaluate(() =>
       [...document.querySelectorAll("[data-bio-passage][data-on]")].map((e) => e.dataset.moment),
     );

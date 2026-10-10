@@ -102,13 +102,20 @@
 .story[data-motion] .passage[data-on] {
   visibility: visible;
 }
-/* The outgoing title keeps its physical crumble; reading copy never dims. */
+/* Original glyph masks: words become visible as their mountain grains land. */
 .word {
   --dust: 1;
   display: inline-block;
   white-space: nowrap;
   padding-bottom: 0.12em;
   margin-bottom: -0.12em;
+}
+.word[data-dust="in"] {
+  mask-image: linear-gradient(
+    to top,
+    #000 calc(var(--dust) * 130% - 30%),
+    transparent calc(var(--dust) * 130%)
+  );
 }
 .word[data-dust="out"] {
   mask-image: linear-gradient(
@@ -117,6 +124,14 @@
     transparent calc(var(--dust) * 130%)
   );
 }
+.word[data-dust="print"] {
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(var(--dust) * 100%),
+    transparent calc(var(--dust) * 100% + 2px)
+  );
+}
+
 @media (max-width: 1023px) {
   .section {
     padding-block: calc(var(--section-spacing) * 1.15 + 65svh) 60svh;
@@ -174,4 +189,9 @@
   .passage {
     min-height: 65svh;
   }
+}
+
+.story :global(.bio-line-mask) {
+  padding-bottom: 0.14em;
+  margin-bottom: -0.14em;
 }
