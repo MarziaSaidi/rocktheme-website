@@ -81,6 +81,7 @@ export const VOICE_LIMITS = {
     "entry:passage": 5,
     "project:active": 0.22,
     "statement:read": 2,
+    "statement:pass": 0.6,
     "project:open": 1,
     "contact:open": 1.2,
   } satisfies Record<InteractionSoundEvent, number>,
@@ -122,6 +123,8 @@ export const CUES = {
   "project:active": { sample: "readout", peak: 0.2 },
   /** The statement begins to light, word by word: the same soft readout. */
   "statement:read": { sample: "readout", peak: 0.2 },
+  /** The bio's world sweeps to another pass: the readout again, quieter. */
+  "statement:pass": { sample: "readout", peak: 0.12 },
   /** A case study opens. */
   "project:open": { sample: "transition", peak: 0.75, lead: 0.4, duck: true },
   /** The contact plane or email link is activated. */

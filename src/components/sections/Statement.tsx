@@ -6,6 +6,8 @@ import { sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
 import { BioStory } from "@/motion/BioStory";
 
+import { RenderPasses } from "./RenderPasses";
+
 import { AboutArrival } from "./AboutArrival";
 import styles from "./Statement.module.css";
 
@@ -21,14 +23,18 @@ const narrativeSerif = localFont({
  * The title as words the dust can land on. A line break in the content is a
  * real one; the title still reads, selects and copies as one sentence.
  */
-function titleWords({ title }: Passage) {
+function titleWords({ title, accent }: Passage) {
   return title.split("\n").map((line, row) => (
     <Fragment key={row}>
       {row > 0 ? " " : null}
       <span className={styles.titleLine}>
         {line.split(" ").map((word, index, words) => (
           <Fragment key={index}>
-            <span className={styles.word} data-title-word="">
+            <span
+              className={styles.word}
+              data-title-word=""
+              data-accent={accent && word.replace(/[.,;:!?’']+$/u, "") === accent ? "" : undefined}
+            >
               {word}
             </span>
             {index < words.length - 1 ? " " : null}
@@ -57,6 +63,7 @@ export function Statement() {
     >
       <AboutArrival />
       <BioStory />
+      <RenderPasses />
       <EnvironmentLayer sectionId="about" />
       <div className={styles.story} data-bio-story>
         <div className={styles.stage}>

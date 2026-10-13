@@ -20,6 +20,8 @@ export const SOUND_EVENTS = [
   "project:active",
   /** The statement's words have begun to light. */
   "statement:read",
+  /** The bio's world has moved to another render pass (drawn, built, lit). */
+  "statement:pass",
   /** A case study is being opened. */
   "project:open",
   /** The contact plane or email link was activated. */

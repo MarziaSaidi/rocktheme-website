@@ -58,6 +58,7 @@ export const siteContent = {
         title: "I have a habit of\nturning questions\ninto things.",
         body: "",
         aside: "",
+        accent: "",
       },
       {
         moment: "possibilities",
@@ -65,14 +66,15 @@ export const siteContent = {
           "Sometimes it's a prototype.\nSometimes it's a product.\nSometimes it's an entire world you can explore.",
         body: "",
         aside: "",
+        accent: "",
       },
       {
         moment: "person",
-        title:
-          "I'm Marzia,\na design engineer who loves figuring out how things should feel, how they should work, and how to bring them to life.",
+        title: "I’m Marzia.\nI make ideas real.",
         body: "I studied computer science, but I've always been drawn to the space where design meets engineering.",
-        aside:
-          "I like getting my hands into the details, from the first rough idea to the moment something actually works.",
+        aside: "",
+        /** One word of the title, lit in moonlight once it lands. */
+        accent: "real",
       },
     ],
   },
