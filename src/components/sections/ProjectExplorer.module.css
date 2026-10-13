@@ -176,7 +176,7 @@
 }
 .guide {
   position: fixed;
-  z-index: var(--layer-content);
+  z-index: var(--layer-navigation);
   background: none;
   border: 0;
   padding: 0;
