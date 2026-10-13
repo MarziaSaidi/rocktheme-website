@@ -1,5 +1,6 @@
 import { Color, Vector3, type PerspectiveCamera, type Texture } from "three";
 import preset from "../weather/preset.json";
+import { lightningConfig } from "../sceneConfig";
 
 export type WeatherUniforms = {
   uWeatherFlash: { value: number };
@@ -22,7 +23,7 @@ export function createWeatherUniforms(): WeatherUniforms {
     uWeatherFlash: { value: 0 },
     uWeatherReflection: { value: 0 },
     uWeatherDirection: { value: new Vector3(0, 0.4, -1).normalize() },
-    uWeatherColor: { value: new Color("#9fbcff") },
+    uWeatherColor: { value: new Color(lightningConfig.color) },
     uWeatherCloudTime: { value: 0 },
     uWeatherCloudOctaves: { value: 6 },
     uWeatherSkyTexture: { value: null },

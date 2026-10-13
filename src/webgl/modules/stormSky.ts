@@ -20,6 +20,7 @@ import { createWeatherUniforms, type WeatherUniforms } from "../core/weather";
 import type { QualityTier } from "../core/quality";
 import { CLOUD_VERTEX, CLOUD_FRAGMENT, DOME_VERTEX, DOME_FRAGMENT } from "../weather/shaders";
 import preset from "../weather/preset.json";
+import { sceneColors, stormSkyConfig } from "../sceneConfig";
 
 export type StormSky = Readonly<{
   mesh: Mesh<IcosahedronGeometry, RawShaderMaterial>;
@@ -41,7 +42,7 @@ export function createStormSky(
     magFilter: LinearFilter,
   });
   target.texture.wrapS = target.texture.wrapT = RepeatWrapping;
-  const background = preset.sky.background;
+  const background = new Color(stormSkyConfig.cloud).convertLinearToSRGB();
   const baseTexture = new DataTexture(
     new Uint8Array([
       Math.round(background.r * 255),
@@ -80,8 +81,7 @@ export function createStormSky(
   const quad = new Mesh(new PlaneGeometry(2, 2), cloudMaterial);
   cloudScene.add(quad);
   const cloudCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const horizon = preset.dome.horizon,
-    fogColor = preset.fog.color;
+  const horizon = preset.dome.horizon;
   const radius = 2000;
   const material = new RawShaderMaterial({
     glslVersion: GLSL3,
@@ -106,7 +106,7 @@ export function createStormSky(
       uSeamSpread1: { value: 0.01 },
       uSeamSpread2: { value: 0.02 },
       uHorizonColor: {
-        value: new Color().setRGB(horizon.color.r, horizon.color.g, horizon.color.b),
+        value: new Color(sceneColors.midnight).convertLinearToSRGB(),
       },
       uHorizonStart: { value: horizon.start },
       uHorizonSize: { value: horizon.size },
@@ -115,7 +115,7 @@ export function createStormSky(
       uFlashDir: weather.uWeatherDirection,
       uFlashCellSize: { value: 0.55 },
       uFade: { value: 1 },
-      uFogColor: { value: new Color().setRGB(fogColor.r, fogColor.g, fogColor.b) },
+      uFogColor: { value: new Color(sceneColors.aubergine).convertLinearToSRGB() },
     },
     side: BackSide,
     depthWrite: false,

@@ -214,7 +214,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   });
   const weatherMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
   const f = weatherPreset.fog;
-  const baseFogColor = new Color().setRGB(f.color.r, f.color.g, f.color.b);
+  const baseFogColor = new Color(activeScene.fog.color);
 
   // ---------------------------------------------------------- perspective pass
   const worldScene = new Scene();

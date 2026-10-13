@@ -79,7 +79,7 @@ export const stormSkyConfig = {
 
 /** Illumination only. Start-to-start gaps use visible, active scene time. */
 export const lightningConfig = {
-  color: 0x9fbcff,
+  color: 0xc9b6e4,
   storm: 0.55,
   firstInterval: [8, 12],
   interval: [16, 26],

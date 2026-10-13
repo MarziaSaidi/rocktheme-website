@@ -43,14 +43,14 @@ export type DistanceFogUniforms = WeatherUniforms & {
   uTerrainOffset: { value: Vector2 };
 };
 export function createDistanceFogUniforms(
-  _config: DistanceFogConfig,
+  config: DistanceFogConfig,
   weather: WeatherUniforms = createWeatherUniforms(),
 ): DistanceFogUniforms {
   const f = preset.terrainFog;
   return {
     ...weather,
     tPerlin: { value: noiseTexture() },
-    uFogColor: { value: new Color().setRGB(f.color.r, f.color.g, f.color.b) },
+    uFogColor: { value: new Color(config.color) },
     uFogStart: { value: f.start },
     uFogEnd: { value: f.end },
     uFogNoiseIntensity: { value: f.noiseIntensity },

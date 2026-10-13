@@ -62,7 +62,7 @@ export function createWeatherGrade(renderer: WebGLRenderer) {
     uVignFade: { value: g.vignette.fade },
     uContrast: { value: g.contrast },
     uRatio: { value: 1 },
-    uHue: { value: g.hue },
+    uHue: { value: 0 },
     uExposure: { value: g.exposure },
     uSaturation: { value: g.saturation },
     uRevealFactor: { value: 1 },
@@ -110,7 +110,8 @@ export function createWeatherGrade(renderer: WebGLRenderer) {
       lut.dispose();
       lut = next;
       uniforms.tLut.value = next;
-      uniforms.uLutIntensity.value = 1;
+      // Keep the portfolio palette; the weather color map stays neutral.
+      uniforms.uLutIntensity.value = 0;
     })
     .catch((error) => {
       if (!controller.signal.aborted) console.error(error);
