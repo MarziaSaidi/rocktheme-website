@@ -507,7 +507,6 @@ function validateSiteContent(): void {
     validateRequiredString(passage.title, `${location}.title`);
     if (passage.moment === "person") {
       validateRequiredString(passage.body, `${location}.body`);
-      validateRequiredString(passage.aside, `${location}.aside`);
     }
   });
 

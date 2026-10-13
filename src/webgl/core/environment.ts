@@ -6,9 +6,11 @@ import {
   Fog,
   Group,
   Mesh,
+  Object3D,
   PerspectiveCamera,
   Quaternion,
   Scene,
+  ShaderMaterial,
   Vector3,
   WebGLRenderer,
 } from "three";
@@ -30,6 +32,8 @@ import {
 import { createReflectiveFloor, type ReflectiveFloor } from "../modules/reflectiveFloor";
 import { createHeroLandscape, type HeroLandscape } from "../modules/heroLandscape";
 import { createRift, type Rift } from "../modules/rift";
+import { createRenderPasses, screenPoint } from "../modules/renderPasses";
+import { isLit, publishPassInfo, readPassInput } from "../renderPassChannel";
 import { createPortalRain } from "../modules/portalRain";
 import { createBioDust } from "../modules/bioDust";
 import { consumeBioRain, readBioDust } from "../bioDustChannel";
@@ -364,6 +368,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   // The split mountain beside the bio: the way into /my-world.
   const rift: Rift = createRift(worldScene, options.reducedMotion);
   rift.setViewport(width, height, cappedRatio());
+  // The bio shows the rift the way it was made: drawn, built, then lit.
+  const passes = createRenderPasses(worldScene, {
+    rift: worldScene.getObjectByName("rift")!,
+    water: [floor.mesh, floorBeyond],
+  });
   const bioDust = createBioDust(worldScene);
   // Falling light belongs to the world independently of the mountain lifecycle.
   const portalRain = createPortalRain(worldScene, options.reducedMotion, floor.requestLightImpact);
@@ -753,6 +762,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   };
 
   // ------------------------------------------------------------- frame state
+  let riftVapour: Object3D | null = null;
   let frame = 0;
   let running = false;
   let lastTime = 0;
@@ -922,13 +932,43 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       ...aerialTerrain.reflectionExclusions(),
     ]);
 
+    const passInput = readPassInput();
+    const still = passInput.stillness;
+    if (passInput.prepare) passes.prepare();
+    // Before the name the world holds its breath: it dims and the drifting things stop.
+    riftVapour ??= worldScene.getObjectByName("rift-vapour") ?? null;
+    if (riftVapour) riftVapour.visible = still < 0.35;
+    const dim =
+      still > 0.01
+        ? `brightness(${(1 - still * 0.5).toFixed(3)}) saturate(${(1 - still * 0.35).toFixed(3)})`
+        : "";
+    if (options.canvas.style.filter !== dim) options.canvas.style.filter = dim;
+
+    const drawLit = () => {
+      renderer.render(worldScene, view);
+      renderer.clearDepth();
+      // Once the camera is on its way through, the drifting particles stay behind.
+      if (rift.departure() < 0.3 && still < 0.35)
+        renderer.render(particles.scene, particles.camera);
+    };
     renderer.clear();
-    renderer.render(worldScene, view);
-    renderer.clearDepth();
-    // Once the camera is on its way through, the drifting particles stay behind.
-    if (rift.departure() < 0.3) renderer.render(particles.scene, particles.camera);
+    if (isLit(passInput.view)) drawLit();
+    else passes.draw(renderer, view, passInput.view, drawLit);
     drawFrontLayer();
     totalDrawCalls = renderer.info.render.calls;
+
+    if (passInput.prepare) {
+      publishPassInfo({
+        ready: passes.ready(),
+        riftPeak: screenPoint(passes.rock(), view, width, height, [0, 1.2, 0]),
+        portal: screenPoint(passes.portal(), view, width, height),
+        riftPoints: passes.points(),
+        triangles: passes.triangles(),
+        drawCalls: totalDrawCalls,
+        camera: { x: view.position.x, y: view.position.y, z: view.position.z, fov: view.fov },
+        waterShader: (floor.mesh.material as ShaderMaterial).fragmentShader,
+      });
+    }
   };
 
   const loop = (time: number) => {
@@ -1279,6 +1319,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       mist.destroy();
       stormSky.destroy();
       floor.destroy();
+      passes.dispose();
 
       horizonRig.clear();
       worldScene.clear();

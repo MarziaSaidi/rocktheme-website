@@ -8,8 +8,9 @@ import { SplitText } from "gsap/SplitText";
 import { emitSoundEvent } from "@/sound/soundEvents";
 
 import { createBioHandoff, type HandoffWord, type TitleSignature } from "./bioHandoff";
+import { storyProgress } from "./bioPacing";
 
-/** Where in the story each passage takes over, as a share of the scroll through it. */
+/** Where in the story each passage takes over, in story progress (see bioPacing). */
 const TURNS = [0.32, 0.67] as const;
 /** Of a passage's stretch of scroll, where the reading light starts and how long it takes. */
 const READING = { from: 0.04, span: 0.62 } as const;
@@ -227,8 +228,7 @@ export function BioStory() {
         const sync = (direction: 1 | -1) => {
           const box = story.getBoundingClientRect();
           const viewport = window.innerHeight;
-          const distance = Math.max(1, story.offsetHeight - viewport);
-          const progress = -box.top / distance;
+          const progress = storyProgress(story);
           // Only while the stage is pinned: a title that formed before it pinned
           // would ride up the page with the scroll, and one leaving after it
           // unpinned would be carried off before it had crumbled.

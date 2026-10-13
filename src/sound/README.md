@@ -41,14 +41,15 @@ Six approved cue types make a sound. Three interaction samples are rendered by
 separately by `scripts/render-thunder.mjs` from verified source files. No Overworld
 Audio files are used.
 
-| Event               | Where it is published                                         | Sample                                          |
-| ------------------- | ------------------------------------------------------------- | ----------------------------------------------- |
-| `entry:passage`     | `IntroDoorway.tsx`, timed so the bloom meets the burst        | `transition`, whole                             |
-| `project:active`    | `MonolithGallery.tsx`, a project settles                      | `readout`, a step higher for the second project |
-| `statement:read`    | `BioStory.tsx`, a bio passage arrives                         | `readout`                                       |
-| `project:open`      | `MonolithGallery.tsx`, View case study                        | `transition`, entered late                      |
-| `contact:open`      | `SiteFooter.tsx`, the plane or the email link                 | `chime`                                         |
-| `weather:lightning` | Main-page weather controller, once at the first visible flash | One of five enabled CC0 thunder field recordings         |
+| Event               | Where it is published                                         | Sample                                           |
+| ------------------- | ------------------------------------------------------------- | ------------------------------------------------ |
+| `entry:passage`     | `IntroDoorway.tsx`, timed so the bloom meets the burst        | `transition`, whole                              |
+| `project:active`    | `MonolithGallery.tsx`, a project settles                      | `readout`, a step higher for the second project  |
+| `statement:read`    | `BioStory.tsx`, a bio passage arrives                         | `readout`                                        |
+| `statement:pass`    | `RenderPasses.tsx`, the bio's world sweeps to another pass    | `readout`, quieter                               |
+| `project:open`      | `MonolithGallery.tsx`, View case study                        | `transition`, entered late                       |
+| `contact:open`      | `SiteFooter.tsx`, the plane or the email link                 | `chime`                                          |
+| `weather:lightning` | Main-page weather controller, once at the first visible flash | One of five enabled CC0 thunder field recordings |
 
 The transition is the signature: one sound for every change of place. Shorter
 scene changes start the file part way through (`lead` in `CUES`) so the bloom
