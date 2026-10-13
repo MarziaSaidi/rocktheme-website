@@ -551,21 +551,22 @@ console.log("\ncamera journey");
   // Scroll offsets as the page measures them; the work stage pins for its journey.
   const layouts = {
     // The descent after Survue adds a screen (desktop) or 0.65 of one (mobile).
+    // Measured at 1440×900 and 390×844 with the paced bio story (bioPacing.ts).
     desktop: {
       workStart: 2070,
       workEnd: 8550,
       descentEnd: 9450,
-      about: 11537,
-      aboutLeave: 12032,
-      contact: 13145,
+      about: 10286,
+      aboutLeave: 15236,
+      contact: 16756,
     },
     mobile: {
       workStart: 844,
-      workEnd: 6921,
-      descentEnd: 7470,
-      about: 9307,
-      aboutLeave: 9771,
-      contact: 10765,
+      workEnd: 5317,
+      descentEnd: 5866,
+      about: 6760,
+      aboutLeave: 11402,
+      contact: 12577,
     },
   } as const satisfies Record<string, JourneyStops>;
 

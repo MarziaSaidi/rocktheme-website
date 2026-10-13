@@ -196,11 +196,11 @@ they join, and run on the same keyframe timeline as the arrival: 11 keys at
 even spacing along the path, a sine ease out of one rest and into the next,
 and the view turning in step with distance travelled.
 
-| Shot          | Scroll (desktop)            | Shape                                                                                                | Peak turn        |
-| ------------- | --------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------- |
-| Survue → bio  | 2.3 screens (150svh runway) | wide right-hand turn over the water, 185°, a 1.4 rise midway                                         | ~13° per 100 px  |
-| bio dwell     | 0.55 screens (`BIO_DWELL`)  | camera still while the sentence goes back into the rift                                              | 0                |
-| bio → Contact | 1.24 screens                | straight on, rising 1.5 and drifting 2.4 left; the rift slides out of frame on the right by parallax | ~1.5° per 100 px |
+| Shot          | Scroll (desktop)                 | Shape                                                                                                         | Peak turn       |
+| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------- |
+| Survue → bio  | 0.93 screens (72svh runway)      | quarter turn right over the water, 85°, the bio facing east; the rift slides in from the right while it turns | ~17° per 100 px |
+| bio dwell     | the paced story (`bioPacing.ts`) | camera still through the three passages, the render passes and the name                                       | 0               |
+| bio → Contact | 1.7 screens                      | the other quarter turn, right, 90°, rising 1.5; the rift slides out of frame on the left                      | ~9° per 100 px  |
 
 The rift (`src/webgl/modules/rift.ts`), the optional way into /my-world, is
 a split mountain standing in the water right of the sentence, with floating
