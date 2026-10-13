@@ -79,7 +79,7 @@ export const stormSkyConfig = {
 
 /** Illumination only. Start-to-start gaps use visible, active scene time. */
 export const lightningConfig = {
-  color: 0xc9b6e4,
+  color: 0x9fbcff,
   storm: 0.55,
   firstInterval: [8, 12],
   interval: [16, 26],
@@ -87,8 +87,8 @@ export const lightningConfig = {
   quietInterval: [32, 44],
   groupChance: 0.32,
   quietChance: 0.18,
-  duration: 1.65,
-  maxFlash: 0.65,
+  duration: 1.2493819246357813,
+  maxFlash: 0.5170921887051887,
   skyGain: 0.65,
   hazeGain: 0.16,
   mistGain: 0.13,

@@ -1,0 +1,78 @@
+[
+  {
+    "path": "public/weather/textures/blue-noise.png",
+    "sha256": "a4a259944c38c9bf756b1997f7b9a67011df198faa422eacff2761321302db48"
+  },
+  {
+    "path": "public/weather/textures/color-correction.bin",
+    "sha256": "45e6175fbc0aff49890215280bed6644be11c7fa823c20a41cded161c5303040"
+  },
+  {
+    "path": "public/weather/textures/perlin.webp",
+    "sha256": "24b095094feaebf2e2fee251b84031045ab6a219b76ec96c606c381d9553d099"
+  },
+  {
+    "path": "public/weather/thunder/thunder-01.opus",
+    "sha256": "4f0de7014aa0010ee17f9e176d34c48f79ff49a5e6b690956ff0e356ca8cc74e"
+  },
+  {
+    "path": "public/weather/thunder/thunder-01.webm",
+    "sha256": "34f337642c3c0eea77c5e9b6fd81f34be8e6938023a3dabc60c516215e160213"
+  },
+  {
+    "path": "public/weather/thunder/thunder-02.opus",
+    "sha256": "c08902316b4ecbc1abf209d9ff941c04fd4a4a8fda135433cd841697a4bf7519"
+  },
+  {
+    "path": "public/weather/thunder/thunder-02.webm",
+    "sha256": "08e9b966bab5b5533987bdd51e2f35ff7ca2e336d4af089606b09bdfff4769c1"
+  },
+  {
+    "path": "public/weather/thunder/thunder-03.opus",
+    "sha256": "768295c3659d6c3ea4af18f80592b898e5f8b0828dd3aff6027dc84002201a6c"
+  },
+  {
+    "path": "public/weather/thunder/thunder-03.webm",
+    "sha256": "1e4b9d60cdaabdcb522751aa747f09d491ea7da2c731a564a668c0b4b0b44a1a"
+  },
+  {
+    "path": "public/weather/thunder/thunder-04.opus",
+    "sha256": "d0f549f64a4c9184806658782bdbae6e141ae24a163af4bd391235c2a711e4a8"
+  },
+  {
+    "path": "public/weather/thunder/thunder-04.webm",
+    "sha256": "a791f9b1e785707af5e1c864f69562370942055118fc1931288abb8576c27396"
+  },
+  {
+    "path": "public/weather/thunder/thunder-05.opus",
+    "sha256": "72ebbd467c18f12b96a254a2c730dc1b5b6a4e6d9009d68493a50f4397572a45"
+  },
+  {
+    "path": "public/weather/thunder/thunder-05.webm",
+    "sha256": "384f4b5fb85b0d4977035117430c3bb768346de87d43c02048f61e6fed5d62ec"
+  },
+  {
+    "path": "public/weather/thunder/thunder-06.opus",
+    "sha256": "0fbafa9740160c9fa89cee17a24461692018a748912db80faf15b6f16f48a825"
+  },
+  {
+    "path": "public/weather/thunder/thunder-06.webm",
+    "sha256": "ae9d74c76671897197bc4bb0eb54588783e23055ac6a61fb2ad0f2df328e4d0e"
+  },
+  {
+    "path": "public/weather/thunder/thunder-07.opus",
+    "sha256": "e01d8930565b44e543a6ff63547864c5a1af1a394382ac7061c6068680828be8"
+  },
+  {
+    "path": "public/weather/thunder/thunder-07.webm",
+    "sha256": "bde975ed4094f952d7786f059efc709b2fa620e303d3b895cbaca3a48f4ab707"
+  },
+  {
+    "path": "public/weather/thunder/thunder-08.opus",
+    "sha256": "0a2c2c00dcbbafc5915ff65e4f57d038ec0a8c68c8eaac6453840ba194fcc6d5"
+  },
+  {
+    "path": "public/weather/thunder/thunder-08.webm",
+    "sha256": "d14d2d688ec5e818bffe2f949e91ad605777ead9076f7e95d10f571cd5696437"
+  }
+]

@@ -124,37 +124,12 @@ export function createSoundEngine(): SoundEngine | null {
   const weatherMusicGain = context.createGain();
   weatherMusicGain.gain.value = 1;
   musicGain.connect(weatherMusicGain).connect(master);
-  let thunderDuckUntil = 0;
 
   const resetThunderMusic = () => {
-    thunderDuckUntil = 0;
     const now = context.currentTime;
     weatherMusicGain.gain.cancelAndHoldAtTime(now);
     weatherMusicGain.gain.linearRampToValueAtTime(1, now + 0.2);
     thunderAudit("music:thunder-reset", { restoreAt: now + 0.2 });
-  };
-
-  const duckMusicForThunder = (start: number, duration: number) => {
-    const now = context.currentTime;
-    const duck = THUNDER.musicDuck;
-    const depth = 10 ** (-duck.depthDb / 20);
-    const body = Math.min(duck.maxBody, Math.max(8, duration * duck.bodyFraction));
-    thunderDuckUntil = Math.max(thunderDuckUntil, start + body);
-    // Schedule on the actual source start, including its existing distance delay.
-    // Overlapping tails extend one envelope rather than multiplying duck depths.
-    const level = weatherMusicGain.gain.value;
-    weatherMusicGain.gain.cancelAndHoldAtTime(now);
-    weatherMusicGain.gain.setValueAtTime(level, start);
-    weatherMusicGain.gain.linearRampToValueAtTime(depth, start + duck.attack);
-    weatherMusicGain.gain.setValueAtTime(depth, thunderDuckUntil);
-    weatherMusicGain.gain.linearRampToValueAtTime(1, thunderDuckUntil + duck.recover);
-    thunderAudit("music:thunder-duck", {
-      start,
-      depth,
-      depthDb: duck.depthDb,
-      holdUntil: thunderDuckUntil,
-      restoreAt: thunderDuckUntil + duck.recover,
-    });
   };
 
   const players = [0, 1].map(() => {
@@ -277,7 +252,23 @@ export function createSoundEngine(): SoundEngine | null {
   // ------------------------------------------------------------- storm audio
   const thunderBus = context.createGain();
   thunderBus.gain.value = 1;
-  thunderBus.connect(master);
+  const thunderOutput = context.createGain();
+  thunderOutput.gain.value = 0.7;
+  const thunderLimiter = context.createDynamicsCompressor();
+  thunderLimiter.threshold.value = window.matchMedia("(pointer: coarse)").matches ? -3 : -1;
+  thunderLimiter.knee.value = 0;
+  thunderLimiter.ratio.value = 20;
+  thunderLimiter.attack.value = 0.003;
+  thunderLimiter.release.value = 0.25;
+  const thunderMakeup = context.createGain();
+  thunderMakeup.gain.value = window.matchMedia("(pointer: coarse)").matches
+    ? 10 ** ((-0.6 * (thunderLimiter.threshold.value - thunderLimiter.threshold.value / 20)) / 20)
+    : 1;
+  thunderBus
+    .connect(thunderOutput)
+    .connect(thunderLimiter)
+    .connect(thunderMakeup)
+    .connect(context.destination);
   const thunderBuffers = new Map<number, AudioBuffer>();
   const thunderVoices = new Set<Voice>();
   const seenStrikes = new Set<number>();
@@ -291,7 +282,7 @@ export function createSoundEngine(): SoundEngine | null {
     if (destroyed || !running || !weatherActive || document.hidden || motionQuery.matches) return;
     const now = context.currentTime;
     thunderBus.gain.cancelAndHoldAtTime(now);
-    const target = 1 / Math.sqrt(Math.max(1, thunderVoices.size));
+    const target = 1;
     if (preserveAttack && thunderVoices.size === 1) thunderBus.gain.setValueAtTime(target, now);
     else thunderBus.gain.linearRampToValueAtTime(target, now + 0.08);
   };
@@ -313,9 +304,18 @@ export function createSoundEngine(): SoundEngine | null {
       THUNDER_SAMPLES.map(async (name, index) => {
         if (THUNDER_DISABLED_SAMPLES.includes(name) || thunderBuffers.has(index)) return;
         try {
-          const response = await fetch(`/audio/effects/thunder/${name}.mp3`, { signal });
+          let response = await fetch(`/weather/thunder/${name}.opus`, { signal });
+          let buffer: AudioBuffer;
+          try {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            buffer = await context.decodeAudioData(await response.arrayBuffer());
+          } catch {
+            if (signal.aborted) return;
+            response = await fetch(`/weather/thunder/${name}.webm`, { signal });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            buffer = await context.decodeAudioData(await response.arrayBuffer());
+          }
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          const buffer = await context.decodeAudioData(await response.arrayBuffer());
           if (!signal.aborted && !destroyed && weatherActive && !motionQuery.matches) {
             thunderBuffers.set(index, buffer);
             thunderAudit("buffer:decoded", { index, kept: true, duration: buffer.duration });
@@ -413,8 +413,11 @@ export function createSoundEngine(): SoundEngine | null {
       const oldest = [...thunderVoices].find((voice) => !voice.retiring);
       if (oldest) {
         oldest.retiring = true;
-        oldest.stop(1.2, "overlap-tail-release");
-        audit("overlap:tail-release", { release: 1.2, protectedImpact: THUNDER.impactProtection });
+        oldest.stop(THUNDER.overflowFadeOut, "overlap-tail-release");
+        audit("overlap:tail-release", {
+          release: THUNDER.overflowFadeOut,
+          protectedImpact: THUNDER.impactProtection,
+        });
       }
     }
     if (eventId !== undefined) {
@@ -432,15 +435,16 @@ export function createSoundEngine(): SoundEngine | null {
     const filter = context.createBiquadFilter();
     filter.type = "lowpass";
     filter.frequency.value = plan.lowpass;
-    filter.Q.value = 0.65;
+    filter.Q.value = 1;
+    const highpass = context.createBiquadFilter();
+    highpass.type = "highpass";
+    highpass.frequency.value = plan.highpass;
+    highpass.Q.value = 0.707;
     const gain = context.createGain();
     const start = now + plan.delay;
     const duration = buffer.duration / plan.rate;
-    gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(plan.gain, start + 0.003);
-    gain.gain.setValueAtTime(plan.gain, start + Math.max(0.04, duration - 0.7));
-    gain.gain.linearRampToValueAtTime(0, start + duration);
-    source.connect(filter).connect(gain).connect(thunderBus);
+    gain.gain.setValueAtTime(plan.gain, start);
+    source.connect(filter).connect(highpass).connect(gain).connect(thunderBus);
     let cancelled = false;
     const voice: Voice = {
       endsAt: start + duration,
@@ -465,12 +469,12 @@ export function createSoundEngine(): SoundEngine | null {
       audit("source:completed", { cancelled });
       source.disconnect();
       filter.disconnect();
+      highpass.disconnect();
       gain.disconnect();
       if (thunderVoices.size) balanceThunder();
     };
     thunderVoices.add(voice);
     balanceThunder(true);
-    duckMusicForThunder(start, duration);
     source.start(start);
     audit("source:started", { index: plan.index, start, audioNow: context.currentTime, duration });
   };
@@ -684,6 +688,9 @@ export function createSoundEngine(): SoundEngine | null {
       lastFired.clear();
 
       thunderBus.disconnect();
+      thunderOutput.disconnect();
+      thunderLimiter.disconnect();
+      thunderMakeup.disconnect();
       cueBus.disconnect();
       players.forEach(({ source, gain }) => {
         source.disconnect();

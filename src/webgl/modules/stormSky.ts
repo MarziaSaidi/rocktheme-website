@@ -1,125 +1,161 @@
 import {
   BackSide,
   Color,
+  DataTexture,
+  GLSL3,
+  IcosahedronGeometry,
+  LinearFilter,
   Mesh,
-  NormalBlending,
-  ShaderMaterial,
-  SphereGeometry,
-  SRGBColorSpace,
-  Vector3,
+  NoBlending,
+  OrthographicCamera,
+  PlaneGeometry,
+  RawShaderMaterial,
+  RepeatWrapping,
+  Scene,
+  WebGLRenderTarget,
   type PerspectiveCamera,
-  type Scene,
+  type WebGLRenderer,
 } from "three";
-
-import { createWeatherUniforms, WEATHER_GLSL, type WeatherUniforms } from "../core/weather";
-
+import { createWeatherUniforms, type WeatherUniforms } from "../core/weather";
 import type { QualityTier } from "../core/quality";
-import { stormSkyConfig } from "../sceneConfig";
-import { STORM_CLOUD_GLSL } from "./stormCloudField";
-
-const VERTEX_SHADER = /* glsl */ `
-  varying vec3 vSkyDirection;
-  void main() {
-    // Local directions stay aligned with the world, not the camera's rotation.
-    vSkyDirection = position;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    // An infinitely distant sky: every landscape depth can occlude it.
-    gl_Position.z = gl_Position.w;
-  }
-`;
-
-const FRAGMENT_SHADER = /* glsl */ `
-  precision highp float;
-  uniform float uOpacity;
-  uniform vec3 uBase;
-  uniform vec3 uCloud;
-  varying vec3 vSkyDirection;
-
-  ${WEATHER_GLSL}
-  ${STORM_CLOUD_GLSL}
-
-  void main() {
-    vec3 direction = normalize(vSkyDirection);
-    // Directional coordinates avoid a wrap seam or pole in a UV sky texture.
-    // The broad horizon fade leaves the DOM background visible at the water.
-    float horizon = smoothstep(0.015, 0.28, direction.y);
-    if (horizon <= 0.0) discard;
-    float cloud = stormCloudDensity(direction);
-    vec3 color = mix(uBase, uCloud, cloud);
-    float alpha = uOpacity * horizon * mix(0.2, 1.0, cloud);
-    // Premultiplied normal blending preserves calm coverage while carrying
-    // emitted cloud radiance without multiplying the flash by alpha again.
-    gl_FragColor = vec4(color * alpha + stormCloudRadiance(direction, cloud), alpha);
-  }
-`;
+import { CLOUD_VERTEX, CLOUD_FRAGMENT, DOME_VERTEX, DOME_FRAGMENT } from "../weather/shaders";
+import preset from "../weather/preset.json";
 
 export type StormSky = Readonly<{
-  mesh: Mesh<SphereGeometry, ShaderMaterial>;
-  update: (elapsedSeconds: number, camera: PerspectiveCamera) => void;
+  mesh: Mesh<IcosahedronGeometry, RawShaderMaterial>;
+  update: (elapsed: number, camera: PerspectiveCamera) => void;
   setQuality: (tier: QualityTier, width: number) => void;
   destroy: () => void;
 }>;
-
-/** Main portfolio's sky. Owns one surface, with no render target or extra pass. */
 export function createStormSky(
   scene: Scene,
   reducedMotion: boolean,
-  tier: QualityTier,
-  width: number,
+  _tier: QualityTier,
+  _width: number,
   weather: WeatherUniforms = createWeatherUniforms(),
+  renderer?: WebGLRenderer,
 ): StormSky {
-  const displayColor = (hex: number) => {
-    const rgb = { r: 0, g: 0, b: 0 };
-    new Color(hex).getRGB(rgb, SRGBColorSpace);
-    return new Vector3(rgb.r, rgb.g, rgb.b);
+  const target = new WebGLRenderTarget(256, 256, {
+    depthBuffer: false,
+    minFilter: LinearFilter,
+    magFilter: LinearFilter,
+  });
+  target.texture.wrapS = target.texture.wrapT = RepeatWrapping;
+  const background = preset.sky.background;
+  const baseTexture = new DataTexture(
+    new Uint8Array([
+      Math.round(background.r * 255),
+      Math.round(background.g * 255),
+      Math.round(background.b * 255),
+      255,
+    ]),
+    1,
+    1,
+  );
+  baseTexture.needsUpdate = true;
+  const cloudUniforms = {
+    tScene: { value: baseTexture },
+    uTime: { value: 0 },
+    uSpeed: { value: preset.sky.speed },
+    uScale: { value: preset.sky.scale },
+    uStretch: { value: 1.5 },
+    uBlend: { value: 0.5 },
+    uContrast: { value: preset.sky.contrast },
+    uBrightness: { value: preset.sky.brightness },
+    uSaturation: { value: preset.sky.saturation },
+    uLightningFlash: weather.uWeatherReflection,
+    uLightningColor: weather.uWeatherColor,
   };
-  const uniforms = {
-    ...weather,
-    uOpacity: { value: stormSkyConfig.opacity },
-    uBase: { value: displayColor(stormSkyConfig.base) },
-    uCloud: { value: displayColor(stormSkyConfig.cloud) },
-  };
-  const geometry = new SphereGeometry(1, 32, 16);
-  const material = new ShaderMaterial({
-    vertexShader: VERTEX_SHADER,
-    fragmentShader: FRAGMENT_SHADER,
-    uniforms,
-    side: BackSide,
-    transparent: true,
-    premultipliedAlpha: true,
-    blending: NormalBlending,
-    depthTest: true,
+  const cloudMaterial = new RawShaderMaterial({
+    glslVersion: GLSL3,
+    vertexShader: CLOUD_VERTEX,
+    fragmentShader: CLOUD_FRAGMENT,
+    uniforms: cloudUniforms,
+    blending: NoBlending,
+    depthTest: false,
     depthWrite: false,
-    fog: false,
     toneMapped: false,
   });
-  const mesh = new Mesh(geometry, material);
+  const cloudScene = new Scene();
+  const quad = new Mesh(new PlaneGeometry(2, 2), cloudMaterial);
+  cloudScene.add(quad);
+  const cloudCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const horizon = preset.dome.horizon,
+    fogColor = preset.fog.color;
+  const radius = 2000;
+  const material = new RawShaderMaterial({
+    glslVersion: GLSL3,
+    // The camera journey translates the dome; its angular weather coordinates stay local.
+    vertexShader: DOME_VERTEX.replace(
+      "vWorldDir = normalize(worldPosition.xyz);",
+      "vWorldDir = normalize(position);",
+    ).replace(
+      "vGradient = worldPosition.y / uRadius + 0.5;",
+      "vGradient = position.y / uRadius + 0.5;",
+    ),
+    fragmentShader: DOME_FRAGMENT,
+    uniforms: {
+      tSky: { value: target.texture },
+      uRadius: { value: radius },
+      uOffset1: { value: 0.5 },
+      uOffset2: { value: -0.75 },
+      uYOffset: { value: 0.1 },
+      uScale1: { value: 2 },
+      uScale2: { value: 1 },
+      uEdgeSpread: { value: 0.015 },
+      uSeamSpread1: { value: 0.01 },
+      uSeamSpread2: { value: 0.02 },
+      uHorizonColor: {
+        value: new Color().setRGB(horizon.color.r, horizon.color.g, horizon.color.b),
+      },
+      uHorizonStart: { value: horizon.start },
+      uHorizonSize: { value: horizon.size },
+      uFlash: weather.uWeatherFlash,
+      uFlashColor: weather.uWeatherColor,
+      uFlashDir: weather.uWeatherDirection,
+      uFlashCellSize: { value: 0.55 },
+      uFade: { value: 1 },
+      uFogColor: { value: new Color().setRGB(fogColor.r, fogColor.g, fogColor.b) },
+    },
+    side: BackSide,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const mesh = new Mesh(new IcosahedronGeometry(radius, 10), material);
   mesh.name = "portfolio-storm-sky";
   mesh.frustumCulled = false;
-  // First transparent surface; opaque mountains have already written depth.
   mesh.renderOrder = -10;
   scene.add(mesh);
-
-  let qualityTier = tier;
-  const setQuality = (nextTier: QualityTier, nextWidth: number) => {
-    qualityTier = nextTier;
-    weather.uWeatherCloudOctaves.value =
-      nextTier === "low" ? 1 : nextTier === "high" && nextWidth >= 1024 ? 3 : 2;
-  };
-  setQuality(tier, width);
-
+  weather.uWeatherSkyTexture.value = target.texture;
   return {
     mesh,
-    setQuality,
-    update: (elapsedSeconds, camera) => {
-      // Follow translation only: distant clouds have no ground-level parallax.
+    setQuality: () => {},
+    update: (elapsed, camera) => {
+      weather.uWeatherCloudTime.value = reducedMotion ? 0 : elapsed;
+      cloudUniforms.uTime.value = weather.uWeatherCloudTime.value;
+      // Keep the dome within the portfolio camera's far plane without changing its angular scale.
       mesh.position.copy(camera.position);
-      weather.uWeatherCloudTime.value = reducedMotion || qualityTier === "low" ? 0 : elapsedSeconds;
+      const scale = Math.min(camera.far * 0.8, 2000) / radius;
+      mesh.scale.setScalar(scale);
+
+      if (!renderer) return;
+      const previousTarget = renderer.getRenderTarget(),
+        autoClear = renderer.autoClear;
+      renderer.autoClear = true;
+      renderer.setRenderTarget(target);
+      renderer.render(cloudScene, cloudCamera);
+      renderer.setRenderTarget(previousTarget);
+      renderer.autoClear = autoClear;
     },
     destroy: () => {
       scene.remove(mesh);
-      geometry.dispose();
+      mesh.geometry.dispose();
       material.dispose();
+      quad.geometry.dispose();
+      cloudMaterial.dispose();
+      baseTexture.dispose();
+      target.dispose();
+      weather.uWeatherSkyTexture.value = null;
     },
   };
 }

@@ -17,7 +17,6 @@ import {
 } from "three";
 
 import { createWeatherUniforms, WEATHER_GLSL, type WeatherUniforms } from "../core/weather";
-import { lightningConfig } from "../sceneConfig";
 
 import { floorConfig, waterTones } from "../sceneConfig";
 import type { WaterConfig } from "../sceneTypes";
@@ -244,11 +243,6 @@ const FRAGMENT_SHADER = /* glsl */ `
     vec3 bounce = reflect(-view, normal);
     // Sample precisely the same outgoing radiance as the sky, through the
     // existing moving wave normal. Resolve transport after the calm haze mix.
-    vec3 stormReflection = vec3(0.0);
-    if (uWeatherFlash > 0.001 && bounce.y > 0.005) {
-      vec3 direction = normalize(bounce);
-      stormReflection = stormCloudRadiance(direction, stormCloudDensity(direction));
-    }
     for (int i = 0; i < ${MAX_BEACONS}; i++) {
       vec4 beacon = uBeacon[i];
       if (beacon.w <= 0.0) continue;
@@ -273,11 +267,7 @@ const FRAGMENT_SHADER = /* glsl */ `
      */
     float haze = smoothstep(24.0, 110.0, vDepth) * 0.85;
     colour = mix(colour, uMist, haze);
-    // Surface reflection and light scattered by the water's distant air each
-    // receive one transmittance factor, rather than two independent gains.
-    colour += stormReflection * mix(uReflectance.x, uReflectance.y, fresnel) * (1.0 - haze);
-    colour += uWeatherColor * uWeatherFlash * ${lightningConfig.hazeGain}
-      * (0.3 + 0.7 * weatherHorizonCell(vWorld - cameraPosition)) * haze;
+    colour = applySkyDetail(colour, uWeatherSkyTexture, vWorld.xz / 10.0, 0.01, 0.5, 1.1898734177215184, 1.4746917296986561);
 
     /*
      * Feather the far edge out before the geometry actually ends. The plane

@@ -8,6 +8,7 @@ export function thunderAudit(stage: string, detail: Record<string, unknown> = {}
     !new URLSearchParams(window.location.search).has("weatherAudioAudit")
   )
     return;
+  document.documentElement.dataset.thunderAudit = JSON.stringify({ stage, ...detail });
   window.dispatchEvent(
     new CustomEvent("portfolio:thunder-audit", {
       detail: {

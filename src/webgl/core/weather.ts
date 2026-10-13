@@ -1,16 +1,15 @@
-import { Color, SRGBColorSpace, Vector3, type PerspectiveCamera } from "three";
+import { Color, Vector3, type PerspectiveCamera, type Texture } from "three";
+import preset from "../weather/preset.json";
 
-import { lightningConfig } from "../sceneConfig";
-
-/** Shared by reference, so every consumer sees the very same flash this frame. */
 export type WeatherUniforms = {
   uWeatherFlash: { value: number };
+  uWeatherReflection: { value: number };
   uWeatherDirection: { value: Vector3 };
-  uWeatherColor: { value: Vector3 };
+  uWeatherColor: { value: Color };
   uWeatherCloudTime: { value: number };
   uWeatherCloudOctaves: { value: number };
+  uWeatherSkyTexture: { value: Texture | null };
 };
-
 export type WeatherState = Readonly<{
   storm: number;
   flash: number;
@@ -18,32 +17,30 @@ export type WeatherState = Readonly<{
   strength: number;
   strikes: number;
 }>;
-
 export function createWeatherUniforms(): WeatherUniforms {
-  const rgb = { r: 0, g: 0, b: 0 };
-  new Color(lightningConfig.color).getRGB(rgb, SRGBColorSpace);
   return {
     uWeatherFlash: { value: 0 },
+    uWeatherReflection: { value: 0 },
+    uWeatherDirection: { value: new Vector3(0, 0.4, -1).normalize() },
+    uWeatherColor: { value: new Color("#9fbcff") },
     uWeatherCloudTime: { value: 0 },
-    uWeatherCloudOctaves: { value: 3 },
-    uWeatherDirection: { value: new Vector3(0, 0.45, -1).normalize() },
-    uWeatherColor: { value: new Vector3(rgb.r, rgb.g, rgb.b) },
+    uWeatherCloudOctaves: { value: 6 },
+    uWeatherSkyTexture: { value: null },
   };
 }
-
-/** Directional cells shared by clouds, air, terrain and reflected cloud light. */
 export const WEATHER_GLSL = /* glsl */ `
   uniform float uWeatherFlash;
+  uniform float uWeatherReflection;
   uniform vec3 uWeatherDirection;
   uniform vec3 uWeatherColor;
-
   float weatherHorizonCell(vec3 direction) {
-    vec2 ray = direction.xz / max(length(direction.xz), 0.001);
-    // A broad cloud bank, not a radial emitter. All air shares its diffuse lift.
-    return smoothstep(-0.65, 0.55, dot(ray, normalize(uWeatherDirection.xz)));
+    float ang = acos(clamp(dot(normalize(direction), uWeatherDirection), -1.0, 1.0));
+    float cell = 1.0 - smoothstep(0.0, 0.55, ang);
+    return cell * cell;
   }
 `;
 
+/** One active-time clock owns the four-pulse flash and its audio event. */
 export function createWeather(
   reducedMotion: boolean,
   random: () => number = Math.random,
@@ -51,151 +48,113 @@ export function createWeather(
   waitingForEntry = false,
 ) {
   const uniforms = createWeatherUniforms();
+  const settings = preset.sky.lightning;
   const state = {
-    storm: lightningConfig.storm,
+    storm: settings.intensity,
     flash: 0,
     direction: uniforms.uWeatherDirection.value,
-    strength: 0,
+    strength: 1,
     strikes: 0,
   };
-  const amplitudes = new Float32Array(4);
-  const starts = new Float32Array(4);
-  const attacks = new Float32Array(4);
-  const decays = new Float32Array(4);
-  const look = new Vector3();
-  let groupedFollowUp = false;
-  const gap = (allowGroup = true) => {
-    // At most one follow-up per pair; then leave room for the rolling tails.
-    const choice = random();
-    const group = allowGroup && !groupedFollowUp && choice < lightningConfig.groupChance;
-    const quiet =
-      choice >= lightningConfig.groupChance &&
-      choice < lightningConfig.groupChance + lightningConfig.quietChance;
-    groupedFollowUp = group;
-    const range = group
-      ? lightningConfig.groupedInterval
-      : quiet
-        ? lightningConfig.quietInterval
-        : lightningConfig.interval;
-    return range[0] + random() * (range[1] - range[0]);
-  };
-  const firstGap = () =>
-    lightningConfig.firstInterval[0] +
-    random() * (lightningConfig.firstInterval[1] - lightningConfig.firstInterval[0]);
-  const nextGap = () => (state.strikes === 0 ? firstGap() : gap(false));
-  let remaining = firstGap();
-  let experienceStarted = !waitingForEntry;
-  let age = -1;
-  let announced = false;
-  let stormTarget: number = lightningConfig.storm;
-  let destroyed = false;
-  let motionSuppressed = reducedMotion;
-
-  const clearFlash = () => {
+  let remaining = -1,
+    age = -1;
+  let started = !waitingForEntry,
+    suppressed = reducedMotion,
+    destroyed = false;
+  const rand = (a: number, b: number) => a + random() * Math.max(0, b - a);
+  const next = () => rand(settings.minInterval, settings.maxInterval);
+  const clear = () => {
     age = -1;
     state.flash = 0;
     uniforms.uWeatherFlash.value = 0;
+    uniforms.uWeatherReflection.value = 0;
   };
-
+  const envelope = (t: number) => {
+    const pulse = (centre: number, width: number) => Math.exp(-(((t - centre) / width) ** 2));
+    return (
+      pulse(0.09, 0.06) +
+      pulse(0.21, 0.06) * 0.5 +
+      pulse(0.42, 0.11) * 0.6 +
+      pulse(0.71, 0.17) * 0.4
+    );
+  };
   const sample = (seconds: number) => {
-    if (destroyed || motionSuppressed || age < 0) return;
+    if (destroyed || suppressed || age < 0) return;
     age = seconds;
-    if (age >= lightningConfig.duration) {
-      clearFlash();
+    if (age >= settings.duration) {
+      clear();
       return;
     }
-    let envelope = 0;
-    for (let i = 0; i < 4; i++) {
-      const t = age - starts[i]!;
-      if (t < 0 || t > attacks[i]! + decays[i]! * 5) continue;
-      const pulse = t < attacks[i]! ? t / attacks[i]! : Math.exp(-(t - attacks[i]!) / decays[i]!);
-      envelope = Math.max(envelope, amplitudes[i]! * pulse);
-    }
-    state.flash = envelope * state.strength * lightningConfig.maxFlash;
+    state.flash = envelope(age / settings.duration) * state.strength * settings.intensity;
     uniforms.uWeatherFlash.value = state.flash;
-    if (!announced && state.flash > 0) {
-      announced = true;
-      events.onStrike?.(state);
-    }
+    uniforms.uWeatherReflection.value = state.flash * settings.reflection;
   };
   const trigger = (camera: PerspectiveCamera) => {
-    if (destroyed || motionSuppressed) return false;
-    camera.getWorldDirection(look);
-    const horizontalHalfFov = Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
-    const heading = Math.atan2(look.x, look.z) + (random() - 0.5) * horizontalHalfFov;
-    state.direction.set(Math.sin(heading), 0.36 + random() * 0.19, Math.cos(heading)).normalize();
-    state.strength = (0.65 + random() * 0.35) * (camera.aspect < 1 ? 0.85 : 1);
-    starts.set([0.015, 0.34 + random() * 0.12, 0.73 + random() * 0.14, 1.15 + random() * 0.16]);
-    for (let i = 0; i < 4; i++) {
-      amplitudes[i] = i === 0 ? 1 : (0.65 - i * 0.13) * (0.8 + random() * 0.2);
-      attacks[i] = 0.004 + random() * 0.004;
-      decays[i] = 0.04 + random() * 0.012;
-    }
-    age = 0;
-    announced = false;
+    void camera; // Cells are world-aligned, independent of the journey camera.
+    if (destroyed || suppressed) return false;
+    const heading = rand(-0.4, 0.4) * Math.PI;
+    const elevation = rand(0.15, 0.8),
+      horizontal = Math.cos(elevation);
+    state.direction
+      .set(horizontal * Math.sin(heading), Math.sin(elevation), -horizontal * Math.cos(heading))
+      .normalize();
+    state.strength = rand(0.6, 1.2);
     state.strikes++;
-    remaining = gap();
+    age = 0;
+    remaining = settings.duration + next();
+    sample(0);
+    events.onStrike?.(state);
     return true;
   };
   return {
     uniforms,
-    /** Arm once from entry, independently of the sound choice or section changes. */
-    beginExperience: (elapsedSinceEntry = 0) => {
-      if (experienceStarted || destroyed) return;
-      experienceStarted = true;
-      remaining = Math.max(0, remaining - Math.max(0, elapsedSinceEntry));
-    },
-    setStormTarget: (value: number) => {
-      stormTarget = Math.max(0, Math.min(1, value));
-    },
     state: state as WeatherState,
     trigger,
-    /** Analytical event sampling used by the development-only visual capture. */
     sample,
-    peakTime: () => starts[0]! + attacks[0]!,
-    flickerTimes: () => Array.from(starts, (start, i) => start + attacks[i]!),
+    peakTime: () => 0.09 * settings.duration,
+    flickerTimes: () => [0.09, 0.21, 0.42, 0.71].map((t) => t * settings.duration),
+    beginExperience: (elapsed = 0) => {
+      void elapsed; // The active scene clock starts when entry is armed.
+      if (!started && !destroyed) {
+        started = true;
+        remaining = next();
+      }
+    },
+
     setReducedMotion: (reduce: boolean) => {
-      if (reduce !== motionSuppressed) {
-        motionSuppressed = reduce;
+      if (reduce !== suppressed) {
+        suppressed = reduce;
+        clear();
+        remaining = next();
         if (reduce) events.onCancel?.();
-        clearFlash();
-        remaining = nextGap();
       }
     },
-    update: (deltaSeconds: number, camera: PerspectiveCamera, allowNewStrike = true) => {
-      if (destroyed || motionSuppressed || !experienceStarted) return;
-      const delta = Math.max(0, Math.min(0.1, deltaSeconds));
-      // Audio character eases between chapters; approved visual parameters stay fixed.
-      state.storm += (stormTarget - state.storm) * (1 - Math.exp(-delta / 5));
-      remaining -= delta;
-      if (age < 0 && remaining <= 0 && allowNewStrike) trigger(camera);
-      if (age >= 0) {
-        const previousAge = age;
-        sample(age + delta);
-        // Preserve peaks crossed between display frames, including 30 fps.
-        // The analytical sample API remains exact for still-frame comparisons.
-        for (let i = 0; i < 4; i++) {
-          const peak = starts[i]! + attacks[i]!;
-          if (previousAge < peak && age >= peak) {
-            state.flash = Math.max(
-              state.flash,
-              amplitudes[i]! * state.strength * lightningConfig.maxFlash,
-            );
-            uniforms.uWeatherFlash.value = state.flash;
-          }
-        }
+    update: (delta: number, camera: PerspectiveCamera, allowNewStrike = true) => {
+      if (destroyed || suppressed || !started) return;
+      if (delta > 1) {
+        clear();
+        remaining = next();
+        return;
       }
+      if (remaining < 0) remaining = next();
+      const dt = Math.max(0, delta);
+      remaining -= dt;
+      if (age < 0 && remaining <= 0 && allowNewStrike) {
+        const overshoot = -remaining;
+        trigger(camera);
+        remaining -= overshoot;
+        sample(overshoot);
+      } else if (age >= 0) sample(age + dt);
     },
-    /** Hidden page/context suspension cancels a strike, never replays it on return. */
     suspend: () => {
       events.onCancel?.();
-      clearFlash();
-      remaining = nextGap();
+      clear();
+      remaining = next();
     },
     destroy: () => {
       events.onCancel?.();
       destroyed = true;
-      clearFlash();
+      clear();
     },
   };
 }

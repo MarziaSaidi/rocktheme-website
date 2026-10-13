@@ -1,87 +1,70 @@
-/** Audio-only distance/character shaping. It never advances the weather clock. */
+/** Eight thunder voices share the same shuffled, non-repeating group. */
 export const THUNDER_SAMPLES = [
-  "distant-valley",
-  "soft-roll",
-  "deep-front",
-  "mountain-echo",
-  "low-canopy",
-  "rolling-strike",
+  "thunder-01",
+  "thunder-02",
+  "thunder-03",
+  "thunder-04",
+  "thunder-05",
+  "thunder-06",
+  "thunder-07",
+  "thunder-08",
 ] as const;
-/** Embedded light rain in this source conflicts with the thunder-only mix. */
-export const THUNDER_DISABLED_SAMPLES: readonly string[] = ["distant-valley"];
+export const THUNDER_DISABLED_SAMPLES: readonly string[] = [];
 export const THUNDER = {
-  delay: [0, 2.5],
-  gainDb: 3.5,
-  musicDuck: { depthDb: 5, attack: 0.18, bodyFraction: 0.6, maxBody: 18, recover: 5 },
-  /** Two sustained tails; initial impacts remain protected during brief overlaps. */
+  delay: [0, 0],
+  gainDb: 0,
+  musicDuck: { depthDb: 0, attack: 0.18, bodyFraction: 0.6, maxBody: 18, recover: 5 },
   maxConcurrent: 2,
-  impactProtection: 3.2,
-  fadeOut: 0.015,
-  storm: { hero: 0.55, "selected-work": 0.45, about: 0.48, footer: 0.6 },
+  impactProtection: 0,
+  fadeOut: 0.5,
+  overflowFadeOut: 0.06,
+  storm: {
+    hero: 0.5170921887051887,
+    "selected-work": 0.5170921887051887,
+    about: 0.5170921887051887,
+    footer: 0.5170921887051887,
+  },
 } as const;
-const clamp = (value: number) => Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0.5));
-/** Infer one audio-only distance from the approved flash strength; never roll a separate delay.
- * Strong strikes: 7–37 m. Weaker strikes: 274–858 m. */
 export function thunderDistance(intensity: number) {
-  const strength = clamp(intensity);
-  const metres =
-    strength >= 0.88
-      ? 7 + ((1 - strength) / 0.12) * 30
-      : 274 + clamp((0.88 - strength) / 0.23) * 584;
-  return metres / 858;
+  void intensity; // Thunder starts with the cloud event, without a distance delay.
+  return 0;
 }
-/** A shuffled character pool prevents repeats and avoids a fixed audible cycle. */
 export function createThunderSelector(random: () => number = Math.random) {
-  const bags = new Map<string, number[]>();
-  let last = -1;
+  let bag: number[] = [],
+    last = -1,
+    key = "";
   return (
-    distance: number,
+    _distance: number,
     intensity: number,
     storm = 0.55,
-    available: readonly number[] = [0, 1, 2, 3, 4, 5],
+    available: readonly number[] = THUNDER_SAMPLES.map((_, i) => i),
   ) => {
-    const preferred = clamp(distance) <= 0.06 ? [2, 3, 5] : [0, 1, 4];
-    const enabled = available.filter(
-      (index) => !THUNDER_DISABLED_SAMPLES.includes(THUNDER_SAMPLES[index]!),
-    );
-    const matching = enabled.filter((index) => preferred.includes(index));
-    const candidates = matching.length ? matching : enabled;
-    if (!candidates.length) return null;
-    const key = [...candidates].sort().join(",");
-    let bag = bags.get(key);
-    if (!bag?.length) {
-      bag = [...candidates];
+    void storm; // The same sound group plays across sections.
+    if (!available.length) return null;
+    const nextKey = [...available].sort().join(",");
+    if (!bag.length || nextKey !== key) {
+      key = nextKey;
+      bag = [...available];
       for (let i = bag.length - 1; i > 0; i--) {
         const j = Math.floor(random() * (i + 1));
         [bag[i], bag[j]] = [bag[j]!, bag[i]!];
       }
-      if (bag.length > 1 && bag.at(-1) === last)
-        [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1]!, bag[0]!];
-      bags.set(key, bag);
+      if (bag.length > 1 && bag.at(-1) === last) {
+        const alternate = Math.floor(random() * (bag.length - 1));
+        [bag[alternate], bag[bag.length - 1]] = [bag[bag.length - 1]!, bag[alternate]!];
+      }
     }
-    let index = bag.pop()!;
-    if (index === last && candidates.length > 1) {
-      const alternate = candidates.find((value) => value !== last)!;
-      // Preserve the displaced choice for a later strike while avoiding a repeat after a pool change.
-      const at = bag.indexOf(alternate);
-      if (at >= 0) bag.splice(at, 1);
-      bag.unshift(index);
-      index = alternate;
-    }
+    const index = bag.pop()!;
     last = index;
-    const far = clamp(distance),
-      strength = clamp(intensity);
+    const strength = Math.max(0, Math.min(1, (intensity - 0.6) / (1.2 - 0.6)));
     return {
       index,
-      delay: THUNDER.delay[0] + far * (THUNDER.delay[1] - THUNDER.delay[0]),
-      distanceMetres: far * 2.5 * 343,
-      gain:
-        (0.76 - far * 0.34) *
-        (0.6 + strength * 0.4) *
-        (0.7 + clamp(storm) * 0.3) *
-        10 ** (THUNDER.gainDb / 20),
-      lowpass: 12000 - far * 7000,
-      rate: 1,
+      delay: 0,
+      distanceMetres: 0,
+      gain: 0.75 + 0.25 * strength,
+      lowpass: 20000,
+      highpass: 10,
+      rate: 0.9 + 0.1 * strength,
     };
   };
 }
