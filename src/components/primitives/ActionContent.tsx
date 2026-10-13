@@ -58,6 +58,11 @@ export function ActionContent({ text, arrow }: Readonly<{ text: string; arrow?: 
     <span ref={root} className={styles.content}>
       <svg className={styles.border} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
         <defs>
+          <filter id={`tint-${id}`} x="-10%" y="-10%" width="120%" height="120%">
+            <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="grain" />
+            <feFlood floodColor="var(--brand-lavender)" result="purple" />
+            <feComposite in="purple" in2="grain" operator="in" />
+          </filter>
           <pattern id={`edge-${id}`} width="300" height="300" patternUnits="userSpaceOnUse">
             <image href="/interface/grain.webp" width="300" height="300" />
           </pattern>
@@ -70,6 +75,7 @@ export function ActionContent({ text, arrow }: Readonly<{ text: string; arrow?: 
           rx="3.5"
           fill="none"
           stroke={`url(#edge-${id})`}
+          filter={`url(#tint-${id})`}
         />
       </svg>
       <svg className={styles.hover} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -81,6 +87,7 @@ export function ActionContent({ text, arrow }: Readonly<{ text: string; arrow?: 
           rx="4.25"
           fill="none"
           stroke={`url(#edge-${id})`}
+          filter={`url(#tint-${id})`}
         />
       </svg>
       <span className={styles.text}>

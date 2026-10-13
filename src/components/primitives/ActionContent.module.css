@@ -5,7 +5,7 @@
   border-radius: 0.21875rem;
   background: transparent;
   padding: 0.875rem 1.625rem;
-  color: var(--color-text-primary);
+  color: var(--brand-lavender);
 }
 :global([data-action-button][data-action-button])::after {
   content: none;
@@ -100,4 +100,8 @@
 :global([data-action-button][data-action-button]:hover) {
   border-color: transparent;
   background: transparent;
+}
+
+:global([data-action-button][data-action-button]:focus-visible) {
+  outline-color: var(--brand-lavender);
 }
