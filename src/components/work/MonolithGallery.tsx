@@ -632,6 +632,7 @@ export function MonolithGallery({
 
   useEffect(() => {
     if (shown && !swap) emitSoundEvent("project:active", { step: active });
+    else if (!shown) emitSoundEvent("project:inactive");
     // The header's project counter decodes in the same beat.
     publishWorkStation(shown && !swap ? { station: active, count } : null);
   }, [shown, active, swap, count]);

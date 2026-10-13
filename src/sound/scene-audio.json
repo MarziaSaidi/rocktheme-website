@@ -1,0 +1,71 @@
+{
+  "music": ["/audio/scene/music-01"],
+  "enter": ["/audio/scene/enter-01"],
+  "soundOn": ["/audio/scene/soundOn-01"],
+  "soundOff": ["/audio/scene/soundOff-01"],
+  "soundHover": ["/audio/scene/soundHover-01"],
+  "viewHover": ["/audio/scene/viewHover-01"],
+  "socialHover": ["/audio/scene/socialHover-01"],
+  "socialClick": ["/audio/scene/socialClick-01"],
+  "mainClick": [
+    "/audio/scene/mainClick-01",
+    "/audio/scene/mainClick-02",
+    "/audio/scene/mainClick-03",
+    "/audio/scene/mainClick-04",
+    "/audio/scene/mainClick-05"
+  ],
+  "mainHover": [
+    "/audio/scene/mainHover-01",
+    "/audio/scene/mainHover-02",
+    "/audio/scene/mainHover-03"
+  ],
+  "returnHover": [
+    "/audio/scene/returnHover-01",
+    "/audio/scene/returnHover-02",
+    "/audio/scene/returnHover-03"
+  ],
+  "returnClick": [
+    "/audio/scene/returnClick-01",
+    "/audio/scene/returnClick-02",
+    "/audio/scene/returnClick-03"
+  ],
+  "emailHover": [
+    "/audio/scene/emailHover-01",
+    "/audio/scene/emailHover-02",
+    "/audio/scene/emailHover-03"
+  ],
+  "altHover": [
+    "/audio/scene/altHover-01",
+    "/audio/scene/altHover-02",
+    "/audio/scene/altHover-03",
+    "/audio/scene/altHover-04"
+  ],
+  "altClick": ["/audio/scene/altClick-01", "/audio/scene/altClick-02", "/audio/scene/altClick-03"],
+  "animation": [
+    "/audio/scene/animation-01",
+    "/audio/scene/animation-02",
+    "/audio/scene/animation-03",
+    "/audio/scene/animation-04",
+    "/audio/scene/animation-05",
+    "/audio/scene/animation-06"
+  ],
+  "tagline": ["/audio/scene/tagline-01", "/audio/scene/tagline-02", "/audio/scene/tagline-03"],
+  "activate": [
+    "/audio/scene/activate-01",
+    "/audio/scene/activate-02",
+    "/audio/scene/activate-03",
+    "/audio/scene/activate-04"
+  ],
+  "deactivate": [
+    "/audio/scene/deactivate-01",
+    "/audio/scene/deactivate-02",
+    "/audio/scene/deactivate-03"
+  ],
+  "prespawn": [
+    "/audio/scene/prespawn-01",
+    "/audio/scene/prespawn-02",
+    "/audio/scene/prespawn-03",
+    "/audio/scene/prespawn-04"
+  ],
+  "portalLoop": ["/audio/scene/portalLoop-01"]
+}

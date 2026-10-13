@@ -42,6 +42,7 @@ export function SoundToggle() {
       type="button"
       className={styles.toggle}
       onClick={toggle}
+      data-sound-control=""
       aria-pressed={state.enabled}
       data-running={state.ready ? "" : undefined}
     >

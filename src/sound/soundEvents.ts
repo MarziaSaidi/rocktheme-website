@@ -18,6 +18,7 @@ export const SOUND_EVENTS = [
   "entry:passage",
   /** A project has settled in front of the camera. */
   "project:active",
+  "project:inactive",
   /** The statement's words have begun to light. */
   "statement:read",
   /** A case study is being opened. */
