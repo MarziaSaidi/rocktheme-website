@@ -69,8 +69,12 @@ const NAMES: Record<RenderPass, string> = { sketch: "Draw", engine: "Build", lig
 const INTRO = "Here’s how I made this world. Keep scrolling.";
 const SWEEP_MS = 1500;
 const PREVIEW_MS = 850;
-/** The stillness before the name, in story progress. */
-const STILL = { in: [0.656, 0.668], out: [0.69, 0.76] } as const;
+/**
+ * The stillness before the name: a beat in time, not a stretch of scroll. It
+ * plays once as the visitor scrolls down past `at`, so stopping anywhere never
+ * leaves the world dimmed. Scrolling back above it lets it play again.
+ */
+const STILL = { at: 0.656, inMs: 450, holdMs: 1100, outMs: 1600 } as const;
 
 const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const smooth = (a: number, b: number, x: number) => {
@@ -415,6 +419,8 @@ export function RenderPasses() {
     // ---------------------------------------------------------- loop
     let raf = 0;
     let tick = 0;
+    let lastProgress = Number.NaN;
+    let stillSince: number | null = null;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       tick++;
@@ -434,11 +440,18 @@ export function RenderPasses() {
         split: frame.split,
         vertical: isVertical,
       });
-      setStillness(
-        motion
-          ? smooth(STILL.in[0], STILL.in[1], p) * (1 - smooth(STILL.out[0], STILL.out[1], p))
-          : 0,
-      );
+      if (!motion || Number.isNaN(lastProgress)) stillSince = null;
+      else if (lastProgress < STILL.at && p >= STILL.at && !reduced.matches) stillSince = now;
+      else if (p < STILL.at - 0.02) stillSince = null;
+      lastProgress = motion ? p : Number.NaN;
+      let still = 0;
+      if (stillSince !== null) {
+        const t = now - stillSince;
+        const release = STILL.inMs + STILL.holdMs;
+        still = smooth(0, STILL.inMs, t) * (1 - smooth(release, release + STILL.outMs, t));
+        if (t > release + STILL.outMs) stillSince = null;
+      }
+      setStillness(still);
 
       // From just before the first sweep to the end of the lit stop.
       const inPassage = usable && p > 0.3 && p < ZONES[3]!.to;
