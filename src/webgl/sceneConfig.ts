@@ -1084,10 +1084,10 @@ export const sceneSections = {
 export const chapterFrames = {
   hero: { origin: [-24.7, 0, 28.2], yaw: 0 },
   "selected-work": { origin: [0, 0, 0], yaw: 0 },
-  // Drawn 8 units in toward the last stone (from x -12) so the turn from
-  // Survue is shorter; any closer and the phone turn passes 0.2° a pixel.
-  // Contact keeps its place.
-  about: { origin: [-20, 0, 22.5], yaw: Math.PI },
+  // The bio faces east, a quarter turn from the range: Survue's descent ends
+  // facing the range, the camera turns right a quarter to the bio, and the
+  // other quarter on the way to Contact, which keeps its place.
+  about: { origin: [-21, 0, 12], yaw: -Math.PI / 2 },
   footer: { origin: [-12, 0, 46.5], yaw: Math.PI },
 } as const satisfies Readonly<Record<SectionId, ChapterFrame>>;
 
@@ -1411,9 +1411,10 @@ export type BioShots = Readonly<{
 
 export function bioShots(lastSettle: PosePoint, about: PosePoint, contact: PosePoint): BioShots {
   return {
-    toBio: composeShot(lastSettle, about, { reach: 15, sway: [0, 1.4, 0], tilt: 0, aim: 20 }),
+    // A quarter turn: reach is the arc's handle length (0.55 of its radius).
+    toBio: composeShot(lastSettle, about, { reach: 5, sway: [0, 1.2, 0], tilt: 0, aim: 20 }),
     toContact: composeShot(about, contact, {
-      reach: 8,
+      reach: 10,
       sway: [2.4, 1.5, 0],
       tilt: -0.06,
       aim: 16,

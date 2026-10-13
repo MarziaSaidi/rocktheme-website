@@ -556,17 +556,17 @@ console.log("\ncamera journey");
       workStart: 2070,
       workEnd: 8550,
       descentEnd: 9450,
-      about: 10934,
-      aboutLeave: 15884,
-      contact: 17404,
+      about: 10286,
+      aboutLeave: 15236,
+      contact: 16756,
     },
     mobile: {
       workStart: 844,
       workEnd: 5317,
       descentEnd: 5866,
-      about: 7350,
-      aboutLeave: 11992,
-      contact: 13168,
+      about: 6760,
+      aboutLeave: 11402,
+      contact: 12577,
     },
   } as const satisfies Record<string, JourneyStops>;
 
