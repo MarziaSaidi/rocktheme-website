@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionContent } from "@/components/primitives/ActionContent";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -14,8 +15,6 @@ import {
 import { sceneMediaQueries } from "@/config/responsive";
 import { sectionAnchors } from "@/config/sections";
 import { stableViewportHeight } from "@/config/viewport";
-import { SwapGlyph } from "@/components/primitives/SwapGlyph";
-import { DecodeText } from "@/motion/DecodeText";
 import { ProjectStepper } from "@/motion/projectStepper";
 import { isWorkLink, publishWorkStation, takeWorkFocus } from "@/motion/workChannel";
 import { emitSoundEvent } from "@/sound/soundEvents";
@@ -772,6 +771,7 @@ export function MonolithGallery({
                       ) : null}
                       <Link
                         className={styles.view}
+                        data-action-button=""
                         href={current.href}
                         data-cursor="action"
                         data-work-view=""
@@ -780,12 +780,8 @@ export function MonolithGallery({
                           emitSoundEvent("project:open");
                         }}
                       >
-                        {/* An important action: it decodes on hover or focus, never on arrival. */}
-                        <DecodeText text={viewLabel} entrance={false} replay />
+                        <ActionContent text={viewLabel} arrow="→" />
                         <span className={styles.hidden}>: {current.title}</span>
-                        <SwapGlyph direction="right" className={styles.arrow}>
-                          →
-                        </SwapGlyph>
                       </Link>
                       {/*
                        * Keyboard-only steps between projects, shown only while

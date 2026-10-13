@@ -1,0 +1,103 @@
+:global([data-action-button][data-action-button]) {
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  border-radius: 0.21875rem;
+  background: transparent;
+  padding: 0.875rem 1.625rem;
+  color: var(--color-text-primary);
+}
+:global([data-action-button][data-action-button])::after {
+  content: none;
+}
+.content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.border {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.hover {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  mask-image: url("/interface/cloud-mask.webp");
+  mask-mode: luminance;
+  mask-position: var(--cloud-x, 100%) 50%;
+  mask-repeat: no-repeat;
+  mask-size: 6000% auto;
+}
+.text,
+.icon {
+  display: inline-block;
+  position: relative;
+}
+.text > span,
+.icon > span {
+  display: block;
+}
+.text > span:last-child {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(120%);
+}
+.icon > span:last-child {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateX(-120%);
+}
+@media (hover: hover) {
+  :global([data-action-button]:hover) .text > span,
+  :global([data-action-button]:hover) .icon > span {
+    transition:
+      transform 0.8s cubic-bezier(0.14, 1, 0.34, 1),
+      opacity 0.8s cubic-bezier(0.14, 1, 0.34, 1);
+  }
+  :global([data-action-button]:hover) .text > span:first-child {
+    opacity: 0;
+    transform: translateY(-120%);
+  }
+  :global([data-action-button]:hover) .icon > span:first-child {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+  :global([data-action-button]:hover) .text > span:last-child,
+  :global([data-action-button]:hover) .icon > span:last-child {
+    opacity: 1;
+    transform: translate(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :global([data-action-button]) .text > span,
+  :global([data-action-button]) .icon > span {
+    transition: none !important;
+    transform: none !important;
+  }
+  :global([data-action-button]:hover) .text > span:first-child,
+  :global([data-action-button]:hover) .icon > span:first-child {
+    opacity: 1;
+  }
+  :global([data-action-button]) .text > span:last-child,
+  :global([data-action-button]) .icon > span:last-child {
+    opacity: 0;
+  }
+}
+
+:global([data-action-button][data-action-button]:hover) {
+  border-color: transparent;
+  background: transparent;
+}

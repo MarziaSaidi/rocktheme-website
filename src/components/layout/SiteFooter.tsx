@@ -1,3 +1,4 @@
+import { ActionContent } from "@/components/primitives/ActionContent";
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
@@ -45,12 +46,12 @@ export function SiteFooter() {
           <p className={styles.lead}>{contact.lead}</p>
           <a
             className={styles.primary}
+            data-action-button=""
             href={email.href}
             data-contact-primary=""
             data-cursor="action"
           >
-            <DecodeText text={contact.primaryLabel} replay />
-            <SwapGlyph direction="up-right">↗</SwapGlyph>
+            <ActionContent text={contact.primaryLabel} arrow="↗" />
           </a>
         </div>
 

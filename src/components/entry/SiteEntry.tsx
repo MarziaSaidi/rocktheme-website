@@ -1,5 +1,6 @@
 "use client";
 
+import { ActionContent } from "@/components/primitives/ActionContent";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import {
@@ -149,20 +150,22 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
           <div className={styles.choices}>
             <button
               className={styles.withSound}
+              data-action-button=""
               type="button"
               onClick={() => enter(true)}
               disabled={leaving || sound.unsupported}
               aria-describedby={sound.unsupported ? "entry-sound-note" : undefined}
             >
-              ENTER WITH SOUND
+              <ActionContent text="ENTER WITH SOUND" />
             </button>
             <button
               className={styles.withoutSound}
+              data-action-button=""
               type="button"
               onClick={() => enter(false)}
               disabled={leaving}
             >
-              ENTER WITHOUT SOUND
+              <ActionContent text="ENTER WITHOUT SOUND" />
             </button>
             {sound.unsupported && (
               <span id="entry-sound-note" className={styles.visuallyHidden}>
