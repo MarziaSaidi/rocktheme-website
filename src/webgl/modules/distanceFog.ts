@@ -111,6 +111,7 @@ export function applyDistanceFog(material: MeshStandardMaterial, uniforms: Dista
         "#include <common>",
         `#include <common>
       varying vec3 vWorldPos;
+      #define vAtmosWorld (vWorldPos * ${ATMOSPHERE_SCALE.toFixed(1)})
       uniform sampler2D tPerlin;
       uniform sampler2D uWeatherSkyTexture;
       uniform vec3 uFogColor;
