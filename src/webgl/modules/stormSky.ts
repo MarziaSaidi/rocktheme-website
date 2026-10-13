@@ -42,7 +42,9 @@ export function createStormSky(
     magFilter: LinearFilter,
   });
   target.texture.wrapS = target.texture.wrapT = RepeatWrapping;
-  const background = new Color(stormSkyConfig.cloud).convertLinearToSRGB();
+  const background = new Color(stormSkyConfig.base)
+    .lerp(new Color(stormSkyConfig.cloud), stormSkyConfig.opacity)
+    .convertLinearToSRGB();
   const baseTexture = new DataTexture(
     new Uint8Array([
       Math.round(background.r * 255),

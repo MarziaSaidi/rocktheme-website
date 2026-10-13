@@ -56,9 +56,7 @@ import {
 } from "../sceneConfig";
 import type { EnvironmentLightingConfig, Vector3Tuple } from "../sceneTypes";
 import { createAerialTerrain } from "../modules/aerialTerrain";
-import { aerialMist, ATMOSPHERE_SCALE, disposeAtmosphereTextures } from "../modules/distanceFog";
-import weatherPreset from "../weather/preset.json";
-import { createWeatherGrade } from "../weather/grade";
+import { aerialMist, disposeAtmosphereTextures } from "../modules/distanceFog";
 import { workStretchesFor } from "../workJourney";
 import {
   evaluateJourney,
@@ -197,7 +195,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
   renderer.setSize(width, height, false);
   renderer.setClearColor(0x000000, 0);
   renderer.autoClear = false;
-  const weatherGrade = createWeatherGrade(renderer);
 
   const weather = createWeather(
     options.reducedMotion,
@@ -213,7 +210,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     weather.beginExperience(document.hidden ? 0 : (performance.now() - enteredAt) / 1000);
   });
   const weatherMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-  const f = weatherPreset.fog;
   const baseFogColor = new Color(activeScene.fog.color);
 
   // ---------------------------------------------------------- perspective pass
@@ -223,7 +219,7 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
    * sheets draw. Its colour is the DOM background the canvas composites over;
    * the renderer stays alpha so the CSS fallback layer is never covered.
    */
-  worldScene.fog = new Fog(baseFogColor, f.near * ATMOSPHERE_SCALE, f.far * ATMOSPHERE_SCALE);
+  worldScene.fog = new Fog(baseFogColor, activeScene.lighting.fogNear, activeScene.lighting.fogFar);
   /*
    * `camera` is the layout reference only: the hero composition at the origin
    * of its frame. Horizon sources, atmosphere and mist lay themselves out from
@@ -632,8 +628,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     aerialTerrain.setViewer(pose.eye);
     if (worldScene.fog instanceof Fog) {
       const lift = altitude * altitude * (3 - 2 * altitude);
-      worldScene.fog.near = f.near * ATMOSPHERE_SCALE + lift * 260;
-      worldScene.fog.far = f.far * ATMOSPHERE_SCALE + lift * 900;
+      worldScene.fog.near = activeScene.lighting.fogNear + lift * 260;
+      worldScene.fog.far = activeScene.lighting.fogFar + lift * 900;
       aerialMist.uAerialLift.value = lift;
       heroLandscape.setMoonDistance(pose.eye, lift);
     }
@@ -896,13 +892,11 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       ...aerialTerrain.reflectionExclusions(),
     ]);
 
-    weatherGrade.begin(sceneTime);
     renderer.clear();
     renderer.render(worldScene, view);
     renderer.clearDepth();
     // Once the camera is on its way through, the drifting particles stay behind.
     if (rift.departure() < 0.3) renderer.render(particles.scene, particles.camera);
-    weatherGrade.finish();
     drawFrontLayer();
     totalDrawCalls = renderer.info.render.calls;
   };
@@ -1203,7 +1197,12 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       if (!sectionId || sectionId === activeSectionId) return;
       activeSectionId = sectionId;
       activeScene = getSceneSection(sectionId);
-      worldScene.fog = new Fog(baseFogColor, f.near * ATMOSPHERE_SCALE, f.far * ATMOSPHERE_SCALE);
+      baseFogColor.setHex(activeScene.fog.color);
+      worldScene.fog = new Fog(
+        baseFogColor,
+        activeScene.lighting.fogNear,
+        activeScene.lighting.fogFar,
+      );
       floor.setConfig(activeScene.water);
       lights.setConfig(activeScene.horizonLights, camera);
       particles.setConfig(activeScene.particles);
@@ -1264,7 +1263,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       monolith.destroy();
       lights.destroy();
       stormSky.destroy();
-      weatherGrade.destroy();
       disposeAtmosphereTextures();
       floor.destroy();
 
