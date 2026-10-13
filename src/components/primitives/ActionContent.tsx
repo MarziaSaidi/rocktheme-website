@@ -5,7 +5,11 @@ import { gsap } from "gsap";
 import styles from "./ActionContent.module.css";
 
 /** Text and textured edges share the enclosing action's existing behavior. */
-export function ActionContent({ text, arrow }: Readonly<{ text: string; arrow?: string }>) {
+export function ActionContent({
+  text,
+  arrow,
+  filled = true,
+}: Readonly<{ text: string; arrow?: string; filled?: boolean }>) {
   const root = useRef<HTMLSpanElement>(null);
   const id = useId().replace(/:/g, "");
   useEffect(() => {
@@ -55,13 +59,13 @@ export function ActionContent({ text, arrow }: Readonly<{ text: string; arrow?: 
     };
   }, []);
   return (
-    <span ref={root} className={styles.content}>
+    <span ref={root} className={styles.content} data-filled={filled ? "" : undefined}>
       <svg className={styles.border} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id={`tint-${id}`} x="-10%" y="-10%" width="120%" height="120%">
             <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="grain" />
-            <feFlood floodColor="var(--brand-lavender)" result="purple" />
-            <feComposite in="purple" in2="grain" operator="in" />
+            <feFlood floodColor="var(--color-text-primary)" result="light" />
+            <feComposite in="light" in2="grain" operator="in" />
           </filter>
           <pattern id={`edge-${id}`} width="300" height="300" patternUnits="userSpaceOnUse">
             <image href="/interface/grain.webp" width="300" height="300" />

@@ -1,11 +1,45 @@
 :global([data-action-button][data-action-button]) {
   position: relative;
   isolation: isolate;
-  border-color: transparent;
+  border: none;
   border-radius: 0.21875rem;
   background: transparent;
   padding: 0.875rem 1.625rem;
-  color: var(--brand-lavender);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  height: 2.375rem;
+  min-height: 2.375rem;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 0.5rem;
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  text-indent: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+:global([data-action-button][data-action-button]):has(.content[data-filled])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 0.21875rem;
+  background: var(--color-text-primary);
+  mask-image: url("/interface/cloud-mask.webp");
+  mask-mode: luminance;
+  mask-position: var(--cloud-x, 100%) 50%;
+  mask-repeat: no-repeat;
+  mask-size: 6000% auto;
+}
+:global([data-action-button][data-action-button]):has(.content[data-filled]) .hover {
+  display: none;
+}
+:global([data-action-button][data-action-button]):has(.content[data-filled]):focus-visible {
+  color: var(--brand-aubergine, #100b18);
 }
 :global([data-action-button][data-action-button])::after {
   content: none;
@@ -15,6 +49,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
+  transition: color 0.3s ease;
 }
 .border {
   position: absolute;
@@ -61,13 +96,13 @@
   transform: translateX(-120%);
 }
 @media (hover: hover) {
-  :global([data-action-button]:hover) .text > span,
+  :global([data-action-button]:not(:has([data-filled])):hover) .text > span,
   :global([data-action-button]:hover) .icon > span {
     transition:
       transform 0.8s cubic-bezier(0.14, 1, 0.34, 1),
       opacity 0.8s cubic-bezier(0.14, 1, 0.34, 1);
   }
-  :global([data-action-button]:hover) .text > span:first-child {
+  :global([data-action-button]:not(:has([data-filled])):hover) .text > span:first-child {
     opacity: 0;
     transform: translateY(-120%);
   }
@@ -75,7 +110,7 @@
     opacity: 0;
     transform: translateX(120%);
   }
-  :global([data-action-button]:hover) .text > span:last-child,
+  :global([data-action-button]:not(:has([data-filled])):hover) .text > span:last-child,
   :global([data-action-button]:hover) .icon > span:last-child {
     opacity: 1;
     transform: translate(0);
@@ -87,7 +122,7 @@
     transition: none !important;
     transform: none !important;
   }
-  :global([data-action-button]:hover) .text > span:first-child,
+  :global([data-action-button]:not(:has([data-filled])):hover) .text > span:first-child,
   :global([data-action-button]:hover) .icon > span:first-child {
     opacity: 1;
   }
@@ -103,5 +138,20 @@
 }
 
 :global([data-action-button][data-action-button]:focus-visible) {
-  outline-color: var(--brand-lavender);
+  outline-color: var(--color-text-primary);
+}
+
+@media (hover: hover) {
+  :global([data-action-button][data-action-button]):has(.content[data-filled]):hover {
+    color: var(--brand-aubergine, #100b18);
+  }
+}
+:global([data-action-button][data-action-button]:disabled) {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+
+:global([data-action-button][data-action-button]:active) {
+  scale: 1;
 }

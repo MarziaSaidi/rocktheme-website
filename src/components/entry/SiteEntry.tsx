@@ -165,7 +165,7 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
               onClick={() => enter(false)}
               disabled={leaving}
             >
-              <ActionContent text="ENTER WITHOUT SOUND" />
+              <ActionContent text="ENTER WITHOUT SOUND" filled={false} />
             </button>
             {sound.unsupported && (
               <span id="entry-sound-note" className={styles.visuallyHidden}>
