@@ -1076,7 +1076,7 @@ export const sceneSections = {
  *
  * After the second stone the viewer turns to face back across the water
  * (+z), so How I Work and Contact are composed facing that way (yaw π), on a
- * lane 12 units to the left of the approach. That keeps both clear of the
+ * lane 12 to 20 units to the left of the approach. That keeps both clear of the
  * stones, puts the Contact rock at (-22, 56.5), behind the hero camera where
  * the hero never sees it, and keeps every chapter in front of the mountain
  * range rather than walking into it.
@@ -1084,7 +1084,10 @@ export const sceneSections = {
 export const chapterFrames = {
   hero: { origin: [-24.7, 0, 28.2], yaw: 0 },
   "selected-work": { origin: [0, 0, 0], yaw: 0 },
-  about: { origin: [-12, 0, 22.5], yaw: Math.PI },
+  // Drawn 8 units in toward the last stone (from x -12) so the turn from
+  // Survue is shorter; any closer and the phone turn passes 0.2° a pixel.
+  // Contact keeps its place.
+  about: { origin: [-20, 0, 22.5], yaw: Math.PI },
   footer: { origin: [-12, 0, 46.5], yaw: Math.PI },
 } as const satisfies Readonly<Record<SectionId, ChapterFrame>>;
 
