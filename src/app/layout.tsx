@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Barlow_Condensed, Manrope, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { WorldHandoff } from "@/components/cabin/WorldHandoff";
@@ -11,22 +11,21 @@ import { SoundProvider } from "@/sound/SoundProvider";
 
 import "./globals.css";
 
-const readingSans = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-/* Shared architectural display face for the hero and section headings. */
-const displayCondensed = Barlow_Condensed({
-  variable: "--font-barlow-condensed",
-  weight: ["400", "500"],
-  subsets: ["latin"],
+const readingSans = localFont({
+  src: [
+    { path: "../styles/fonts/PPFrama-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../styles/fonts/PPFrama-Semibold.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-frama",
   display: "swap",
+});
+
+const displaySerif = localFont({
+  src: "../styles/fonts/IvarHeadline-Regular.woff2",
+  weight: "400",
+  variable: "--font-ivar",
+  display: "swap",
+  adjustFontFallback: "Times New Roman",
 });
 
 export const metadata: Metadata = {
@@ -39,10 +38,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${readingSans.variable} ${geistMono.variable} ${displayCondensed.variable}`}
-    >
+    <html lang="en" className={`${readingSans.variable} ${displaySerif.variable}`}>
       <head>
         {/*
          * The CSS stand-in environment only appears when the scene asks for it

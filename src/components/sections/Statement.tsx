@@ -1,5 +1,4 @@
 import { Fragment } from "react";
-import localFont from "next/font/local";
 
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
@@ -10,13 +9,6 @@ import { AboutArrival } from "./AboutArrival";
 import styles from "./Statement.module.css";
 
 type Passage = (typeof siteContent.statement.passages)[number];
-const narrativeSerif = localFont({
-  src: "./fonts/SourceSerif4-Regular.woff2",
-  weight: "400",
-  display: "swap",
-  variable: "--font-about-serif",
-});
-
 /**
  * The title as words the dust can land on. A line break in the content is a
  * real one; the title still reads, selects and copies as one sentence.
@@ -50,11 +42,7 @@ export function Statement() {
   const { statement } = siteContent;
 
   return (
-    <section
-      id={sectionAnchors.about}
-      className={`${styles.section} ${narrativeSerif.variable}`}
-      aria-labelledby="about-title"
-    >
+    <section id={sectionAnchors.about} className={styles.section} aria-labelledby="about-title">
       <AboutArrival />
       <BioStory />
       <EnvironmentLayer sectionId="about" />

@@ -1,6 +1,6 @@
 /* Shared typographic voices. Components compose these instead of redefining them. */
 
-/* Voice 1: architectural condensed display. */
+/* Voice 1: serif display. */
 .display {
   font-family: var(--font-display);
   font-weight: var(--weight-display);
@@ -21,7 +21,7 @@
   text-wrap: pretty;
 }
 
-/* Voice 3: mono microcopy for coordinates, numbers, roles, and instructions. */
+/* Voice 3: interface microcopy for coordinates, numbers, roles, and instructions. */
 .micro {
   font-family: var(--font-technical);
   font-size: var(--text-micro);
@@ -37,7 +37,7 @@
   color: var(--color-text-primary);
 }
 
-/* Proportional labels for actions and roles; mono is reserved for metadata. */
+/* Proportional labels for actions and roles. */
 .interface {
   font-family: var(--font-body);
   font-size: var(--text-small);

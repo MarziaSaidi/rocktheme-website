@@ -46,13 +46,13 @@
   --border-subtle: 1px solid var(--color-line-strong);
 
   /* ---------------------------------------------------------- Typography */
-  --font-display: var(--font-barlow-condensed), "Arial Narrow", sans-serif;
-  --font-body: var(--font-manrope), system-ui, sans-serif;
+  --font-display: var(--font-ivar), Georgia, serif;
+  --font-body: var(--font-frama), system-ui, sans-serif;
   /* Hero and section headings share one display voice. */
   --font-hero-display: var(--font-display);
-  --font-technical: var(--font-geist-mono), ui-monospace, monospace;
+  --font-technical: var(--font-frama), system-ui, sans-serif;
 
-  /* Architectural condensed display sizes. */
+  /* Display sizes. */
   --text-display-xl: clamp(2.75rem, 0.72rem + 7.5vw, 7.75rem);
   --text-display-l: clamp(2.5rem, 0.96rem + 6.8vw, 6.75rem);
   --text-display-s: clamp(1.5rem, 1.18rem + 1.4vw, 2.5rem);
@@ -63,7 +63,7 @@
   --text-body: clamp(1rem, 0.95rem + 0.22vw, 1.125rem);
   --text-small: 0.875rem;
 
-  /* Mono microcopy. */
+  /* Interface microcopy. */
   --text-micro: 0.6875rem;
   --text-micro-lg: 0.75rem;
 
@@ -79,12 +79,12 @@
   --weight-body: 400;
   --tracking-body: -0.015em;
   --tracking-lead: -0.025em;
-  --weight-body-strong: 500;
-  /* Mono microcopy at rest and when touched (hover, focus, current). */
+  --weight-body-strong: 600;
+  /* Interface microcopy at rest and when touched (hover, focus, current). */
   --weight-signal: 400;
-  --weight-signal-lift: 560;
+  --weight-signal-lift: 600;
   --weight-title: 600;
-  --weight-display: 500;
+  --weight-display: 400;
 
   /* ------------------------------------------------------------- Spacing */
   --space-1: 0.25rem;
