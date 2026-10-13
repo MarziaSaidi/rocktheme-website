@@ -1,3 +1,4 @@
+import { ProjectIndex, type ExplorerProject } from "./ProjectExplorer";
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
@@ -8,7 +9,7 @@ import { RippleHeading } from "@/motion/RippleHeading";
 
 import styles from "./Hero.module.css";
 
-export function Hero() {
+export function Hero({ projects }: Readonly<{ projects: readonly ExplorerProject[] }>) {
   const { hero } = siteContent;
 
   return (
@@ -41,10 +42,7 @@ export function Hero() {
             <p className={styles.lead} data-scene-obstacle="">
               {hero.lead}
             </p>
-            <a className={styles.scroll} href={`#${sectionAnchors["selected-work"]}`}>
-              <span className={styles.scrollMark} aria-hidden="true" />
-              <DecodeText text={hero.scrollLabel} />
-            </a>
+            <ProjectIndex projects={projects} />
           </div>
         </div>
       </div>

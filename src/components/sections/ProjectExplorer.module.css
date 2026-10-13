@@ -1,0 +1,352 @@
+.entry {
+  margin-top: clamp(1.5rem, 5vh, 3.5rem);
+  width: fit-content;
+}
+.alternative {
+  display: block;
+  margin-top: 0.9rem;
+  font-size: 0.65rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+.index {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  overscroll-behavior: contain;
+  max-height: none;
+  background: rgb(16 11 24 / 0.87);
+  color: var(--color-text-primary);
+}
+.index::backdrop {
+  background: rgb(16 11 24 / 0.2);
+  backdrop-filter: blur(6px);
+}
+.sheet {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 2.5rem 4vw 1.75rem;
+}
+.bar,
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-text-muted);
+}
+.bar {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--color-text-primary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  min-height: 44px;
+}
+.close span {
+  font-size: 1.5rem;
+  font-weight: 400;
+}
+.editorial {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 0.95fr;
+  align-items: center;
+  gap: 7vw;
+  padding: 3.5rem 2vw;
+}
+.eyebrow {
+  display: block;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--brand-lavender);
+}
+.list h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 4.8vw, 5rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  margin: 1rem 0 2.5rem;
+}
+.row {
+  display: grid;
+  grid-template-columns: 2rem 1fr 1.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--color-line);
+  text-decoration: none;
+}
+.row:last-child {
+  border-bottom: 1px solid var(--color-line);
+}
+.number {
+  align-self: start;
+  padding-top: 0.45rem;
+  color: var(--color-text-muted);
+  font-size: 0.65rem;
+}
+.title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.4vw, 2.3rem);
+  transition: color 250ms;
+}
+.meta {
+  display: block;
+  margin-top: 0.65rem;
+  color: var(--color-text-muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.arrow {
+  color: var(--brand-lavender);
+  font-size: 1.2rem;
+  transition: transform 350ms;
+}
+.row[data-active] .title {
+  color: var(--brand-lavender);
+}
+.row:hover .arrow {
+  transform: translate(3px, -3px);
+}
+.worldRoute {
+  margin-top: 1.5rem;
+  padding: 0.5rem 0;
+  min-height: 44px;
+  background: none;
+  border: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.worldRoute span {
+  margin-left: 1.5rem;
+}
+.preview {
+  margin: 0;
+  animation: arrive 400ms ease both;
+}
+.image {
+  position: relative;
+  aspect-ratio: 1.25;
+  overflow: hidden;
+  background: var(--brand-midnight, #191126);
+}
+.image img {
+  object-fit: contain;
+  padding: 2rem;
+}
+.preview figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  padding-top: 1.25rem;
+}
+.preview figcaption > span:first-child {
+  max-width: 24em;
+}
+.preview figcaption > span:last-child {
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: 0.55rem;
+}
+.bottom {
+  border-top: 1px solid var(--color-line);
+  padding-top: 1.5rem;
+}
+.guide {
+  position: fixed;
+  z-index: var(--layer-content);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  border-radius: 50%;
+  touch-action: manipulation;
+}
+.guide[hidden] {
+  display: none;
+}
+.invitation {
+  position: absolute;
+  bottom: calc(100% - 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-shadow: 0 2px 12px #100b18;
+}
+.guideLine {
+  height: 1.6rem;
+  width: 1px;
+  background: linear-gradient(transparent, var(--brand-lavender));
+  margin-bottom: 0;
+  margin-top: 0.65rem;
+  order: 3;
+}
+.whisper {
+  display: block;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  position: absolute;
+  right: calc(100% + 0.75rem);
+  top: -0.15rem;
+  color: var(--brand-lavender);
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 250ms,
+    transform 250ms;
+}
+.guide:hover .whisper,
+.guide:focus-visible .whisper {
+  opacity: 1;
+  transform: none;
+}
+.guide:focus-visible {
+  outline: 1px solid var(--brand-lavender);
+  outline-offset: 8px;
+}
+.journey {
+  position: fixed;
+  z-index: var(--layer-chrome, 30);
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 1rem 1.4rem;
+  background: rgb(16 11 24 / 0.8);
+  border-top: 1px solid var(--color-line-strong);
+  backdrop-filter: blur(10px);
+  width: min(90vw, 32rem);
+}
+.path {
+  width: 3rem;
+  height: 1px;
+  background: var(--brand-lavender);
+  transform-origin: left;
+  animation: passage 2.4s ease-in-out;
+}
+.destination {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+.journey button {
+  margin-left: auto;
+  white-space: nowrap;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 0.6rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+.close:focus-visible,
+.row:focus-visible,
+.worldRoute:focus-visible,
+.journey button:focus-visible {
+  outline: 1px solid var(--brand-lavender);
+  outline-offset: 5px;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes passage {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (max-width: 767px) {
+  .sheet {
+    padding: 1rem 6vw;
+  }
+  .editorial {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 2rem 0;
+  }
+  .list h2 {
+    font-size: 2.7rem;
+    margin-bottom: 1.75rem;
+  }
+  .row {
+    padding: 1.25rem 0;
+  }
+  .preview .image {
+    aspect-ratio: 1.7;
+  }
+  .image img {
+    padding: 1rem;
+  }
+  .alternative {
+    font-size: 0.6rem;
+    max-width: 20em;
+  }
+  .invitation {
+    font-size: 0.5rem;
+  }
+  .guideLine {
+    height: 1rem;
+  }
+  .journey {
+    bottom: 1rem;
+    gap: 0.8rem;
+    padding: 0.75rem 1rem;
+  }
+  .path {
+    width: 1.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .preview,
+  .path {
+    animation: none;
+  }
+  .whisper,
+  .title,
+  .arrow {
+    transition: none;
+  }
+}

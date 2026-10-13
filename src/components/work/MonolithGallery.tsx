@@ -2,6 +2,7 @@
 
 import { ActionContent } from "@/components/primitives/ActionContent";
 import Link from "next/link";
+import { publishGuidePhase } from "@/webgl/robotGuideChannel";
 import Image from "next/image";
 import {
   useEffect,
@@ -458,13 +459,65 @@ export function MonolithGallery({
         schedulePending();
       }
     };
+    let guideFrame = 0;
+    const cancelGuide = () => {
+      cancelAnimationFrame(guideFrame);
+      guideFrame = 0;
+      jumping = false;
+      publishGuidePhase("idle");
+    };
+    const finishGuide = () => {
+      cancelGuide();
+      enter(0);
+      focusProject();
+    };
+    const guide = () => {
+      cancelGuide();
+      const destination = position(0);
+      if (destination === null) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        finishGuide();
+        return;
+      }
+      leave();
+      jumping = true;
+      publishGuidePhase("traveling");
+      const origin = window.scrollY,
+        started = performance.now();
+      const tick = (now: number) => {
+        if (document.querySelector("dialog[open]")) {
+          cancelGuide();
+          return;
+        }
+        const t = Math.min(1, (now - started) / 2400);
+        const ease = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
+        movePage(origin + (destination - origin) * ease);
+        if (t < 1) guideFrame = requestAnimationFrame(tick);
+        else finishGuide();
+      };
+      guideFrame = requestAnimationFrame(tick);
+    };
+    window.addEventListener("portfolio:guided-work", guide);
+    window.addEventListener("portfolio:skip-guided-work", finishGuide);
     const wheel = (event: WheelEvent) => {
+      if (document.querySelector("dialog[open]")) return;
+      if (guideFrame) cancelGuide();
       if (event.ctrlKey || event.deltaY === 0) return;
       recentFor = 450;
       const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stableViewportHeight() : 1;
       input(Math.sign(event.deltaY), Math.abs(event.deltaY * unit), event);
     };
     const key = (event: KeyboardEvent) => {
+      if (document.querySelector("dialog[open]")) return;
+      if (
+        guideFrame &&
+        ["Escape", "Home", "End", "ArrowDown", "ArrowUp", "PageDown", "PageUp", " "].includes(
+          event.key,
+        )
+      ) {
+        cancelGuide();
+        if (event.key === "Escape") return;
+      }
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
       if (
@@ -492,6 +545,8 @@ export function MonolithGallery({
       input(direction, event.key.startsWith("Arrow") ? 40 : stableViewportHeight(), event);
     };
     const touchStart = (event: TouchEvent) => {
+      if (document.querySelector("dialog[open]")) return;
+      if (guideFrame) cancelGuide();
       finishArrivalGesture();
       touchY = event.touches.length === 1 ? event.touches[0]!.clientY : null;
       touchUsed = false;
@@ -499,6 +554,7 @@ export function MonolithGallery({
       lastUserInput = performance.now();
     };
     const touchMove = (event: TouchEvent) => {
+      if (document.querySelector("dialog[open]")) return;
       if (touchY === null || event.touches.length !== 1) return;
       const delta = touchY - event.touches[0]!.clientY;
       if (Math.abs(delta) < 12) return;
@@ -573,6 +629,7 @@ export function MonolithGallery({
     };
     const navigate = (event: MouseEvent) => {
       const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (link && guideFrame) cancelGuide();
       // Work, and any link to Selected Work followed from the keyboard, lands on a project.
       if (
         link &&
@@ -618,6 +675,9 @@ export function MonolithGallery({
       leave();
       cancelFocus();
       commandRef.current = null;
+      cancelGuide();
+      window.removeEventListener("portfolio:guided-work", guide);
+      window.removeEventListener("portfolio:skip-guided-work", finishGuide);
       window.removeEventListener("wheel", wheel, true);
       window.removeEventListener("keydown", key, true);
       window.removeEventListener("touchstart", touchStart);

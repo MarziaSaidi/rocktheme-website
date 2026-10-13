@@ -29,6 +29,7 @@ export type RobotLifeInput = Readonly<{
   reducedMotion: boolean;
   /** Bump to make the robot greet: a happy tilt, a nod and a leaf bounce. */
   greeting: number;
+  guiding?: boolean;
 }>;
 
 export type RobotLife = Readonly<{
@@ -75,6 +76,7 @@ float robotChestWeight(vec3 p) {
 const FRAGMENT_EYES = /* glsl */ `
 uniform float uBlink;
 uniform float uEyeGlow;
+uniform float uGuideGlow;
 uniform vec3 uEyeColor;
 uniform float uDebug;
 varying vec3 vRobotLocal;
@@ -90,6 +92,7 @@ export function bringRobotToLife(root: Object3D): RobotLife {
     uBreath: { value: 0 },
     uBlink: { value: 0 },
     uEyeGlow: { value: 0.55 },
+    uGuideGlow: { value: 0 },
     uEyeColor: { value: new Color("#fff1d2") },
     uDebug: { value: 0 },
   };
@@ -143,7 +146,9 @@ export function bringRobotToLife(root: Object3D): RobotLife {
         .replace(
           "#include <emissivemap_fragment>",
           `#include <emissivemap_fragment>
-          totalEmissiveRadiance += uEyeColor * robotEyeOpen * uEyeGlow;`,
+          totalEmissiveRadiance += uEyeColor * robotEyeOpen * uEyeGlow;
+          float guideLeaf = smoothstep(0.81, 0.86, vRobotLocal.y) * smoothstep(0.12, 0.18, vRobotLocal.x);
+          totalEmissiveRadiance += vec3(0.36, 0.55, 0.12) * uGuideGlow * guideLeaf;`,
         );
     };
     material.customProgramCacheKey = () => "robot-life";
@@ -175,6 +180,7 @@ export function bringRobotToLife(root: Object3D): RobotLife {
       uniforms.uLeafRotation.value.identity();
       uniforms.uBreath.value = 0;
       uniforms.uBlink.value = 0;
+      uniforms.uGuideGlow.value = input.guiding ? 0.65 : 0;
       return;
     }
     time += dt;
@@ -206,6 +212,8 @@ export function bringRobotToLife(root: Object3D): RobotLife {
       );
     }
 
+    uniforms.uGuideGlow.value +=
+      ((input.guiding ? 0.65 : 0) - uniforms.uGuideGlow.value) * Math.min(1, delta * 5);
     if (input.greeting !== greeting) {
       greeting = input.greeting;
       greetTime = 0;

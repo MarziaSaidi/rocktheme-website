@@ -13,11 +13,13 @@ import {
   Sprite,
   SpriteMaterial,
   Vector3,
+  type Camera,
   type Material,
   type Object3D,
   type Scene,
 } from "three";
 
+import type { GuideRect } from "../robotGuideChannel";
 import type { WeatherUniforms } from "../core/weather";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
@@ -65,6 +67,7 @@ export type HeroLandscape = Readonly<{
   reflectionExclusions: () => readonly Object3D[];
   /** The robot's life: its head follows the cursor, it breathes and blinks. */
   update: (delta: number, input: RobotLifeInput) => void;
+  screenRect: (camera: Camera, width: number, height: number) => GuideRect | null;
   destroy: () => void;
 }>;
 
@@ -371,7 +374,40 @@ export function createHeroLandscape(
   applyPlacement();
   applyPresence();
 
+  const guideBounds = new Box3(),
+    guidePoint = new Vector3();
   return {
+    screenRect: (camera, width, height) => {
+      if (!robot.visible || nearPresence < 0.85 || !ready.robot) return null;
+      guideBounds.setFromObject(robot);
+      let left = Infinity,
+        top = Infinity,
+        right = -Infinity,
+        bottom = -Infinity;
+      for (let i = 0; i < 8; i++) {
+        guidePoint
+          .set(
+            i & 1 ? guideBounds.max.x : guideBounds.min.x,
+            i & 2 ? guideBounds.max.y : guideBounds.min.y,
+            i & 4 ? guideBounds.max.z : guideBounds.min.z,
+          )
+          .project(camera);
+        if (guidePoint.z < -1 || guidePoint.z > 1) return null;
+        const x = ((guidePoint.x + 1) * width) / 2,
+          y = ((1 - guidePoint.y) * height) / 2;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+        top = Math.min(top, y);
+        bottom = Math.max(bottom, y);
+      }
+      if (right < 0 || left > width || bottom < 0 || top > height) return null;
+      return {
+        x: left,
+        y: top,
+        width: Math.max(44, right - left),
+        height: Math.max(44, bottom - top),
+      };
+    },
     setMoonDistance: (eye, lift) => {
       const placement = resolveResponsiveValue(config.placement, viewport);
       const [mx, my, mz] = placement.moon;
