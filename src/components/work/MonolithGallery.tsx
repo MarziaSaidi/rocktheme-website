@@ -491,13 +491,13 @@ export function MonolithGallery({
           return;
         }
         const age = now - started;
-        publishGuidePhase(age < 1200 ? "standing" : age < 3300 ? "walking" : "traveling");
+        publishGuidePhase(age < 2000 ? "standing" : age < 4100 ? "walking" : "traveling");
         const stand = Math.min(1, age / 1200);
-        const travel = Math.min(1, Math.max(0, (age - 1200) / 3000));
+        const travel = Math.min(1, Math.max(0, (age - 2000) / 3000));
         const walk =
-          age > 1200 && age < 4200 ? Math.min(1, (age - 1200) / 250, (4200 - age) / 350) : 0;
+          age > 2000 && age < 5000 ? Math.min(1, (age - 2000) / 250, (5000 - age) / 350) : 0;
         setGuideMovement(stand * stand * (3 - 2 * stand), walk, travel);
-        const t = Math.min(1, Math.max(0, (age - 3300) / 3000));
+        const t = Math.min(1, Math.max(0, (age - 4100) / 3000));
         const ease = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
         movePage(origin + (destination - origin) * ease);
         if (t < 1) guideFrame = requestAnimationFrame(tick);

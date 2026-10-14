@@ -91,28 +91,65 @@ export function rigRobotGait(original: Mesh) {
     parent.add(mesh);
   }
   let stand = 0,
-    phase = 0,
+    distance = 0,
     walking = 0;
+  const ground = [0, 0];
+  let supportLift = 0;
   return {
     mesh,
-    update: (delta: number, standing: number, walk: number) => {
+    feet: legs.map(({ ankle }) => ankle),
+    setGround: (heights: number[]) =>
+      heights.forEach((height, i) => {
+        ground[i] = Math.max(-0.12, Math.min(0.12, height));
+      }),
+    update: (delta: number, standing: number, walk: number, traveled?: number) => {
       const dt = Math.min(0.05, Math.max(0, delta));
       const follow = 1 - Math.exp(-dt * 9);
       stand += (standing - stand) * follow;
       walking += (walk - walking) * follow;
       if (standing === 0 && stand < 0.00001) stand = 0;
       if (walk === 0 && walking < 0.00001) walking = 0;
-      phase += dt * 5.8 * walking;
-      root.position.y = stand * 0.24 + -walking * 0.025 * (1 - Math.cos(phase * 2));
-      root.rotation.x = walking * Math.sin(phase) * 0.025;
+      // The stance foot retreats by exactly the distance the body advances.
+      // A full cycle travels .24 model units, with 60% spent on the ground.
+      distance = traveled ?? distance + dt * 0.22 * walking;
+      if (stand === 0) distance = 0;
+      const phase = distance / 0.24;
+      supportLift += (Math.max(...ground) * walking - supportLift) * follow;
+      root.position.y = stand * 0.24 + supportLift;
+      root.rotation.x = walking * Math.sin(phase * Math.PI * 2) * 0.012;
+      root.rotation.z = -walking * 0.035;
       legs.forEach(({ hip, knee, ankle }, i) => {
-        const step = Math.sin(phase + i * Math.PI);
-        hip.rotation.z = stand * 1.885 + walking * step * 0.55;
-        knee.rotation.z = stand * -1.1 - walking * Math.max(0, -step) * 0.45;
-        ankle.rotation.z = -hip.rotation.z - knee.rotation.z + walking * Math.max(0, step) * 0.1;
+        const cycle = (((phase + i * 0.5) % 1) + 1) % 1;
+        const stance = cycle < 0.6;
+        const swing = (cycle - 0.6) / 0.4;
+        const footX = stance ? -0.072 + cycle * 0.24 : 0.072 * Math.cos(Math.PI * swing);
+        const lift = stance ? 0 : Math.sin(Math.PI * swing) ** 2 * 0.045;
+        const dx = footX * walking;
+        const dy = -0.315 + lift * walking + ground[i]! * walking - supportLift;
+        const upper = Math.hypot(0.14, 0.045);
+        const lower = Math.hypot(0.12, 0.12);
+        const reach = Math.min(upper + lower - 0.0001, Math.hypot(dx, dy));
+        const alpha = Math.acos(
+          Math.max(
+            -1,
+            Math.min(1, (upper * upper + reach * reach - lower * lower) / (2 * upper * reach)),
+          ),
+        );
+        const bend = Math.acos(
+          Math.max(
+            -1,
+            Math.min(1, (reach * reach - upper * upper - lower * lower) / (2 * upper * lower)),
+          ),
+        );
+        const angle = Math.atan2(dy, dx) - alpha - Math.atan2(0.045, -0.14);
+        hip.rotation.z = stand * (angle + Math.PI * 2);
+        knee.rotation.z = stand * (bend - 1.0969449903);
+        // Counter-rotate the boot so its sole stays level during support.
+        ankle.rotation.z = -hip.rotation.z - knee.rotation.z;
       });
       arms.forEach(({ shoulder, elbow }, i) => {
-        shoulder.rotation.z = stand * 0.85 - walking * Math.sin(phase + i * Math.PI) * 0.22;
+        shoulder.rotation.z =
+          stand * 0.85 - walking * Math.sin((phase + i * 0.5) * Math.PI * 2) * 0.12;
         elbow.rotation.z = stand * -0.2;
       });
       mesh.updateMatrixWorld(true);

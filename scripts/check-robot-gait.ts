@@ -79,3 +79,22 @@ test("walking articulates opposite legs and returns cleanly to the seated pose",
   assert.equal(rig.mesh.skeleton.bones[0]!.position.y, 0);
   rig.destroy();
 });
+
+test("the planted boot stays fixed as the body advances during support", () => {
+  const { rig } = fixture();
+  for (let i = 0; i < 180; i++) rig.update(1 / 60, 1, 1, 0.02);
+  const ankle = rig.mesh.skeleton.bones.find((b) => b.name === "ankle-1")!;
+  const foot = new Vector3();
+  let min = Infinity,
+    max = -Infinity;
+  for (let i = 0; i <= 40; i++) {
+    const distance = 0.02 + i * 0.002;
+    rig.update(1 / 60, 1, 1, distance);
+    ankle.getWorldPosition(foot);
+    const contact = foot.x - distance;
+    min = Math.min(min, contact);
+    max = Math.max(max, contact);
+  }
+  assert.ok(max - min < 0.003, `Support foot drift ${max - min}`);
+  rig.destroy();
+});

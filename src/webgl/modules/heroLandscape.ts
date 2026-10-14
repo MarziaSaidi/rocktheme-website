@@ -306,6 +306,7 @@ export function createHeroLandscape(
   // --------------------------------------------------------------------- loading
   let robotGait: ReturnType<typeof rigRobotGait> | null = null;
   const restingPosition = new Vector3();
+  let walkedDistance = 0;
   const load = (
     part: Part,
     source: string,
@@ -476,15 +477,22 @@ export function createHeroLandscape(
     reflectionExclusions: () => [moonDisc],
     update: (delta, input) => {
       const movement = readGuideInput();
-      robotGait?.update(delta, movement.stand, movement.walk);
+
       if (ready.robot && ready.perch) {
         const seat = resolveResponsiveValue(config.placement, viewport).robot;
         const targetX = restingPosition.x + movement.travel * 0.8;
         const targetZ = restingPosition.z - movement.travel * 1.15;
         const k = 1 - Math.exp(-Math.min(delta, 0.05) * 8);
+        const previousX = robot.position.x,
+          previousZ = robot.position.z;
         robot.position.x += (targetX - robot.position.x) * k;
         robot.position.z += (targetZ - robot.position.z) * k;
-        const heading = seat.yaw + (-2.18 - seat.yaw) * movement.stand;
+        if (movement.travel > 0) {
+          walkedDistance +=
+            Math.hypot(robot.position.x - previousX, robot.position.z - previousZ) / seat.height;
+        } else walkedDistance = 0;
+        const turn = Math.min(1, Math.max(0, (movement.stand - 0.85) / 0.15));
+        const heading = seat.yaw + (-2.18 - seat.yaw) * turn;
         robot.rotation.y += (heading - robot.rotation.y) * k;
         if (movement.travel > 0) {
           probe.set(robot.position.x, 100, robot.position.z);
@@ -497,6 +505,20 @@ export function createHeroLandscape(
           robot.position.y += (surface - robot.position.y) * k;
         } else robot.position.y += (restingPosition.y - robot.position.y) * k;
       }
+      robotGait?.update(delta, movement.stand, movement.walk, walkedDistance);
+      if (robot.visible && robotGait && movement.walk > 0) {
+        const gait = robotGait;
+        const modelScale = gait.mesh.getWorldScale(new Vector3()).y;
+        const base = gait.mesh.localToWorld(new Vector3(0, 0, 0)).y;
+        const heights = gait.feet.map((foot) => {
+          foot.getWorldPosition(probe);
+          probe.y = 100;
+          raycaster.set(probe, down);
+          const hit = raycaster.intersectObjects(perchMeshes, false)[0];
+          return hit ? (hit.point.y - base) / modelScale : 0;
+        });
+        gait.setGround(heights);
+      } else robotGait?.setGround([0, 0]);
       if (robot.visible) robotLife?.update(delta, input);
     },
     destroy: () => {
