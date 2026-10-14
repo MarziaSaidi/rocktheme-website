@@ -139,7 +139,7 @@ export function ProjectIndex({ projects }: Readonly<{ projects: readonly Explore
                     close();
                   }}
                 >
-                  <ActionContent text="View project" arrow="↗" />
+                  <ActionContent text="View project" arrow="↗" filled />
                 </Link>
               </div>
             ))}

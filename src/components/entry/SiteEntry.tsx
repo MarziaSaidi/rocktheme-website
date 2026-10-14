@@ -156,7 +156,7 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
               disabled={leaving || sound.unsupported}
               aria-describedby={sound.unsupported ? "entry-sound-note" : undefined}
             >
-              <ActionContent text="ENTER WITH SOUND" />
+              <ActionContent text="ENTER WITH SOUND" filled />
             </button>
             <button
               className={styles.withoutSound}

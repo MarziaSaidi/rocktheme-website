@@ -155,3 +155,25 @@
 :global([data-action-button][data-action-button]:active) {
   scale: 1;
 }
+
+.icon {
+  color: var(--color-text-muted);
+  transition: color 0.3s ease;
+}
+.icon[data-left] {
+  order: -1;
+}
+.icon[data-left] > span:last-child {
+  transform: translateX(120%);
+}
+@media (hover: hover) {
+  :global([data-action-button]:hover) .icon[data-left] > span:first-child {
+    transform: translateX(-120%);
+  }
+  :global([data-action-button]:hover) .icon[data-left] > span:last-child {
+    transform: translateX(0);
+  }
+  :global([data-action-button]):has(.content[data-filled]):hover .icon {
+    color: var(--brand-aubergine, #100b18);
+  }
+}
