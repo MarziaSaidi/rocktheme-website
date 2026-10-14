@@ -16,7 +16,15 @@ import {
 } from "three";
 import { rowFragmentShader, rowVertexShader } from "./projectRowShaders";
 
-export function ProjectRowGlow({ src, active }: { src: string; active: boolean }) {
+export function ProjectRowGlow({
+  src,
+  active,
+  photographic = false,
+}: {
+  src: string;
+  active: boolean;
+  photographic?: boolean;
+}) {
   const host = useRef<HTMLSpanElement>(null);
   const target = useRef(active);
   useEffect(() => {
@@ -35,9 +43,9 @@ export function ProjectRowGlow({ src, active }: { src: string; active: boolean }
     renderer.setClearColor(0, 0);
     element.append(renderer.domElement);
     const defaults = {
-      uBrightness: 0.9,
-      uAutoExposure: 1,
-      uImageScale: 1.4,
+      uBrightness: photographic ? 1.4 : 0.9,
+      uAutoExposure: photographic ? 0 : 1,
+      uImageScale: photographic ? 1 : 1.4,
       uImageDistortion: 2,
       uMaskDistortion: 1,
       uCenterClear: 0,
@@ -53,7 +61,7 @@ export function ProjectRowGlow({ src, active }: { src: string; active: boolean }
       uNoiseSpeed: 0.05,
       uNoiseAmount: 0.55,
       uNoiseAspect: 1,
-      uLuminance: 1,
+      uLuminance: photographic ? 0.35 : 1,
       uReveal: 0,
       uHover: 0,
       uRevealSoftness: 0.22,
@@ -129,6 +137,6 @@ export function ProjectRowGlow({ src, active }: { src: string; active: boolean }
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [src]);
+  }, [src, photographic]);
   return <span ref={host} aria-hidden="true" data-row-glow="" />;
 }

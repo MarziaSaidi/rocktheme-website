@@ -91,7 +91,17 @@ export function ProjectIndex({ projects }: Readonly<{ projects: readonly Explore
                   if (!event.currentTarget.contains(event.relatedTarget)) setActive(null);
                 }}
               >
-                {open && <ProjectRowGlow src={item.image.src} active={active === i} />}
+                {open && (
+                  <ProjectRowGlow
+                    src={
+                      item.slug === "survue"
+                        ? "/images/projects/survue/story/welcome-dark.png"
+                        : item.image.src
+                    }
+                    photographic={item.slug === "survue"}
+                    active={active === i}
+                  />
+                )}
                 <Link
                   href={item.href}
                   className={styles.rowHit}
