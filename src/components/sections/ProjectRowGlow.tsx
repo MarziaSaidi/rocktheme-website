@@ -45,7 +45,7 @@ export function ProjectRowGlow({
     const defaults = {
       uBrightness: diagram ? 0.65 : 0.9,
       uAutoExposure: diagram ? 0 : 1,
-      uImageScale: diagram ? 1 : 1.4,
+      uImageScale: 1.4,
       uImageDistortion: diagram ? 0.15 : 2,
       uMaskDistortion: 1,
       uCenterClear: diagram ? 0.65 : 0,
@@ -62,7 +62,7 @@ export function ProjectRowGlow({
       uNoiseAmount: diagram ? 0.25 : 0.55,
       uNoiseAspect: 1,
       uLuminance: 1,
-      uImageContain: diagram ? 1 : 0,
+      uImageContain: 0,
       uReveal: 0,
       uHover: 0,
       uRevealSoftness: 0.22,
