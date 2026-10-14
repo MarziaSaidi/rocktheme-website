@@ -95,10 +95,10 @@ export function ProjectIndex({ projects }: Readonly<{ projects: readonly Explore
                   <ProjectRowGlow
                     src={
                       item.slug === "survue"
-                        ? "/images/projects/survue/story/welcome-dark.png"
+                        ? "/images/projects/survue/story/user-flow.png"
                         : item.image.src
                     }
-                    photographic={item.slug === "survue"}
+                    diagram={item.slug === "survue"}
                     active={active === i}
                   />
                 )}

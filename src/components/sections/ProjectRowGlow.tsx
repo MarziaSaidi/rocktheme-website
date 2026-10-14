@@ -19,11 +19,11 @@ import { rowFragmentShader, rowVertexShader } from "./projectRowShaders";
 export function ProjectRowGlow({
   src,
   active,
-  photographic = false,
+  diagram = false,
 }: {
   src: string;
   active: boolean;
-  photographic?: boolean;
+  diagram?: boolean;
 }) {
   const host = useRef<HTMLSpanElement>(null);
   const target = useRef(active);
@@ -43,25 +43,26 @@ export function ProjectRowGlow({
     renderer.setClearColor(0, 0);
     element.append(renderer.domElement);
     const defaults = {
-      uBrightness: photographic ? 1.4 : 0.9,
-      uAutoExposure: photographic ? 0 : 1,
-      uImageScale: photographic ? 1 : 1.4,
-      uImageDistortion: 2,
+      uBrightness: diagram ? 0.65 : 0.9,
+      uAutoExposure: diagram ? 0 : 1,
+      uImageScale: diagram ? 1 : 1.4,
+      uImageDistortion: diagram ? 0.15 : 2,
       uMaskDistortion: 1,
-      uCenterClear: 0,
+      uCenterClear: diagram ? 0.65 : 0,
       uDistortionAmount: 0.45,
       uDistortionScale: 1,
-      uFadeTop: 0.4,
-      uFadeBottom: 0.4,
+      uFadeTop: diagram ? 0.08 : 0.4,
+      uFadeBottom: diagram ? 0.08 : 0.4,
       uFadeSides: 0.2,
       uMaskShape: 0,
       uMaskRadius: 0.5,
       uMaskSoftness: 0.28,
       uNoiseScale: 3,
       uNoiseSpeed: 0.05,
-      uNoiseAmount: 0.55,
+      uNoiseAmount: diagram ? 0.25 : 0.55,
       uNoiseAspect: 1,
-      uLuminance: photographic ? 0.35 : 1,
+      uLuminance: 1,
+      uImageContain: diagram ? 1 : 0,
       uReveal: 0,
       uHover: 0,
       uRevealSoftness: 0.22,
@@ -137,6 +138,6 @@ export function ProjectRowGlow({
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [src, photographic]);
+  }, [src, diagram]);
   return <span ref={host} aria-hidden="true" data-row-glow="" />;
 }

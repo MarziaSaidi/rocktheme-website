@@ -136,6 +136,7 @@ uniform vec2 uImageSize;
 uniform vec2 uContainerSize;
 uniform vec2 uImageOffset;
 uniform float uImageScale;
+uniform float uImageContain;
 uniform float uBrightness;
 uniform float uAutoExposure;
 uniform float uImageDistortion;
@@ -186,6 +187,14 @@ void main() {
   imgUv += disp * uImageDistortion * distEdge;
 
   vec4 color = coverTexture(tImage, uImageSize, imgUv, uContainerSize);
+  if (uImageContain > 0.5) {
+    float imageAspect = uImageSize.x / uImageSize.y;
+    float boxAspect = uContainerSize.x / uContainerSize.y;
+    vec2 fit = boxAspect > imageAspect ? vec2(imageAspect / boxAspect, 1.0) : vec2(1.0, boxAspect / imageAspect);
+    vec2 fittedUv = (imgUv - 0.5) / fit + 0.5;
+    float inside = step(0.0, fittedUv.x) * step(fittedUv.x, 1.0) * step(0.0, fittedUv.y) * step(fittedUv.y, 1.0);
+    color = texture(tImage, fittedUv) * inside;
+  }
 
   // Auto-exposure: divide out the banner's own average brightness, which is
   // free — the smallest mip of the image IS its average colour, and one fetch of
@@ -282,6 +291,6 @@ void main() {
   float lum = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
   float coverage = mix(1.0, clamp(lum, 0.0, 1.0), uLuminance);
 
-  FragColor = vec4(color.rgb, clamp(mask, 0.0, 1.0) * reveal * coverage);
+  FragColor = vec4(color.rgb, clamp(mask, 0.0, 1.0) * reveal * coverage * color.a);
 }
 `;
