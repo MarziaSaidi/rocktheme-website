@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ActionContent } from "@/components/primitives/ActionContent";
@@ -15,6 +14,7 @@ import {
 import { rememberWorkReturn } from "@/components/work/workReturn";
 import { emitSoundEvent } from "@/sound/soundEvents";
 import styles from "./ProjectExplorer.module.css";
+import { ProjectRowGlow } from "./ProjectRowGlow";
 
 export type ExplorerProject = Readonly<{
   slug: string;
@@ -29,8 +29,9 @@ export type ExplorerProject = Readonly<{
 export function ProjectIndex({ projects }: Readonly<{ projects: readonly ExplorerProject[] }>) {
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
-  const [active, setActive] = useState(0);
-  const project = projects[active];
+  const [active, setActive] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
+  const close = () => dialog.current?.close();
   return (
     <>
       <div className={styles.entry}>
@@ -38,8 +39,11 @@ export function ProjectIndex({ projects }: Readonly<{ projects: readonly Explore
           ref={opener}
           type="button"
           data-action-button=""
-          onClick={() => dialog.current?.showModal()}
           aria-haspopup="dialog"
+          onClick={() => {
+            setOpen(true);
+            dialog.current?.showModal();
+          }}
         >
           <ActionContent text="Explore my work" arrow="↗" />
         </button>
@@ -48,91 +52,105 @@ export function ProjectIndex({ projects }: Readonly<{ projects: readonly Explore
         ref={dialog}
         className={styles.index}
         aria-labelledby="project-index-title"
-        onClose={() => opener.current?.focus()}
-        onClick={(event) => {
-          if (event.target === dialog.current) dialog.current.close();
+        onClose={() => {
+          setOpen(false);
+          setActive(null);
+          opener.current?.focus();
         }}
       >
         <div className={styles.sheet}>
-          <div className={styles.bar}>
-            <span>Marzia Saidi / Selected work</span>
+          <header className={styles.bar}>
+            <span>Marzia Saidi</span>
+            <h2 id="project-index-title">
+              Projects <span>/ Selected work</span>
+            </h2>
             <button
               type="button"
               className={styles.close}
-              onClick={() => dialog.current?.close()}
+              onClick={close}
               aria-label="Close project index"
             >
-              Close <span aria-hidden="true">×</span>
+              ×
             </button>
-          </div>
-          <div className={styles.editorial}>
-            <div className={styles.list}>
-              <p className={styles.eyebrow}>Choose a story</p>
-              <h2 id="project-index-title">Work, up close.</h2>
-              <nav aria-label="Project index">
-                {projects.map((item, i) => (
-                  <Link
-                    key={item.slug}
-                    href={item.href}
-                    className={styles.row}
-                    data-active={active === i ? "" : undefined}
-                    data-work-view=""
-                    onPointerEnter={() => setActive(i)}
-                    onFocus={() => setActive(i)}
-                    onClick={() => {
-                      rememberWorkReturn(item.slug);
-                      emitSoundEvent("project:open");
-                      dialog.current?.close();
-                    }}
-                  >
-                    <span className={styles.number}>{String(i + 1).padStart(2, "0")}</span>
-                    <span>
-                      <span className={styles.title}>{item.title}</span>
-                      <span className={styles.meta}>
-                        {item.category} / {item.year}
-                      </span>
-                    </span>
-                    <span className={styles.arrow} aria-hidden="true">
-                      ↗
-                    </span>
-                  </Link>
-                ))}
-              </nav>
-              <button
-                type="button"
-                className={styles.worldRoute}
-                onClick={() => {
-                  dialog.current?.close();
-                  beginGuidedJourney();
+          </header>
+          <nav
+            className={styles.works}
+            aria-label="Project index"
+            onPointerLeave={() => setActive(null)}
+          >
+            {projects.map((item, i) => (
+              <div
+                key={item.slug}
+                className={styles.row}
+                data-active={active === i ? "" : undefined}
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "touch") setActive(i);
+                }}
+                onFocus={() => setActive(i)}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) setActive(null);
                 }}
               >
-                Take the scenic route <span aria-hidden="true">→</span>
-              </button>
-            </div>
-            {project && (
-              <figure key={project.slug} className={styles.preview}>
-                <div className={styles.image}>
-                  <Image
-                    src={project.image.src}
-                    alt={project.image.alt}
-                    fill
-                    sizes="(max-width: 767px) 85vw, 42vw"
-                  />
-                </div>
-                <figcaption>
-                  <span>{project.description}</span>
-                  <span>
-                    {String(active + 1).padStart(2, "0")} /{" "}
-                    {String(projects.length).padStart(2, "0")}
-                  </span>
-                </figcaption>
-              </figure>
-            )}
-          </div>
-          <div className={styles.bottom}>
-            <span>Design, built to be used.</span>
+                {open && <ProjectRowGlow src={item.image.src} active={active === i} />}
+                <Link
+                  href={item.href}
+                  className={styles.rowHit}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  onClick={() => {
+                    rememberWorkReturn(item.slug);
+                    emitSoundEvent("project:open");
+                    close();
+                  }}
+                />
+                <Link
+                  href={item.href}
+                  className={styles.title}
+                  data-work-view=""
+                  onClick={() => {
+                    rememberWorkReturn(item.slug);
+                    emitSoundEvent("project:open");
+                    close();
+                  }}
+                >
+                  {item.title}
+                </Link>
+                <span className={styles.year}>{item.year}</span>
+                <span className={styles.meta}>{item.category}</span>
+                <Link
+                  href={item.href}
+                  className={styles.view}
+                  data-action-button=""
+                  data-work-view=""
+                  aria-label={`View ${item.title} case study`}
+                  onClick={() => {
+                    rememberWorkReturn(item.slug);
+                    emitSoundEvent("project:open");
+                    close();
+                  }}
+                >
+                  <ActionContent text="View project" arrow="↗" />
+                </Link>
+              </div>
+            ))}
+          </nav>
+          <footer className={styles.bottom}>
+            <button type="button" data-action-button="" onClick={close}>
+              <ActionContent text="To overview" arrow="←" />
+            </button>
             <span>{projects.length} selected projects</span>
-          </div>
+            <button
+              type="button"
+              data-action-button=""
+              className={styles.worldRoute}
+              onClick={() => {
+                close();
+                beginGuidedJourney();
+              }}
+            >
+              <ActionContent text="Scenic route" arrow="→" />
+            </button>
+          </footer>
         </div>
       </dialog>
     </>
