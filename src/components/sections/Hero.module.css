@@ -190,12 +190,12 @@
 
   .lead {
     margin-block-start: 2.6vh;
-    font-size: min(2.62vh, 1.42vw);
+    font-size: clamp(1rem, min(2.62vh, 1.42vw), 1.5rem);
   }
 
   .scroll {
     margin-block-start: 3.4vh;
-    font-size: min(1.6vh, 0.88vw);
+    font-size: clamp(0.75rem, min(1.6vh, 0.88vw), 0.875rem);
   }
 }
 

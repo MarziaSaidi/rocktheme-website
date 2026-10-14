@@ -64,8 +64,8 @@
   --text-small: 0.875rem;
 
   /* Interface microcopy. */
-  --text-micro: 0.6875rem;
-  --text-micro-lg: 0.75rem;
+  --text-micro: 0.75rem;
+  --text-micro-lg: 0.8125rem;
 
   --leading-display: 0.98;
   --leading-statement: 1.18;

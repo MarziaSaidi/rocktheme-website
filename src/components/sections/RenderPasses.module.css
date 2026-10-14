@@ -41,13 +41,13 @@
 }
 .svgLabel {
   fill: var(--moon);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.6px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
 }
 .tag {
   position: absolute;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 16px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -71,7 +71,7 @@
   width: 34rem;
   height: 120px;
   overflow: hidden;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 16px;
   white-space: pre;
   color: color-mix(in srgb, var(--color-text-moonlit) 34%, transparent);
@@ -85,7 +85,7 @@
   position: absolute;
   right: 64px;
   bottom: 44px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 16px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -202,7 +202,7 @@
   border: 1px solid color-mix(in srgb, var(--color-text-moonlit) 55%, transparent);
   background: color-mix(in srgb, var(--color-surface) 72%, transparent);
   color: var(--moon);
-  font-size: 11px;
+  font-size: 12px;
   box-shadow: 0 0 24px color-mix(in srgb, var(--color-text-moonlit) 25%, transparent);
   transition:
     transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -222,7 +222,7 @@
   top: 50%;
   transform: translateY(-50%);
   font-style: normal;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -243,7 +243,7 @@
 }
 .side {
   position: absolute;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: color-mix(in srgb, var(--color-text-primary) 70%, transparent);
@@ -344,7 +344,7 @@
   margin-right: 14px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-style: normal;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--moon);
