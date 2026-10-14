@@ -357,6 +357,7 @@ export function createSceneAudio(context: AudioContext, output: AudioNode) {
         void play("mainClick");
       } else if (event === "contact:open") void play("socialClick", { rate: randomRate() });
       else if (event === "statement:read") void play("tagline", { limit: 2 });
+      else if (event === "statement:pass") void play("tagline", { limit: 1, volume: 0.6 });
       // Entry already plays its dedicated recording at the sound-on gesture.
     },
     setReading: (value: boolean) => {

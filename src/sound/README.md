@@ -31,6 +31,7 @@ Desktop threshold is −1 dB; touch threshold is −3 dB with the matching makeu
 | Project becomes active       | Activation and prespawn variations, portal loop at 0.5        |
 | Project closes               | Deactivation variations; portal loop fades over 0.4 seconds   |
 | Bio passage                  | Tagline appearance variations                                 |
+| Bio render pass              | Quieter tagline variation, one voice                          |
 
 Each group uses a shuffled bag with no consecutive repeat across its boundary.
 Hover voices have the captured group limits. Overflow releases over 60 ms;
