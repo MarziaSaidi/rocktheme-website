@@ -75,8 +75,18 @@ export function ActionContent({
     <span ref={root} className={styles.content} data-filled={filled ? "" : undefined}>
       <svg className={styles.border} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
         <defs>
+          <filter id={`edge-tint-${id}`} colorInterpolationFilters="sRGB">
+            <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="texture" />
+            <feFlood floodColor="var(--brand-lavender)" result="lavender" />
+            <feComposite in="lavender" in2="texture" operator="in" />
+          </filter>
           <pattern id={`edge-${id}`} width="300" height="300" patternUnits="userSpaceOnUse">
-            <image href="/interface/grain.webp" width="300" height="300" />
+            <image
+              href="/interface/grain.webp"
+              width="300"
+              height="300"
+              filter={`url(#edge-tint-${id})`}
+            />
           </pattern>
         </defs>
         <rect
@@ -92,8 +102,18 @@ export function ActionContent({
       </svg>
       <svg className={styles.hover} aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
         <defs>
+          <filter id={`hover-edge-tint-${id}`} colorInterpolationFilters="sRGB">
+            <feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="texture" />
+            <feFlood floodColor="var(--brand-lavender)" result="lavender" />
+            <feComposite in="lavender" in2="texture" operator="in" />
+          </filter>
           <pattern id={`hover-edge-${id}`} width="300" height="300" patternUnits="userSpaceOnUse">
-            <image href="/interface/grain.webp" width="300" height="300" />
+            <image
+              href="/interface/grain.webp"
+              width="300"
+              height="300"
+              filter={`url(#hover-edge-tint-${id})`}
+            />
           </pattern>
         </defs>
         <rect
