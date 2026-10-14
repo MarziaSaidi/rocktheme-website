@@ -1,9 +1,13 @@
 export type GuideRect = Readonly<{ x: number; y: number; width: number; height: number }>;
-export type GuidePhase = "idle" | "traveling";
+export type GuidePhase = "idle" | "standing" | "walking" | "traveling";
 let rect: GuideRect | null = null;
 let engaged = false,
   greeting = 0;
 let phase: GuidePhase = "idle";
+let movement = { stand: 0, walk: 0, travel: 0 };
+export function setGuideMovement(stand: number, walk: number, travel: number) {
+  movement = { stand, walk, travel };
+}
 const rectangles = new Set<(value: GuideRect | null) => void>();
 const phases = new Set<(value: GuidePhase) => void>();
 export function publishGuideRect(next: GuideRect | null) {
@@ -31,9 +35,10 @@ export function engageGuide(value: boolean) {
   engaged = value;
 }
 export function readGuideInput() {
-  return { engaged, greeting };
+  return { engaged, greeting, phase, ...movement };
 }
 export function publishGuidePhase(value: GuidePhase) {
+  if (value === phase) return;
   phase = value;
   phases.forEach((listener) => listener(value));
 }

@@ -10,6 +10,7 @@ import {
   skipGuidedJourney,
   subscribeGuidePhase,
   subscribeGuideRect,
+  type GuidePhase,
 } from "@/webgl/robotGuideChannel";
 import { rememberWorkReturn } from "@/components/work/workReturn";
 import { emitSoundEvent } from "@/sound/soundEvents";
@@ -140,7 +141,8 @@ export function ProjectIndex({ projects }: Readonly<{ projects: readonly Explore
 
 export function RobotGuide({ firstProject }: Readonly<{ firstProject: string }>) {
   const robot = useRef<HTMLButtonElement>(null);
-  const [traveling, setTraveling] = useState(false);
+  const [stage, setStage] = useState<GuidePhase>("idle");
+  const traveling = stage !== "idle";
   useEffect(
     () =>
       subscribeGuideRect((rect) => {
@@ -156,7 +158,7 @@ export function RobotGuide({ firstProject }: Readonly<{ firstProject: string }>)
       }),
     [],
   );
-  useEffect(() => subscribeGuidePhase((phase) => setTraveling(phase === "traveling")), []);
+  useEffect(() => subscribeGuidePhase(setStage), []);
   useEffect(() => () => engageGuide(false), []);
   return (
     <>
@@ -193,10 +195,16 @@ export function RobotGuide({ firstProject }: Readonly<{ firstProject: string }>)
         <div className={styles.journey} role="status">
           <span className={styles.path} aria-hidden="true" />
           <span>
-            <span className={styles.eyebrow}>Across the water</span>
+            <span className={styles.eyebrow}>
+              {stage === "standing"
+                ? "Getting to my feet"
+                : stage === "walking"
+                  ? "Follow my steps"
+                  : "Across the water"}
+            </span>
             <span className={styles.destination}>{firstProject}</span>
           </span>
-          <button type="button" onClick={skipGuidedJourney}>
+          <button type="button" data-guide-skip="" onClick={skipGuidedJourney}>
             Skip journey <span aria-hidden="true">→</span>
           </button>
         </div>

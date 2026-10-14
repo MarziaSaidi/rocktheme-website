@@ -2,7 +2,7 @@
 
 import { ActionContent } from "@/components/primitives/ActionContent";
 import Link from "next/link";
-import { publishGuidePhase } from "@/webgl/robotGuideChannel";
+import { publishGuidePhase, setGuideMovement } from "@/webgl/robotGuideChannel";
 import Image from "next/image";
 import {
   useEffect,
@@ -464,6 +464,7 @@ export function MonolithGallery({
       cancelAnimationFrame(guideFrame);
       guideFrame = 0;
       jumping = false;
+      setGuideMovement(0, 0, 0);
       publishGuidePhase("idle");
     };
     const finishGuide = () => {
@@ -481,7 +482,7 @@ export function MonolithGallery({
       }
       leave();
       jumping = true;
-      publishGuidePhase("traveling");
+      publishGuidePhase("standing");
       const origin = window.scrollY,
         started = performance.now();
       const tick = (now: number) => {
@@ -489,7 +490,14 @@ export function MonolithGallery({
           cancelGuide();
           return;
         }
-        const t = Math.min(1, (now - started) / 2400);
+        const age = now - started;
+        publishGuidePhase(age < 1200 ? "standing" : age < 3300 ? "walking" : "traveling");
+        const stand = Math.min(1, age / 1200);
+        const travel = Math.min(1, Math.max(0, (age - 1200) / 3000));
+        const walk =
+          age > 1200 && age < 4200 ? Math.min(1, (age - 1200) / 250, (4200 - age) / 350) : 0;
+        setGuideMovement(stand * stand * (3 - 2 * stand), walk, travel);
+        const t = Math.min(1, Math.max(0, (age - 3300) / 3000));
         const ease = t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2;
         movePage(origin + (destination - origin) * ease);
         if (t < 1) guideFrame = requestAnimationFrame(tick);
@@ -546,6 +554,12 @@ export function MonolithGallery({
     };
     const touchStart = (event: TouchEvent) => {
       if (document.querySelector("dialog[open]")) return;
+      if (
+        guideFrame &&
+        event.target instanceof Element &&
+        event.target.closest("[data-guide-skip]")
+      )
+        return;
       if (guideFrame) cancelGuide();
       finishArrivalGesture();
       touchY = event.touches.length === 1 ? event.touches[0]!.clientY : null;

@@ -19,6 +19,8 @@ import {
   type Scene,
 } from "three";
 
+import { rigRobotGait } from "./robotGait";
+import { readGuideInput } from "../robotGuideChannel";
 import type { GuideRect } from "../robotGuideChannel";
 import type { WeatherUniforms } from "../core/weather";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -258,6 +260,7 @@ export function createHeroLandscape(
       }
     }
     robot.position.set(seat.x, y, seat.z);
+    restingPosition?.copy(robot.position);
     robotLight.distance = seat.height * 6;
   };
 
@@ -301,6 +304,8 @@ export function createHeroLandscape(
   };
 
   // --------------------------------------------------------------------- loading
+  let robotGait: ReturnType<typeof rigRobotGait> | null = null;
+  const restingPosition = new Vector3();
   const load = (
     part: Part,
     source: string,
@@ -318,6 +323,15 @@ export function createHeroLandscape(
           disposeModel(model);
           handlers.onFailure?.(part);
           return;
+        }
+        if (part === "robot") {
+          const meshes: Mesh[] = [];
+          model.traverse((item) => {
+            if (item instanceof Mesh) meshes.push(item);
+          });
+          meshes.forEach((mesh) => {
+            robotGait = rigRobotGait(mesh);
+          });
         }
         model.traverse((item) => {
           if (!(item instanceof Mesh)) return;
@@ -378,7 +392,13 @@ export function createHeroLandscape(
     guidePoint = new Vector3();
   return {
     screenRect: (camera, width, height) => {
-      if (!robot.visible || nearPresence < 0.85 || !ready.robot) return null;
+      if (
+        !robot.visible ||
+        nearPresence < 0.85 ||
+        !ready.robot ||
+        readGuideInput().phase !== "idle"
+      )
+        return null;
       guideBounds.setFromObject(robot);
       let left = Infinity,
         top = Infinity,
@@ -455,11 +475,34 @@ export function createHeroLandscape(
      */
     reflectionExclusions: () => [moonDisc],
     update: (delta, input) => {
+      const movement = readGuideInput();
+      robotGait?.update(delta, movement.stand, movement.walk);
+      if (ready.robot && ready.perch) {
+        const seat = resolveResponsiveValue(config.placement, viewport).robot;
+        const targetX = restingPosition.x + movement.travel * 0.8;
+        const targetZ = restingPosition.z - movement.travel * 1.15;
+        const k = 1 - Math.exp(-Math.min(delta, 0.05) * 8);
+        robot.position.x += (targetX - robot.position.x) * k;
+        robot.position.z += (targetZ - robot.position.z) * k;
+        const heading = seat.yaw + (-2.18 - seat.yaw) * movement.stand;
+        robot.rotation.y += (heading - robot.rotation.y) * k;
+        if (movement.travel > 0) {
+          probe.set(robot.position.x, 100, robot.position.z);
+          root.localToWorld(probe);
+          raycaster.set(probe, down);
+          const hit = raycaster.intersectObjects(perchMeshes, false)[0];
+          const surface = hit
+            ? root.worldToLocal(hit.point.clone()).y - seat.height * 0.02
+            : restingPosition.y;
+          robot.position.y += (surface - robot.position.y) * k;
+        } else robot.position.y += (restingPosition.y - robot.position.y) * k;
+      }
       if (robot.visible) robotLife?.update(delta, input);
     },
     destroy: () => {
       destroyed = true;
       flank.clear();
+      robotGait?.mesh.skeleton.dispose();
       disposeModel(root);
       moonMap?.dispose();
       moonMaterial.dispose();
