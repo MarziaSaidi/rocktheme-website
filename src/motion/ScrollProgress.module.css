@@ -1,0 +1,146 @@
+/*
+ * The scroll position, drawn as a short reading line instead of a scrollbar.
+ * Track in faint lavender, fill in the botanical accent, value in mono.
+ */
+.progress {
+  --progress-length: 6rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms var(--ease-interface);
+}
+
+.progress[data-scrollable="true"] {
+  opacity: 0.55;
+}
+
+.progress[data-scrollable="true"][data-active="true"] {
+  opacity: 1;
+  transition-duration: 200ms;
+}
+
+.page {
+  position: fixed;
+  top: 50%;
+  right: max(0.75rem, calc(var(--layout-gutter) / 2 - 0.5rem));
+  z-index: var(--layer-navigation);
+  translate: 0 -50%;
+}
+
+/*
+ * Inside a scroller: a zero-size sticky anchor held at the vertical middle of
+ * the scrollport, with the line centred on it. No number here: beside the
+ * copy it reads as part of the text.
+ */
+.panel {
+  position: sticky;
+  bottom: 50%;
+  width: 0;
+  height: 0;
+  margin-inline-start: auto;
+  /* The scroller sets this to half its side padding: the line runs down
+     the middle of the gutter, clear of the copy. */
+  translate: var(--scroll-progress-inset, 1rem) 0;
+}
+
+.panel .track {
+  position: absolute;
+  top: calc(var(--progress-length) / -2);
+}
+
+.panel .value {
+  display: none;
+}
+
+/*
+ * The hint: before the first scroll a soft light runs down the track, again
+ * and again, saying the copy continues below. Scrolling stills it.
+ */
+.progress[data-scrollable="true"][data-hint="true"] {
+  opacity: 1;
+}
+
+.track::after {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 40%;
+  content: "";
+  background: linear-gradient(transparent, var(--color-text-moonlit));
+  opacity: 0;
+  translate: 0 -100%;
+}
+
+.progress[data-hint="true"] .track::after {
+  opacity: 1;
+  animation: hint-run 2.8s cubic-bezier(0.55, 0, 0.35, 1) infinite;
+}
+
+@keyframes hint-run {
+  0% {
+    translate: 0 -100%;
+  }
+  50%,
+  100% {
+    translate: 0 250%;
+  }
+}
+
+.track {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: var(--progress-length);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--brand-lavender) 22%, transparent);
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 180ms var(--ease-interface);
+}
+
+/* The page line's number only shows while the visitor is scrolling. */
+.value {
+  opacity: 0;
+  transition: opacity 400ms var(--ease-interface);
+  font-family: var(--font-technical);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress[data-active="true"] .value {
+  opacity: 1;
+  transition-duration: 150ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress,
+  .fill,
+  .value {
+    transition: none;
+  }
+
+  /* No running light; the line still shows at full strength until scrolled. */
+  .progress[data-hint="true"] .track::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Phones scroll with the thumb on the content; the page line would crowd it. */
+@media (max-width: 47.99rem) {
+  .page {
+    display: none;
+  }
+}

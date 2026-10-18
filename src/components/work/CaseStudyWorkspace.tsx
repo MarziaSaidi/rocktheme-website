@@ -7,6 +7,7 @@ import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { DecodeText } from "@/motion/DecodeText";
+import { ScrollProgress } from "@/motion/ScrollProgress";
 import type { CaseStudyInfo, CaseStudyStage, Project, StoryVisual } from "@/content/projects";
 
 import styles from "./CaseStudyWorkspace.module.css";
@@ -593,6 +594,7 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             </a>
           ) : null}
         </details>
+        <ScrollProgress variant="panel" />
       </header>
 
       <section
@@ -771,6 +773,7 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
           </a>
         ) : null}
+        <ScrollProgress variant="panel" />
       </section>
 
       <nav ref={navRef} className={styles.stageNav} aria-label="Case study stages">
