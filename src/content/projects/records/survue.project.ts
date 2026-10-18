@@ -529,5 +529,5 @@ export const survueProject = {
       },
     ],
   },
-  nextProjectSlug: "qalin",
+  nextProjectSlug: "quill-and-pigeon",
 } satisfies Project;

@@ -7,8 +7,17 @@
 }
 
 .back {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-8);
+  align-items: center;
+  justify-content: space-between;
   width: min(calc(100vw - var(--layout-gutter) * 2), 104rem);
   margin: var(--space-6) auto 0;
+}
+
+.nextLabel {
+  color: var(--color-text-secondary);
 }
 
 .backLink {
