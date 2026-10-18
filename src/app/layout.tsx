@@ -8,6 +8,7 @@ import { SiteEntry } from "@/components/entry/SiteEntry";
 import { pageLandmarkIds } from "@/config/sections";
 import { CustomCursor } from "@/motion/CustomCursor";
 import { PressFeedback } from "@/motion/PressFeedback";
+import { ScrollProgress } from "@/motion/ScrollProgress";
 import { SoundProvider } from "@/sound/SoundProvider";
 
 import "./globals.css";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <SkipLink />
           <SiteHeader />
           {children}
+          <ScrollProgress variant="page" />
         </SiteEntry>
         {/* Carries the way into /my-world across the route change. */}
         <WorldHandoff />
