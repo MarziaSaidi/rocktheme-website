@@ -15,6 +15,8 @@
 }
 
 .rail {
+  /* Same as .story: keeps hidden decode labels inside the scrolling rail. */
+  position: relative;
   grid-row: 1 / 3;
   min-width: 0;
   padding: clamp(1.25rem, 2.2vw, 2rem);
@@ -478,6 +480,11 @@ video.visualMedia[data-fit="cover"] {
 }
 
 .story {
+  /*
+   * Positioned so the absolute .srOnly labels scroll and clip with the copy.
+   * Without it they escape to the workspace and stretch the page below it.
+   */
+  position: relative;
   min-width: 0;
   padding: clamp(1.5rem, 2.5vw, 2.5rem);
   overflow: auto;

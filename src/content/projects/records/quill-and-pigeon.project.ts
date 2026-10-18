@@ -118,7 +118,7 @@ export const quillAndPigeonProject = {
             eyebrow: "Design + development",
             title: "Import a list. Keep control of every contact.",
             description:
-              "Quill & Pigeon helps people manage recipients and important dates. During my design and development internship, I designed and built the bulk contact import interface: file selection, editable review, validation feedback, and confirmation.",
+              "Quill & Pigeon helps people manage recipients and important dates. During my design and development internship, I designed and built the bulk contact import interface: file selection, editable review, validation feedback, and confirmation. My hypothesis: if people could fix contact data before saving it, more of them would finish an import instead of leaving to edit their spreadsheet.",
             supportingPoints: [
               "CSV and XLSX spreadsheet input",
               "Review and correction before saving",
@@ -241,7 +241,7 @@ export const quillAndPigeonProject = {
             outcome:
               "A working bulk import interface with an explicit checkpoint before saving and a clear result afterward.",
             constraint:
-              "Feature-level adoption and setup time are not reported here. The product served more than 100 users; that figure describes its audience, not use of this import.",
+              "Feature-level adoption and setup time are not reported here. The product served more than 100 users; that figure describes its audience, not use of this import. To test the hypothesis, I would measure how many started imports end in saved contacts, and how often people abandon review to re-upload a file.",
             supportingVideo: {
               media: contextVideo,
               label: "Watch the complete import workflow",
@@ -252,5 +252,5 @@ export const quillAndPigeonProject = {
       },
     ],
   },
-  nextProjectSlug: "wildwood",
+  nextProjectSlug: "survue",
 } satisfies Project;

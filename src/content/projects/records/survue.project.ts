@@ -170,7 +170,7 @@ export const survueProject = {
             eyebrow: "Founding product designer",
             title: "Make approaching traffic easier to interpret.",
             description:
-              "Survue connects a rear-facing device with a cycling app for vehicle awareness and recordings. As founding product designer, I shaped the app structure, interaction flows, components, and prototype using the founder's palette and Helvetica Neue typography. A rider cannot study a screen while moving. Traffic information needed to be understandable at a glance, without asking the rider to decode a new interface each time.",
+              "Survue connects a rear-facing device with a cycling app for vehicle awareness and recordings. As founding product designer, I shaped the app structure, interaction flows, components, and prototype using the founder's palette and Helvetica Neue typography. A rider cannot study a screen while moving. Traffic information needed to be understandable at a glance, without asking the rider to decode a new interface each time. My hypothesis: if the road view stays the same and only the vehicle's position and warning colour change, riders would read urgency faster than from a distance or a risk number.",
             decision: "Keep the road view familiar while the warning state changes.",
             supportingPoints: [
               "Before the ride → discover and pair the device",
@@ -506,7 +506,7 @@ export const survueProject = {
             outcome:
               "An app structure, original wireframes, detection explorations, final UI, and an interaction prototype.",
             constraint:
-              "The next validation priorities are warning comprehension while riding, non-color cues, and connection-loss behavior. The C# implementation scope is not detailed in this case study.",
+              "The next validation priorities are warning comprehension while riding, non-color cues, and connection-loss behavior. The C# implementation scope is not detailed in this case study. To test the hypothesis, I would measure how quickly and correctly riders name the warning level from a brief glance.",
             supportingVideo: { media: prototype, label: "Watch the interaction prototype" },
             visual: {
               type: "sequence",
@@ -528,5 +528,5 @@ export const survueProject = {
       },
     ],
   },
-  nextProjectSlug: "qalin",
+  nextProjectSlug: "quill-and-pigeon",
 } satisfies Project;
