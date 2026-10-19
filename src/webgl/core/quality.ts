@@ -59,14 +59,10 @@ const ORDER: readonly QualityTier[] = ["high", "medium", "low"];
 
 /** Frame cost above which the scene is considered to be struggling. */
 const BUDGET_MS = 20;
-/** Consecutive seconds over budget before a downgrade. */
+/** Desktop p99 limit: react before several missed frames accumulate. */
+const P99_BUDGET_MS = 25;
+/** Active delivery window before evaluating its tail latency. */
 const PATIENCE_MS = 1200;
-/**
- * The most one frame can add to the over-budget total. A single long frame is
- * a shader compile or an asset upload, not a slow device; capping it means only
- * a sustained run of slow frames can cost the scene a tier.
- */
-const MAX_FRAME_CHARGE_MS = 50;
 /** Frames in the first stretch after start compile programs; they don't count. */
 const WARMUP_MS = 3000;
 
@@ -114,52 +110,57 @@ export type QualityManager = Readonly<{
 
 export function createQualityManager(initial: QualityTier): QualityManager {
   let settings = TIERS[initial];
-  let overBudgetMs = 0;
+  let windowMs = 0;
+  let frames: number[] = [];
   let total = 0;
   let count = 0;
-  let firstSampleAt = 0;
+  let warmupMs = 0;
+  const stepDown = () => {
+    windowMs = 0;
+    frames = [];
+    const next = ORDER[ORDER.indexOf(settings.tier) + 1];
+    if (!next) return null;
+    settings = TIERS[next];
+    total = 0;
+    count = 0;
+    return settings;
+  };
 
   return {
     current: () => settings,
     averageFrameMs: () => (count === 0 ? 0 : total / count),
     sample: (frameMs) => {
+      if (!Number.isFinite(frameMs) || frameMs <= 0) return null;
       // Ignore absurd deltas from tab switches or breakpoints in the debugger.
       if (frameMs > 500) {
-        overBudgetMs = 0;
+        windowMs = 0;
+        frames = [];
         return null;
       }
 
-      const now = performance.now();
-      if (firstSampleAt === 0) firstSampleAt = now;
-      if (now - firstSampleAt < WARMUP_MS) {
+      // Count delivered frame time, not wall time spent hidden or suspended.
+      if (warmupMs < WARMUP_MS) {
+        warmupMs += frameMs;
         return null;
       }
 
       total += frameMs;
       count += 1;
 
-      if (frameMs > BUDGET_MS) {
-        overBudgetMs += Math.min(frameMs, MAX_FRAME_CHARGE_MS);
-      } else {
-        overBudgetMs = Math.max(0, overBudgetMs - frameMs);
-      }
+      if (frameMs > P99_BUDGET_MS) return stepDown();
 
-      if (overBudgetMs < PATIENCE_MS) {
-        return null;
-      }
-
-      const index = ORDER.indexOf(settings.tier);
-      const next = ORDER[index + 1];
-      overBudgetMs = 0;
-
-      if (!next) {
-        return null;
-      }
-
-      settings = TIERS[next];
-      total = 0;
-      count = 0;
-      return settings;
+      windowMs += frameMs;
+      frames.push(frameMs);
+      if (windowMs < PATIENCE_MS) return null;
+      frames.sort((a, b) => a - b);
+      const p95 = frames[Math.ceil(frames.length * 0.95) - 1]!;
+      const p99 = frames[Math.ceil(frames.length * 0.99) - 1]!;
+      windowMs = 0;
+      frames = [];
+      // Occasional dropped frames can fail the tail budget while the average
+      // stays healthy. Good frames must not erase that evidence.
+      if (p95 <= BUDGET_MS && p99 <= P99_BUDGET_MS) return null;
+      return stepDown();
     },
   };
 }

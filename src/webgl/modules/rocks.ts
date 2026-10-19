@@ -13,6 +13,8 @@ import {
   type Scene,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import type { SectionId } from "@/config/sections";
 
 import { sceneViewportForWidth, type SceneViewport } from "@/config/responsive";
 import { toWorld } from "../core/chapterFrame";
@@ -46,6 +48,7 @@ type RockInstance = {
 };
 
 export type Rocks = Readonly<{
+  preload: (section: SectionId) => void;
   update: (
     pointerX: number,
     pointerY: number,
@@ -175,7 +178,8 @@ export function createRocks(
   onLoaded?: () => void,
 ): Rocks {
   const group = new Group();
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loads = new Map<RockInstanceId, () => void>();
   const entries = {} as Record<RockInstanceId, RockInstance>;
   let viewport: SceneViewport = "desktop";
   let destroyed = false;
@@ -242,64 +246,74 @@ export function createRocks(
       yaw: 0,
     };
 
-    loadRockAsset(
-      loader,
-      asset.id as RockAssetId,
-      (model) => {
-        if (destroyed) {
-          disposeRock(model);
-          return;
-        }
+    loads.set(instanceId, () =>
+      loadRockAsset(
+        loader,
+        asset.id as RockAssetId,
+        (model) => {
+          if (destroyed) {
+            disposeRock(model);
+            return;
+          }
 
-        const bounds = new Box3().setFromObject(model);
-        const size = bounds.getSize(new Vector3());
-        const center = bounds.getCenter(new Vector3());
-        const sourceWidth = Math.max(size.x, size.z);
-        if (!Number.isFinite(sourceWidth) || sourceWidth <= 0) {
-          disposeRock(model);
-          onFailure?.(instanceId);
-          return;
-        }
+          const bounds = new Box3().setFromObject(model);
+          const size = bounds.getSize(new Vector3());
+          const center = bounds.getCenter(new Vector3());
+          const sourceWidth = Math.max(size.x, size.z);
+          if (!Number.isFinite(sourceWidth) || sourceWidth <= 0) {
+            disposeRock(model);
+            onFailure?.(instanceId);
+            return;
+          }
 
-        const normalization = 1 / sourceWidth;
-        model.scale.setScalar(normalization);
-        model.position.set(
-          -center.x * normalization,
-          -bounds.min.y * normalization,
-          -center.z * normalization,
-        );
-        root.add(model);
+          const normalization = 1 / sourceWidth;
+          model.scale.setScalar(normalization);
+          model.position.set(
+            -center.x * normalization,
+            -bounds.min.y * normalization,
+            -center.z * normalization,
+          );
+          root.add(model);
 
-        const entry = entries[instanceId];
-        entry.height = size.y * normalization;
-        model.traverse((item) => {
-          if (!(item instanceof Mesh)) return;
-          item.castShadow = false;
-          item.receiveShadow = false;
-          item.renderOrder = config.renderOrder;
-          const materials = Array.isArray(item.material) ? item.material : [item.material];
-          materials.forEach((material) => {
-            if (material instanceof MeshStandardMaterial) {
-              material.metalness = 0.05;
-              material.roughness = Math.max(0.88, material.roughness);
-              material.transparent = true;
-              material.opacity = 0;
-              material.depthWrite = true;
-              applyWaterlineContact(material, entry.waterline);
-              material.needsUpdate = true;
-            }
+          const entry = entries[instanceId];
+          entry.height = size.y * normalization;
+          model.traverse((item) => {
+            if (!(item instanceof Mesh)) return;
+            item.castShadow = false;
+            item.receiveShadow = false;
+            item.renderOrder = config.renderOrder;
+            const materials = Array.isArray(item.material) ? item.material : [item.material];
+            materials.forEach((material) => {
+              if (material instanceof MeshStandardMaterial) {
+                material.metalness = 0.05;
+                material.roughness = Math.max(0.88, material.roughness);
+                material.transparent = true;
+                material.opacity = 0;
+                material.depthWrite = true;
+                applyWaterlineContact(material, entry.waterline);
+                material.needsUpdate = true;
+              }
+            });
+            entry.meshes.push(item);
           });
-          entry.meshes.push(item);
-        });
-        entry.ready = true;
-        applyTransform(instanceId);
-        onLoaded?.();
-      },
-      () => onFailure?.(instanceId),
+          entry.ready = true;
+          applyTransform(instanceId);
+          onLoaded?.();
+        },
+        () => onFailure?.(instanceId),
+      ),
     );
   });
 
   return {
+    preload: (section) => {
+      if (destroyed) return;
+      for (const [id, load] of loads) {
+        if (rockInstances[id].sectionId !== section) continue;
+        loads.delete(id);
+        load();
+      }
+    },
     setLighting: (config) => {
       activeLighting = config;
       baseSky.setHex(config.hemisphereSky);

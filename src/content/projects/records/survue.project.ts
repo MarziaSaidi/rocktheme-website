@@ -150,11 +150,10 @@ export const survueProject = {
       timeline: "September-December 2024",
       responsibilities: [
         "Product design",
-        "Interaction design",
-        "App structure and user flows",
+        "App structure and interaction flows",
+        "C# settings: theme, sound, user warnings, and Help",
         "Prototyping",
         "Visual foundations and components",
-        "C# implementation",
       ],
       tools: ["Figma", "C#", ".NET"],
       platform: "Mobile · iOS",
@@ -502,11 +501,11 @@ export const survueProject = {
             eyebrow: "Delivery / evidence and next steps",
             title: "A connected interface, with validation still to establish.",
             description:
-              "The final screen set and interaction prototype connect setup, detection, recordings, and settings. My contribution spans product design, prototyping, and C# implementation. This case study documents the interface work; it does not establish a production release, hardware detection performance, or a measured safety outcome.",
+              "The final screen set and interaction prototype connect setup, detection, recordings, and settings. I designed the interface and prototype, and built the app's settings section in C#: theme settings, the sound toggle, user warnings, and Help. This case study does not establish a production release, hardware detection performance, or a measured safety outcome.",
             outcome:
               "An app structure, original wireframes, detection explorations, final UI, and an interaction prototype.",
             constraint:
-              "The next validation priorities are warning comprehension while riding, non-color cues, and connection-loss behavior. The C# implementation scope is not detailed in this case study. To test the hypothesis, I would measure how quickly and correctly riders name the warning level from a brief glance.",
+              "The C# implementation described here covers settings; the other screens document design and prototype work. The next validation priorities are warning comprehension while riding, non-color cues, and connection-loss behavior. To test the hypothesis, I would measure how quickly and correctly riders name the warning level from a brief glance.",
             supportingVideo: { media: prototype, label: "Watch the interaction prototype" },
             visual: {
               type: "sequence",

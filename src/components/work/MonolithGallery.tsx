@@ -30,7 +30,7 @@ import {
 } from "@/webgl/workJourney";
 
 import styles from "./MonolithGallery.module.css";
-import { rememberWorkReturn, takeWorkReturn } from "./workReturn";
+import { rememberWorkReturn, takeWorkReturn, takeWorkReturnFocus } from "./workReturn";
 
 /**
  * Whether the page is in the desktop layout, which has the desktop journey;
@@ -233,6 +233,20 @@ function stationOffset(
 
 const pad = (value: number) => value.toString().padStart(2, "0");
 
+/** Wait for React to expose the card, then focus without moving its camera. */
+function focusShownProject(runway: HTMLElement): () => void {
+  const until = performance.now() + 3000;
+  let frame = 0;
+  const look = () => {
+    const link = runway.querySelector<HTMLElement>("[data-work-view]");
+    if (link && !link.closest("[inert]") && getComputedStyle(link).visibility === "visible") {
+      link.focus({ preventScroll: true });
+    } else if (performance.now() < until) frame = requestAnimationFrame(look);
+  };
+  frame = requestAnimationFrame(look);
+  return () => cancelAnimationFrame(frame);
+}
+
 /** Selected Work: existing compositions, with one completed horizontal swap per gesture. */
 export function MonolithGallery({
   projects,
@@ -282,6 +296,7 @@ export function MonolithGallery({
     let pendingScroll = { direction: 0, distance: 0 };
     let correcting = false;
     let jumping = false;
+    let cancelFocus = () => {};
     const position = (station: number) => stationOffset(runway, station, total, stretches);
     const movePage = (y: number) => {
       expectedY = y;
@@ -507,7 +522,27 @@ export function MonolithGallery({
       }
     };
     const navigate = (event: MouseEvent) => {
-      if (event.target instanceof Element && event.target.closest("a[href]")) {
+      const link =
+        event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (
+        link &&
+        event.detail === 0 &&
+        link.origin === location.origin &&
+        link.pathname === location.pathname &&
+        link.hash === `#${sectionAnchors["selected-work"]}`
+      ) {
+        event.preventDefault();
+        const station = stepper.transition?.to ?? stepper.station ?? 0;
+        leave();
+        jumping = false;
+        if (location.hash !== link.hash) history.pushState(null, "", link.hash);
+        enter(station);
+        cancelFocus();
+        cancelFocus = focusShownProject(runway);
+        return;
+      }
+      if (link) {
+        cancelFocus();
         jumping = true;
         lastUserInput = -Infinity;
         leave();
@@ -538,6 +573,7 @@ export function MonolithGallery({
     window.addEventListener("click", navigate, true);
     window.addEventListener("resize", resize);
     return () => {
+      cancelFocus();
       leave();
       window.removeEventListener("wheel", wheel, true);
       window.removeEventListener("keydown", key, true);
@@ -563,27 +599,32 @@ export function MonolithGallery({
    * Arriving at the gallery by a link (the case study's back link, the nav's
    * Work) lands on the project the visitor opened, on its details point, so
    * they come back to the card they left. With no project to return to it
-   * lands at the top of the gallery. Both are instant: the hash's own smooth
+   * lands at the first project's details. Both are instant: the hash's own smooth
    * scroll starts while the scene is still mounting and can stall on the hero.
    */
   useEffect(() => {
     const runway = runwayRef.current;
     if (!runway) return;
+    let cancelFocus = () => {};
     const frame = requestAnimationFrame(() => {
       // Taken whichever way the visitor arrived, so it can't apply to a later visit.
       const slug = takeWorkReturn();
+      const keyboard = takeWorkReturnFocus();
       if (location.hash !== `#${sectionAnchors["selected-work"]}`) return;
       const station = featured.findIndex((project) => project.slug === slug);
       // Read the layout now: the journey hook still reports desktop on its first render.
       const journey = window.matchMedia(sceneMediaQueries.desktop).matches
         ? WORK_STRETCHES
         : NARROW_WORK_STRETCHES;
-      const y =
-        station >= 0 ? stationOffset(runway, station, workScreens(count, journey), journey) : null;
+      const y = stationOffset(runway, Math.max(0, station), workScreens(count, journey), journey);
       if (y !== null) window.scrollTo({ top: y, behavior: "instant" });
       else runway.closest("section")?.scrollIntoView({ behavior: "instant" });
+      if (keyboard) cancelFocus = focusShownProject(runway);
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      cancelFocus();
+    };
     // Once, on arrival: later changes to the journey must not move the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -657,11 +698,12 @@ export function MonolithGallery({
                         <p className={styles.meta}>{current.meta.join(" · ")}</p>
                       ) : null}
                       <Link
+                        data-work-view=""
                         className={styles.view}
                         href={current.href}
                         data-cursor="action"
-                        onClick={() => {
-                          rememberWorkReturn(current.slug);
+                        onClick={(event) => {
+                          rememberWorkReturn(current.slug, event.detail === 0);
                           emitSoundEvent("project:open");
                         }}
                       >

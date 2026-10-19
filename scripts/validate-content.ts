@@ -382,6 +382,10 @@ function validateProject(project: Project, index: number): void {
     addError(`${location}.contentStatus`, "must be placeholder, draft, or final");
   }
 
+  if (project.enabled && project.contentStatus === "placeholder") {
+    addError(`${location}.enabled`, "placeholder records must remain unpublished");
+  }
+
   if (!Array.isArray(project.placeholderFields)) {
     addError(`${location}.placeholderFields`, "must be an array");
   }

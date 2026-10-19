@@ -1,0 +1,27 @@
+{
+  "classification": "Conservative Next/React/bundler chunk subset; excludes application chunks",
+  "compressedBodyBytes": 130138,
+  "nonThreeBudget": 120000,
+  "rows": [
+    {
+      "url": "/_next/static/chunks/3s6nzrbk-8mnv.js",
+      "bytes": 2017
+    },
+    {
+      "url": "/_next/static/chunks/19mx3mg6lkumu.js",
+      "bytes": 7617
+    },
+    {
+      "url": "/_next/static/chunks/2-rtuqsgzmno4.js",
+      "bytes": 45057
+    },
+    {
+      "url": "/_next/static/chunks/turbopack-2-vpl8jgjmkts.js",
+      "bytes": 3856
+    },
+    {
+      "url": "/_next/static/chunks/3kmozkq6tgqnz.js",
+      "bytes": 71591
+    }
+  ]
+}

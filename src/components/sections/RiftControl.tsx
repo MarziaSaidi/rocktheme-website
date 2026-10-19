@@ -81,17 +81,16 @@ export function RiftControl() {
     prefetchCabin();
   }, [router]);
 
-  const engage = useCallback(
-    (on: boolean) => {
-      if (crossing.current) return;
-      setPhase(on ? "engaged" : "idle");
-      setRiftEngaged(on);
-      if (on) warm();
-    },
-    [warm],
-  );
+  const engage = useCallback((on: boolean) => {
+    if (crossing.current) return;
+    setPhase(on ? "engaged" : "idle");
+    setRiftEngaged(on);
+  }, []);
 
   const handOff = useCallback(() => {
+    // Hover/focus is not a commitment to enter. Bulk cabin downloads begin
+    // only once the crossing hands over to the next world.
+    warm();
     // The scene holds the world beyond on screen meanwhile, so waiting for
     // the picture to be decoded costs nothing visible.
     const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, 1200));
@@ -99,7 +98,7 @@ export function RiftControl() {
       beginHandoff(Date.now());
       router.push(MY_WORLD);
     });
-  }, [router]);
+  }, [router, warm]);
 
   const goThrough = useCallback(() => {
     if (crossing.current) return;

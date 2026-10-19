@@ -13,8 +13,8 @@ export default function Home() {
   return (
     <>
       <SceneCanvas />
-      <RiftControl />
       <main id={pageLandmarkIds.main}>
+        <RiftControl />
         <Hero />
         <SelectedWork projects={projects} />
         <Statement />

@@ -28,6 +28,17 @@
   border-inline-end: var(--border-hairline);
 }
 
+.contributionSummary {
+  display: none;
+}
+
+@media (max-width: 47.99rem) {
+  .contributionSummary {
+    display: block;
+    line-height: 1.5;
+  }
+}
+
 .railLabel,
 .eyebrow,
 .facts dt,

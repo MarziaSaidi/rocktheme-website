@@ -1,0 +1,15 @@
+[
+  {
+    "variant": "reduced",
+    "y": 4028,
+    "href": "/work/quill-and-pigeon",
+    "errors": []
+  },
+  {
+    "variant": "no-webgl",
+    "y": 4028,
+    "href": "/work/quill-and-pigeon",
+    "fallback": "",
+    "errors": []
+  }
+]

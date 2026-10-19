@@ -1,0 +1,37 @@
+[
+  {
+    "pose": "hero",
+    "textureBytes": 38536220,
+    "drawCalls": 26
+  },
+  {
+    "pose": "title",
+    "textureBytes": 38536220,
+    "drawCalls": 22
+  },
+  {
+    "pose": "quill",
+    "textureBytes": 38536220,
+    "drawCalls": 22
+  },
+  {
+    "pose": "travel",
+    "textureBytes": 38536220,
+    "drawCalls": 22
+  },
+  {
+    "pose": "survue",
+    "textureBytes": 38536220,
+    "drawCalls": 22
+  },
+  {
+    "pose": "bio",
+    "textureBytes": 79416348,
+    "drawCalls": 64
+  },
+  {
+    "pose": "contact",
+    "textureBytes": 79416348,
+    "drawCalls": 26
+  }
+]

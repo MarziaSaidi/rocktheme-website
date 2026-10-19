@@ -1,0 +1,402 @@
+[
+  {
+    "file": "src/webgl/sceneConfig.ts",
+    "unchanged": true,
+    "sha256": "42d78acd4a6bb83b09a025b8b7babcd11ca0a3c54f4453703625672eeb995fee"
+  },
+  {
+    "file": "src/webgl/core/cameraJourney.ts",
+    "unchanged": true,
+    "sha256": "4b4c3b061efb07bf33e7e66ee39e602055be9c39e3e11bc2328be9902a2955ec"
+  },
+  {
+    "file": "src/webgl/workJourney.ts",
+    "unchanged": true,
+    "sha256": "89d566e097beab7b6f02fc3396157df3adc1de3191c24d6f08495b937c7e1a77"
+  },
+  {
+    "file": "src/webgl/modules/particleField.ts",
+    "unchanged": true,
+    "sha256": "c988043116dc2108c9d06e1e2c5bd58334913bd54148904f57814c5536df4d74"
+  },
+  {
+    "file": "src/webgl/modules/robotLife.ts",
+    "unchanged": true,
+    "sha256": "7e6d6b70bf769076a90dd272312c32db6e130c03391161ca5b3ffefc0628ad62"
+  },
+  {
+    "file": "src/experiments/marziaParticles.ts",
+    "unchanged": true,
+    "sha256": "f189930d184ac08a598c2550da22c50e4f3ba9489b9d6658b4d1548f7762d2a6"
+  },
+  {
+    "file": "src/components/entry/IntroDoorway.tsx",
+    "unchanged": true,
+    "sha256": "766776962fc5dbe21cf35c9ecfb2d7203650999607207f1f487df8d5fd1bd909"
+  },
+  {
+    "file": "src/motion/rippleRenderer.ts",
+    "unchanged": true,
+    "sha256": "ba40dc8b1673aa0b746121242b43fda53edc3291b2490355465600a179ba0252"
+  },
+  {
+    "file": "src/motion/RippleHeading.tsx",
+    "unchanged": true,
+    "sha256": "d1cc988728e26bcca743410e4b2530649bbc7b2e36d30d592763bb4f4ab69690"
+  },
+  {
+    "file": "src/cabin/cabinExterior.ts",
+    "unchanged": true,
+    "sha256": "23cceb32baef5bf24e0f69737ebb2a450f082ab7988e428e2f2afe18b4dc68b7"
+  },
+  {
+    "file": "src/cabin/collision.ts",
+    "unchanged": true,
+    "sha256": "b4b5706c6b274d49fabcac593e4c78c8b10fb11a344ddb52b871f7da0d489a0f"
+  },
+  {
+    "file": "src/cabin/explorer.ts",
+    "unchanged": true,
+    "sha256": "4c4657faf33485b4cce96c60c3b22ffc8e1142fe607eba70066e22182fed9726"
+  },
+  {
+    "file": "src/cabin/flames.ts",
+    "unchanged": true,
+    "sha256": "aa4aee231cca1e8ba6faf3c7934c311dfa685ce605771da18d4214f7c1f7dab7"
+  },
+  {
+    "file": "src/cabin/hall.ts",
+    "unchanged": true,
+    "sha256": "f0f6ab991fb22dd7a3704d476e3f74ecc4f63cee05cb6e677c5e260de58c7aed"
+  },
+  {
+    "file": "src/cabin/marziaOriginal.ts",
+    "unchanged": true,
+    "sha256": "403b9c32fb0695ede910a9f63389b75837f043496c16b8a037a82962d5751f89"
+  },
+  {
+    "file": "src/cabin/marziaPanel.ts",
+    "unchanged": true,
+    "sha256": "95a9028de14cf65f5a8844a307511b7a8092caa58a03e0bcca21e731969e7a28"
+  },
+  {
+    "file": "src/cabin/paths.ts",
+    "unchanged": true,
+    "sha256": "01db9c28f9c59a813eee7bad91ff1ea4230d8a1deb35e4b591de7a8a7580c439"
+  },
+  {
+    "file": "src/cabin/scenery.ts",
+    "unchanged": true,
+    "sha256": "71c577b8184cf38992066cbed0359d643aea52a55c0da215bd49dfa48b13cbd0"
+  },
+  {
+    "file": "src/cabin/stations.ts",
+    "unchanged": true,
+    "sha256": "574e13c9e14764bea46c1022662e6288f57eee92ec78d9c27c0e50ed45683a64"
+  },
+  {
+    "file": "src/cabin/surfaces.ts",
+    "unchanged": true,
+    "sha256": "f1f0aceadc02a6a33fa2e3073fbaa725f940678b1a4726dfb107168e030cbd16"
+  },
+  {
+    "file": "src/cabin/world.ts",
+    "unchanged": true,
+    "sha256": "4d5194c7b0f12c7200fa11a6c9941343a142c80e0b798b4f1f031a0ee69529d1"
+  },
+  {
+    "file": "src/cabin/worldCapture.ts",
+    "unchanged": true,
+    "sha256": "3efb6f642ba3e23ba7a0c14827698b8b2d7de5ffbe9b1cfafb88e26be01e218c"
+  },
+  {
+    "file": "src/cabin/worldHandoff.ts",
+    "unchanged": true,
+    "sha256": "fb0a5418d789546ec787066bcb4a035d6df0087ada3e11e193be86a4bc3321ea"
+  },
+  {
+    "file": "src/components/cabin/CabinStick.module.css",
+    "unchanged": true,
+    "sha256": "1b7074de452b324c6e71d8f2ed361611f9aefdce991c6b2b1fa4a3d34adce047"
+  },
+  {
+    "file": "src/components/cabin/CabinStick.tsx",
+    "unchanged": true,
+    "sha256": "e4e367d23581bdf8deacb19ee175ec6387b556aa5945d90db7bfddc94ae1e98e"
+  },
+  {
+    "file": "src/components/cabin/CabinWorld.module.css",
+    "unchanged": true,
+    "sha256": "c8af33fd927e627648e7563f94c31389cd30beeb1f3d441b531e88475c80d15f"
+  },
+  {
+    "file": "src/components/cabin/CabinWorld.tsx",
+    "unchanged": true,
+    "sha256": "604387a08215c7243819b0a43f2397bc02de2a63d7f7c3d6e07509053d70470a"
+  },
+  {
+    "file": "src/components/cabin/WorldBridge.module.css",
+    "unchanged": true,
+    "sha256": "c10e474626b34415de50ca925e4f88336426170f9457f72125c31f1f1809d19c"
+  },
+  {
+    "file": "src/components/cabin/WorldBridge.tsx",
+    "unchanged": true,
+    "sha256": "35d271df05872f598b43c27f040036b877d4f8fa6f7ed860afd14835a4f344b0"
+  },
+  {
+    "file": "src/components/cabin/WorldHandoff.module.css",
+    "unchanged": true,
+    "sha256": "1fe76a6568a3236d4165af8ff31cdf9525061a728ff41c3da934627bdd04e049"
+  },
+  {
+    "file": "src/components/cabin/WorldHandoff.tsx",
+    "unchanged": true,
+    "sha256": "1d32080acd98ca6c485f88485dde0e485242659d44494ea908e710c74a757c57"
+  },
+  {
+    "file": "public/assets/cabin/manifest.json",
+    "unchanged": true,
+    "sha256": "2d353fe2df9736c0b7919d83b8869838ecf9089b67dffbdff106c88e5634b435"
+  },
+  {
+    "file": "public/assets/cabin/materials/floor/color.webp",
+    "unchanged": true,
+    "sha256": "8ca97d66a034ca00ce7c5506d80ea5f7258497d6b1ec3f8e29ddf7805272be8b"
+  },
+  {
+    "file": "public/assets/cabin/materials/floor/normal.webp",
+    "unchanged": true,
+    "sha256": "3379960925813040a1bbf08ad735212987e4a51f89bd492c980491413ff80dd4"
+  },
+  {
+    "file": "public/assets/cabin/materials/floor/orm.webp",
+    "unchanged": true,
+    "sha256": "04b4cf6f5d87b308f8d30f8eecb858da0d8ab099103767e1fc583ccb478bb874"
+  },
+  {
+    "file": "public/assets/cabin/materials/roof/color.webp",
+    "unchanged": true,
+    "sha256": "058b1f2863eadcbbf222f67f6be3ac0b207e68991e49fc40e845f078da67747e"
+  },
+  {
+    "file": "public/assets/cabin/materials/roof/normal.webp",
+    "unchanged": true,
+    "sha256": "473a1ab6e4c85c473c155232e60dd2ef88a1e33cab7870f48f5760aeb9d8fca5"
+  },
+  {
+    "file": "public/assets/cabin/materials/roof/orm.webp",
+    "unchanged": true,
+    "sha256": "5c6a85f6b1021a3c65a53080588244c40395fb380200b512f7358f9dd139bd21"
+  },
+  {
+    "file": "public/assets/cabin/materials/snow/color.webp",
+    "unchanged": true,
+    "sha256": "13a2edcff0e7302f68b72716e1aeb22458aa553229553d17a2c59886b24c11fa"
+  },
+  {
+    "file": "public/assets/cabin/materials/snow/normal.webp",
+    "unchanged": true,
+    "sha256": "d6572cdb2a3fc91580e3fcfebe2a7c01f58cc0f5437d02c1dd96f0d6f504ccba"
+  },
+  {
+    "file": "public/assets/cabin/materials/snow/orm.webp",
+    "unchanged": true,
+    "sha256": "79e961eaf31a8e298519342609213d2ba119d0d67d4f0781c2d4e60d7d3b46d6"
+  },
+  {
+    "file": "public/assets/cabin/materials/stone/color.webp",
+    "unchanged": true,
+    "sha256": "c3f58fb55577601a480345a8f8b9fce02f8bb18e18098dae8bc5eba98f711f83"
+  },
+  {
+    "file": "public/assets/cabin/materials/stone/normal.webp",
+    "unchanged": true,
+    "sha256": "a63fe6620ad376eed42eb8758e816513b30da03d43277d1c86e5e19af250c7c8"
+  },
+  {
+    "file": "public/assets/cabin/materials/stone/orm.webp",
+    "unchanged": true,
+    "sha256": "ad67e6190bdb3ea635397703a33b60ab39a14ea36c3630cce83439482ae8075d"
+  },
+  {
+    "file": "public/assets/cabin/materials/timber/color.webp",
+    "unchanged": true,
+    "sha256": "beaad70f5aa204f7e4f98802625bbaeab759e8bd47422e9c306e49217b327e84"
+  },
+  {
+    "file": "public/assets/cabin/materials/timber/normal.webp",
+    "unchanged": true,
+    "sha256": "bd79e1a5d3b5a2992e355d4eb455bf7d417d935d65a1e639736e9b9e8a8ab8d7"
+  },
+  {
+    "file": "public/assets/cabin/materials/timber/orm.webp",
+    "unchanged": true,
+    "sha256": "cdf026c58942bd2c3970b99230bb772250252d7642f775a3a54610649f23b48c"
+  },
+  {
+    "file": "public/assets/cabin/materials/walls/color.webp",
+    "unchanged": true,
+    "sha256": "e94cbc7e4b58c8eaf98a6d4b78eaa98248dc7fb0fbd1794d54352b4bd6b681d1"
+  },
+  {
+    "file": "public/assets/cabin/materials/walls/normal.webp",
+    "unchanged": true,
+    "sha256": "773d6dea3931e069bddf7511c7c696790b7ff42598cd2b600f13db77044f2252"
+  },
+  {
+    "file": "public/assets/cabin/materials/walls/orm.webp",
+    "unchanged": true,
+    "sha256": "a14a06360da1cc9cf2c4a1eaf5cee86ff6a78a6ee2e4d811c4ba3e02bed8d2d9"
+  },
+  {
+    "file": "public/assets/cabin/props/ArmChair_01.glb",
+    "unchanged": true,
+    "sha256": "0d82cff7e96db33b9345c1a4ec38d6ffed2fa5217f238730e89415c8e19e3b1f"
+  },
+  {
+    "file": "public/assets/cabin/props/Lantern_01.glb",
+    "unchanged": true,
+    "sha256": "7fd3fc83b9bd321415e3eda9aaa8502418da421577003f439d3a07c4b6d3bb1f"
+  },
+  {
+    "file": "public/assets/cabin/props/Ottoman_01.glb",
+    "unchanged": true,
+    "sha256": "89624404f4a2bce20adbd23d25069cc4b446d95a0a58205498a4a3efc8ae1def"
+  },
+  {
+    "file": "public/assets/cabin/props/Rockingchair_01.glb",
+    "unchanged": true,
+    "sha256": "5c9c4d54de49677add525f7257f45ac183e6c77713681abc963e0e99f2341e2a"
+  },
+  {
+    "file": "public/assets/cabin/props/Shelf_01.glb",
+    "unchanged": true,
+    "sha256": "5309e32e602dce4554786557d6cb312880299970f9b5d43cbedf37c4a9db7cb6"
+  },
+  {
+    "file": "public/assets/cabin/props/WoodenTable_01.glb",
+    "unchanged": true,
+    "sha256": "ce977987fbdfdd297689b44820c140ce7ecaffb1249638785c467298e87b87a7"
+  },
+  {
+    "file": "public/assets/cabin/props/book_encyclopedia_set_01.glb",
+    "unchanged": true,
+    "sha256": "f053d20a151a37d03fbea9bd32b9bf50e3027271806cffaa93a762113c9f3116"
+  },
+  {
+    "file": "public/assets/cabin/props/brass_pan_01.glb",
+    "unchanged": true,
+    "sha256": "a26ddd55b26faa2f56aee82e90efd51581ce5413f44d6da41e62e553b6e610ce"
+  },
+  {
+    "file": "public/assets/cabin/props/brass_pot_01.glb",
+    "unchanged": true,
+    "sha256": "033d5b1cb6e3bd96fab79d9ba40df0fc828e236a21c7c093c610bcd374ff9145"
+  },
+  {
+    "file": "public/assets/cabin/props/coffee_table_round_01.glb",
+    "unchanged": true,
+    "sha256": "70965da9070b7cc6a893b2bd40596a9fb3423065a7c70db3de40ada30a3fcc3f"
+  },
+  {
+    "file": "public/assets/cabin/props/desk_lamp_arm_01.glb",
+    "unchanged": true,
+    "sha256": "ce692249a7d917224ca176973226433ef4b3836c59477206a3298c669ff26a7e"
+  },
+  {
+    "file": "public/assets/cabin/props/dining_chair_02.glb",
+    "unchanged": true,
+    "sha256": "de8627414f7d6671cb2ff20b9736eb94ec3defbb226d5403c2c2a0bbc522bfae"
+  },
+  {
+    "file": "public/assets/cabin/props/electric_stove.glb",
+    "unchanged": true,
+    "sha256": "02ad7cec5b7d46d0453dde7230b7020b46f7b90f883b1b4db2ca36ffb395638a"
+  },
+  {
+    "file": "public/assets/cabin/props/fir-lite.glb",
+    "unchanged": true,
+    "sha256": "d48a0ecc83bc2387944fdb7db20e5270921496517367ee4a9aaa7bfc31044b95"
+  },
+  {
+    "file": "public/assets/cabin/props/fir.glb",
+    "unchanged": true,
+    "sha256": "420cad0c2967dcd177b8dcebe18f87ff882fb441124a927a183ecdfa14dfaa13"
+  },
+  {
+    "file": "public/assets/cabin/props/hatchet.glb",
+    "unchanged": true,
+    "sha256": "e47942a8e7602adbd14bec9faf68047027050420b50060a6536980839887f4a8"
+  },
+  {
+    "file": "public/assets/cabin/props/metal_jug.glb",
+    "unchanged": true,
+    "sha256": "9561f82dc2747b03a43cbae2ed430f4e49ed77dbd188fa94ca82f28fae573346"
+  },
+  {
+    "file": "public/assets/cabin/props/modern_arm_chair_01.glb",
+    "unchanged": true,
+    "sha256": "3ef94f445f0157b20720fc5bb5c1f7c2cde30a2f7df5b6015cc08ffe784df2b4"
+  },
+  {
+    "file": "public/assets/cabin/props/painted_wooden_cabinet.glb",
+    "unchanged": true,
+    "sha256": "c53d78acaae17f02c96c450e3747c03e64347efcced0a9aa4de5b3fe4c51c074"
+  },
+  {
+    "file": "public/assets/cabin/props/painted_wooden_chair_01.glb",
+    "unchanged": true,
+    "sha256": "ad7f66e04438e23423074062929d2e3a1a3133b78f8a381efec3b9f94715a470"
+  },
+  {
+    "file": "public/assets/cabin/props/pot_enamel_01.glb",
+    "unchanged": true,
+    "sha256": "8dd77afd0ff4f3ed1d03174c21292d0c9c1113aa38053cc9601a5b7de0549f71"
+  },
+  {
+    "file": "public/assets/cabin/props/tea_set_01.glb",
+    "unchanged": true,
+    "sha256": "02ea490d2a0537393f391dce1394290bc68cb56485ead0b05ca1a2e98d513816"
+  },
+  {
+    "file": "public/assets/cabin/props/vintage_electric_kettle.glb",
+    "unchanged": true,
+    "sha256": "e795c79fe235661162338266f429e883d6ab48cc325e8faabcb86d3c7f6c86c5"
+  },
+  {
+    "file": "public/assets/cabin/props/wicker_basket_01.glb",
+    "unchanged": true,
+    "sha256": "bd9857d2d83f4ee05cadb17027453bbc6cfe19fa38cd12844f3a5c49a5642ffb"
+  },
+  {
+    "file": "public/assets/cabin/props/wooden_axe.glb",
+    "unchanged": true,
+    "sha256": "bd6371d25f582c39d3a286a421013a5938d1fe7564138b9413e872d3bb6ca3c1"
+  },
+  {
+    "file": "public/assets/cabin/props/wooden_cutting_board.glb",
+    "unchanged": true,
+    "sha256": "b4530c35444b394f3faa8a6a477ef80497bc660e4821b1eab5a1a402e8696349"
+  },
+  {
+    "file": "public/assets/cabin/props/wooden_spoon.glb",
+    "unchanged": true,
+    "sha256": "5c9f954204c032237a58fb81f0c6bd7547ea4ea8863f36c6fcfac9cfcfda3c20"
+  },
+  {
+    "file": "public/assets/cabin/sky/backdrop.webp",
+    "unchanged": true,
+    "sha256": "5b99d42c9970f111c4bfc7f01aac834c7e323786c4ad9546216d11cfb1b0ba95"
+  },
+  {
+    "file": "public/assets/cabin/sky/lighting.hdr",
+    "unchanged": true,
+    "sha256": "c2af5ce6fd4e4f672e258106aa48cac89379574c7bbe0962898d018e063d8def"
+  },
+  {
+    "file": "public/assets/cabin/sky/my-world-capture.webp",
+    "unchanged": true,
+    "sha256": "a8a5ce8cee3e7e81a68348bcdc6e7c909255c3e852c1c36173a5e9407919508f"
+  }
+]

@@ -1,0 +1,310 @@
+[
+  {
+    "width": 1440,
+    "initial": [
+      {
+        "url": "/_next/static/media/4f530f52d514af96-s.p.0xf8lnqelv8sb.woff2",
+        "bytes": 14672
+      },
+      {
+        "url": "/_next/static/media/612838607db3d51d-s.p.2-6hkzwn24m5-.woff2",
+        "bytes": 14680
+      },
+      {
+        "url": "/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2",
+        "bytes": 23108
+      },
+      {
+        "url": "/_next/static/media/a343f882a40d2cc9-s.p.1sj6eobyi31rd.woff2",
+        "bytes": 24576
+      },
+      {
+        "url": "/_next/static/media/SourceSerif4_Regular-s.p.07km-wog7x8ul.woff2",
+        "bytes": 76260
+      },
+      {
+        "url": "/_next/static/chunks/3alir-cdrofku.css",
+        "bytes": 3287
+      },
+      {
+        "url": "/_next/static/chunks/3fhydw7zjlge7.css",
+        "bytes": 13451
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 4974
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 23918
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 63480
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 59142
+      },
+      {
+        "url": "/_next/static/chunks/0mqyosf7mb-gi.css",
+        "bytes": 5805
+      },
+      {
+        "url": "/_next/static/chunks/3s6nzrbk-8mnv.js",
+        "bytes": 2017
+      },
+      {
+        "url": "/_next/static/chunks/19mx3mg6lkumu.js",
+        "bytes": 7617
+      },
+      {
+        "url": "/_next/static/chunks/2-rtuqsgzmno4.js",
+        "bytes": 45057
+      },
+      {
+        "url": "/_next/static/chunks/turbopack-2-vpl8jgjmkts.js",
+        "bytes": 3856
+      },
+      {
+        "url": "/_next/static/chunks/3kmozkq6tgqnz.js",
+        "bytes": 71591
+      },
+      {
+        "url": "/_next/static/chunks/362oqqy2d1zdb.js",
+        "bytes": 12485
+      },
+      {
+        "url": "/_next/static/chunks/1xor89nn07_ed.js",
+        "bytes": 7113
+      },
+      {
+        "url": "/_next/static/chunks/2v-ace73n0bho.js",
+        "bytes": 11570
+      },
+      {
+        "url": "/_next/static/chunks/437pymdre-ao9.js",
+        "bytes": 12670
+      },
+      {
+        "url": "/_vercel/insights/script.js",
+        "bytes": 0
+      },
+      {
+        "url": "/_next/static/chunks/0p1jpkl07wux_.js",
+        "bytes": 23651
+      },
+      {
+        "url": "/_next/static/chunks/43rmjcuax7g-l.js",
+        "bytes": 13779
+      },
+      {
+        "url": "/_next/static/chunks/0z239x4wzp-ex.js",
+        "bytes": 99181
+      },
+      {
+        "url": "/_next/static/chunks/1gty0zmn9xv4x.js",
+        "bytes": 81170
+      },
+      {
+        "url": "/_next/static/chunks/3bnb1__fjbl1m.js",
+        "bytes": 39071
+      },
+      {
+        "url": "/favicon.ico",
+        "bytes": 9822
+      },
+      {
+        "url": "/",
+        "bytes": 403
+      },
+      {
+        "url": "/",
+        "bytes": 6092
+      },
+      {
+        "url": "/assets/hero/mountains.glb",
+        "bytes": 484257
+      },
+      {
+        "url": "/assets/hero/perch-rock.glb",
+        "bytes": 710796
+      },
+      {
+        "url": "/assets/hero/robot.glb",
+        "bytes": 702941
+      },
+      {
+        "url": "/assets/selected-work/mountains.glb",
+        "bytes": 396959
+      }
+    ],
+    "focus": {
+      "y": 4028,
+      "href": "/work/quill-and-pigeon"
+    },
+    "before": "Overview: Import a list. Keep control of every contact.",
+    "after": "Challenge: A contact list needs more than an upload button.",
+    "returned": {
+      "y": 4028,
+      "href": "/work/quill-and-pigeon"
+    },
+    "hidden": ["qalin", "relay", "supportiq", "get-campus", "new-start-mobile", "wildwood"],
+    "violations": [],
+    "errors": []
+  },
+  {
+    "width": 375,
+    "initial": [
+      {
+        "url": "/_next/static/media/4f530f52d514af96-s.p.0xf8lnqelv8sb.woff2",
+        "bytes": 14672
+      },
+      {
+        "url": "/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2",
+        "bytes": 23108
+      },
+      {
+        "url": "/_next/static/media/612838607db3d51d-s.p.2-6hkzwn24m5-.woff2",
+        "bytes": 14680
+      },
+      {
+        "url": "/_next/static/media/SourceSerif4_Regular-s.p.07km-wog7x8ul.woff2",
+        "bytes": 76260
+      },
+      {
+        "url": "/_next/static/media/a343f882a40d2cc9-s.p.1sj6eobyi31rd.woff2",
+        "bytes": 24576
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 1184
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 2304
+      },
+      {
+        "url": "/_next/static/chunks/3fhydw7zjlge7.css",
+        "bytes": 13451
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 15394
+      },
+      {
+        "url": "/_next/image",
+        "bytes": 6488
+      },
+      {
+        "url": "/_next/static/chunks/3alir-cdrofku.css",
+        "bytes": 3287
+      },
+      {
+        "url": "/_next/static/chunks/0mqyosf7mb-gi.css",
+        "bytes": 5805
+      },
+      {
+        "url": "/_next/static/chunks/3s6nzrbk-8mnv.js",
+        "bytes": 2017
+      },
+      {
+        "url": "/_next/static/chunks/19mx3mg6lkumu.js",
+        "bytes": 7617
+      },
+      {
+        "url": "/_next/static/chunks/turbopack-2-vpl8jgjmkts.js",
+        "bytes": 3856
+      },
+      {
+        "url": "/_next/static/chunks/362oqqy2d1zdb.js",
+        "bytes": 12485
+      },
+      {
+        "url": "/_next/static/chunks/1xor89nn07_ed.js",
+        "bytes": 7113
+      },
+      {
+        "url": "/_next/static/chunks/437pymdre-ao9.js",
+        "bytes": 12670
+      },
+      {
+        "url": "/_next/static/chunks/2v-ace73n0bho.js",
+        "bytes": 11570
+      },
+      {
+        "url": "/_next/static/chunks/2-rtuqsgzmno4.js",
+        "bytes": 45057
+      },
+      {
+        "url": "/_next/static/chunks/3kmozkq6tgqnz.js",
+        "bytes": 71591
+      },
+      {
+        "url": "/favicon.ico",
+        "bytes": 9822
+      },
+      {
+        "url": "/_vercel/insights/script.js",
+        "bytes": 0
+      },
+      {
+        "url": "/_next/static/chunks/0p1jpkl07wux_.js",
+        "bytes": 23651
+      },
+      {
+        "url": "/_next/static/chunks/43rmjcuax7g-l.js",
+        "bytes": 13779
+      },
+      {
+        "url": "/_next/static/chunks/1gty0zmn9xv4x.js",
+        "bytes": 81170
+      },
+      {
+        "url": "/_next/static/chunks/0z239x4wzp-ex.js",
+        "bytes": 99181
+      },
+      {
+        "url": "/_next/static/chunks/3bnb1__fjbl1m.js",
+        "bytes": 39071
+      },
+      {
+        "url": "/",
+        "bytes": 403
+      },
+      {
+        "url": "/",
+        "bytes": 6092
+      },
+      {
+        "url": "/assets/hero/mountains.mobile.glb",
+        "bytes": 265544
+      },
+      {
+        "url": "/assets/hero/perch-rock.mobile.glb",
+        "bytes": 387131
+      },
+      {
+        "url": "/assets/hero/robot.mobile.glb",
+        "bytes": 419076
+      },
+      {
+        "url": "/assets/selected-work/mountains.mobile.glb",
+        "bytes": 229614
+      }
+    ],
+    "focus": {
+      "y": 2193,
+      "href": "/work/quill-and-pigeon"
+    },
+    "before": "Overview: Import a list. Keep control of every contact.",
+    "after": "Challenge: A contact list needs more than an upload button.",
+    "returned": {
+      "y": 2193,
+      "href": "/work/quill-and-pigeon"
+    },
+    "hidden": ["qalin", "relay", "supportiq", "get-campus", "new-start-mobile", "wildwood"],
+    "violations": [],
+    "errors": []
+  }
+]

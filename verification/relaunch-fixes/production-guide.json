@@ -1,0 +1,294 @@
+[
+  {
+    "rate": 1,
+    "cls": 0.00001736653645833333,
+    "shifts": [
+      {
+        "t": 15769.59999999404,
+        "value": 0.000008863074952846365,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 15786.200000017881,
+        "value": 0.0000063673482510288066,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 15803.200000017881,
+        "value": 0.000002136113254458162,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      }
+    ],
+    "rows": [
+      {
+        "y": 0,
+        "visible": true,
+        "actual": {
+          "x": 969.8340454101562,
+          "y": 434.86627197265625,
+          "w": 312.68743896484375,
+          "h": 283.828125
+        },
+        "expected": {
+          "x": 969.834,
+          "y": 434.866,
+          "w": 312.688,
+          "h": 283.828
+        }
+      },
+      {
+        "y": 180,
+        "visible": true,
+        "actual": {
+          "x": 963.2032470703125,
+          "y": 430.16070556640625,
+          "w": 313.53125,
+          "h": 284.8125
+        },
+        "expected": {
+          "x": 963.203,
+          "y": 430.161,
+          "w": 313.531,
+          "h": 284.812
+        }
+      },
+      {
+        "y": 450,
+        "visible": true,
+        "actual": {
+          "x": 847.2470092773438,
+          "y": 407.8866882324219,
+          "w": 321.93756103515625,
+          "h": 304.9687805175781
+        },
+        "expected": {
+          "x": 847.247,
+          "y": 407.887,
+          "w": 321.938,
+          "h": 304.969
+        }
+      },
+      {
+        "y": 900,
+        "visible": true,
+        "actual": {
+          "x": 409.21087646484375,
+          "y": 295.7818908691406,
+          "w": 389.390625,
+          "h": 422.2030944824219
+        },
+        "expected": {
+          "x": 409.211,
+          "y": 295.782,
+          "w": 389.391,
+          "h": 422.203
+        }
+      },
+      {
+        "y": 1440,
+        "visible": true,
+        "actual": {
+          "x": -83.50382232666016,
+          "y": 267.63409423828125,
+          "w": 460.9375,
+          "h": 465.859375
+        },
+        "expected": {
+          "x": -83.5038,
+          "y": 267.634,
+          "w": 460.938,
+          "h": 465.859
+        }
+      },
+      {
+        "y": 2160,
+        "visible": false,
+        "actual": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "w": 567.6,
+          "h": 514.89
+        }
+      }
+    ]
+  },
+  {
+    "rate": 4,
+    "cls": 0.00014092033815318498,
+    "shifts": [
+      {
+        "t": 14522.699999988079,
+        "value": 0.00001737584662208505,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 14572.699999988079,
+        "value": 0.000016727651588220165,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 15184.40000000596,
+        "value": 0.000018969960991083677,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 15240.199999988079,
+        "value": 0.00002190918471096965,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 15271.09999999404,
+        "value": 0.000018651138117283952,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 15980.699999988079,
+        "value": 0.00001748914260759602,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 16010.699999988079,
+        "value": 0.000018104584619341562,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 16038.90000000596,
+        "value": 0.000010449419688786007,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      },
+      {
+        "t": 16072,
+        "value": 0.0000012434092078189302,
+        "sources": [
+          "<span class=\"ProjectExplorer-module__6mC2La__invitation\"><span class=\"ProjectExplorer-module__6mC2La__guideLine\"></span>"
+        ]
+      }
+    ],
+    "rows": [
+      {
+        "y": 0,
+        "visible": true,
+        "actual": {
+          "x": 969.8557739257812,
+          "y": 434.8614196777344,
+          "w": 312.68743896484375,
+          "h": 283.8281555175781
+        },
+        "expected": {
+          "x": 969.856,
+          "y": 434.861,
+          "w": 312.688,
+          "h": 283.828
+        }
+      },
+      {
+        "y": 180,
+        "visible": true,
+        "actual": {
+          "x": 963.204345703125,
+          "y": 430.160888671875,
+          "w": 313.53125,
+          "h": 284.8125
+        },
+        "expected": {
+          "x": 963.204,
+          "y": 430.161,
+          "w": 313.531,
+          "h": 284.812
+        }
+      },
+      {
+        "y": 450,
+        "visible": true,
+        "actual": {
+          "x": 845.5205078125,
+          "y": 407.4902648925781,
+          "w": 322.125,
+          "h": 305.3437194824219
+        },
+        "expected": {
+          "x": 845.521,
+          "y": 407.49,
+          "w": 322.125,
+          "h": 305.344
+        }
+      },
+      {
+        "y": 900,
+        "visible": true,
+        "actual": {
+          "x": 405.4986572265625,
+          "y": 295.11810302734375,
+          "w": 389.6875,
+          "h": 423.03125
+        },
+        "expected": {
+          "x": 405.499,
+          "y": 295.118,
+          "w": 389.688,
+          "h": 423.031
+        }
+      },
+      {
+        "y": 1440,
+        "visible": true,
+        "actual": {
+          "x": -88.53656005859375,
+          "y": 267.5151672363281,
+          "w": 461.796875,
+          "h": 466.2343444824219
+        },
+        "expected": {
+          "x": -88.5366,
+          "y": 267.515,
+          "w": 461.797,
+          "h": 466.234
+        }
+      },
+      {
+        "y": 2160,
+        "visible": false,
+        "actual": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "w": 569.551,
+          "h": 515.844
+        }
+      }
+    ]
+  }
+]

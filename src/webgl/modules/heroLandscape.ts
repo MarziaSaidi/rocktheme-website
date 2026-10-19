@@ -20,6 +20,7 @@ import {
 
 import type { WeatherUniforms } from "../core/weather";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 
 import {
   resolveResponsiveValue,
@@ -87,7 +88,10 @@ function disposeModel(root: Object3D) {
 
 /** Centres a model on x/z, stands it on y 0 and scales it into a unit box. */
 function normalise(model: Object3D, uniform: boolean): Vector3 | null {
-  const bounds = new Box3().setFromObject(model);
+  const source = model.userData.sourceBounds as { min: number[]; max: number[] } | undefined;
+  const bounds = source
+    ? new Box3(new Vector3().fromArray(source.min), new Vector3().fromArray(source.max))
+    : new Box3().setFromObject(model);
   const size = bounds.getSize(new Vector3());
   const center = bounds.getCenter(new Vector3());
   if (![size.x, size.y, size.z].every((value) => Number.isFinite(value) && value > 0)) {
@@ -144,7 +148,8 @@ export function createHeroLandscape(
   handlers: Readonly<{ onFailure?: (part: Part) => void; onLoaded?: () => void }> = {},
   weather?: WeatherUniforms,
 ): HeroLandscape {
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const mobileAssets = window.innerWidth < 768;
   const root = new Group();
   root.name = "hero-landscape";
   root.position.set(...toWorld(frame, [0, 0, 0]));
@@ -165,6 +170,11 @@ export function createHeroLandscape(
     robot: [],
   };
   const perchMeshes: Mesh[] = [];
+  let sourceSeats:
+    | Partial<
+        Record<SceneViewport, { perch: LandscapeModelPlacement; robot: unknown; height: number }>
+      >
+    | undefined;
   const waterline = { value: 0.2 };
   const mountainFog = createDistanceFogUniforms(config.mountainFog, weather);
 
@@ -228,7 +238,15 @@ export function createHeroLandscape(
     robot.scale.setScalar(seat.height);
     robot.rotation.y = seat.yaw;
     let y = 0;
-    if (ready.perch) {
+    const source = sourceSeats?.[viewport];
+    const placement = resolveResponsiveValue(config.placement, viewport);
+    if (
+      source &&
+      JSON.stringify(source.perch) === JSON.stringify(placement.perch) &&
+      JSON.stringify(source.robot) === JSON.stringify(seat)
+    ) {
+      y = source.height;
+    } else if (ready.perch) {
       root.updateMatrixWorld(true);
       const reach = seat.height * 0.12;
       const samples: [number, number][] = [
@@ -303,7 +321,7 @@ export function createHeroLandscape(
     prepare: (material: MeshStandardMaterial, mesh: Mesh) => void,
   ) => {
     loader.load(
-      source,
+      mobileAssets ? source.replace(/\.glb$/, ".mobile.glb") : source,
       ({ scene: model }) => {
         if (destroyed) {
           disposeModel(model);
@@ -314,6 +332,7 @@ export function createHeroLandscape(
           handlers.onFailure?.(part);
           return;
         }
+        if (part === "perch") sourceSeats = model.userData.sourceSeat;
         model.traverse((item) => {
           if (!(item instanceof Mesh)) return;
           item.castShadow = false;

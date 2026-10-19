@@ -339,7 +339,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   // The patch of water beside the bio that looks down into the winter cabin's world.
   // The split mountain beside the bio: the way into /my-world.
-  const rift: Rift = createRift(worldScene, options.reducedMotion);
+  const rift: Rift = createRift(worldScene, options.reducedMotion, () => {
+    if (options.reducedMotion) renderOnce(0);
+  });
   rift.setViewport(width, height, cappedRatio());
   const bioDust = createBioDust(worldScene);
   // Falling light belongs to the world independently of the mountain lifecycle.
@@ -666,6 +668,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     // The rift is there while the camera is at the bio. It comes while the
     // camera is still turning toward it, out of frame, and stays as the
     // camera sets off, until it has slid out of frame by parallax.
+    // Bio is next after Selected Work. Never fetch it on an idle hero timer.
+    if (stopsKnown && state.from !== "hero") rift.preload();
+    if (stopsKnown && (state.from === "about" || state.to === "footer")) rocks.preload("footer");
     rift.setPresence(
       state.to === "about" && state.from !== "about"
         ? smootherstep((state.blend - 0.3) / 0.4)
@@ -891,7 +896,8 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       return;
     }
 
-    const deltaSeconds = lastTime === 0 ? 1 / 60 : Math.min(0.1, (time - lastTime) / 1000);
+    const deliveredFrameMs = lastTime === 0 ? 1000 / 60 : time - lastTime;
+    const deltaSeconds = Math.min(0.1, deliveredFrameMs / 1000);
     lastTime = time;
     elapsed += deltaSeconds;
 
@@ -900,7 +906,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     frameCpuMs = performance.now() - frameStart;
     frameIntervalMs = deltaSeconds * 1000;
     totalDrawCalls = renderer.info.render.calls;
-    const changed = quality.sample(frameCpuMs);
+    // CPU submission time misses GPU-bound frames and shader/upload stalls.
+    // Visibility restarts reset lastTime. A long interval in this active loop
+    // is a real stall, not a suspended tab; keep it inside the sampler's range.
+    const changed = quality.sample(Math.min(deliveredFrameMs, 500));
 
     if (changed) {
       applySettings(changed);

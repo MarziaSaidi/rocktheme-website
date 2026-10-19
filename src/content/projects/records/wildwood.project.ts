@@ -40,7 +40,7 @@ export const wildwoodProject = {
   category: "Digital experience",
   role: ["Design"],
   featured: false,
-  enabled: true,
+  enabled: false,
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,

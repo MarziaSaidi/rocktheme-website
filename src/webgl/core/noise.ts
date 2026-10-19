@@ -38,40 +38,12 @@ const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 function gradient(hash: number, x: number, y: number, z: number): number {
-  switch (hash & 15) {
-    case 0:
-      return x + y;
-    case 1:
-      return -x + y;
-    case 2:
-      return x - y;
-    case 3:
-      return -x - y;
-    case 4:
-      return x + z;
-    case 5:
-      return -x + z;
-    case 6:
-      return x - z;
-    case 7:
-      return -x - z;
-    case 8:
-      return y + z;
-    case 9:
-      return -y + z;
-    case 10:
-      return y - z;
-    case 11:
-      return -y - z;
-    case 12:
-      return x + y;
-    case 13:
-      return -y + z;
-    case 14:
-      return y - x;
-    default:
-      return -y - z;
-  }
+  // The same 16 signed gradients, small enough for the hot noise loop to
+  // inline. The switch version boxed numeric intermediates in V8 profiles.
+  const h = hash & 15;
+  const u = h < 8 ? x : y;
+  const v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+  return (h & 1 ? -u : u) + (h & 2 ? -v : v);
 }
 
 export type CurlField = Readonly<{
@@ -81,8 +53,11 @@ export type CurlField = Readonly<{
 
 export function createCurlField(seed = 1337): CurlField {
   const perm = buildPermutation(seed);
+  // Reuse double-precision scratch so noise results do not cross a boxed
+  // numeric return boundary for every finite-difference sample.
+  const samples = new Float64Array(12);
 
-  const noise = (x: number, y: number, z: number): number => {
+  const noise = (x: number, y: number, z: number, slot: number): void => {
     const xi = Math.floor(x) & 255;
     const yi = Math.floor(y) & 255;
     const zi = Math.floor(z) & 255;
@@ -100,7 +75,7 @@ export function createCurlField(seed = 1337): CurlField {
     const ba = perm[b & 511]! + zi;
     const bb = perm[(b + 1) & 511]! + zi;
 
-    return lerp(
+    samples[slot] = lerp(
       lerp(
         lerp(gradient(perm[aa & 511]!, xf, yf, zf), gradient(perm[ba & 511]!, xf - 1, yf, zf), u),
         lerp(
@@ -133,25 +108,28 @@ export function createCurlField(seed = 1337): CurlField {
 
   return {
     sample: (x, y, z, out) => {
-      const p1y = noise(x, y + EPSILON, z);
-      const m1y = noise(x, y - EPSILON, z);
-      const p1z = noise(x, y, z + EPSILON);
-      const m1z = noise(x, y, z - EPSILON);
-
-      const p2x = noise(x + EPSILON + OFFSET, y, z);
-      const m2x = noise(x - EPSILON + OFFSET, y, z);
-      const p2z = noise(x + OFFSET, y, z + EPSILON);
-      const m2z = noise(x + OFFSET, y, z - EPSILON);
-
-      const p3x = noise(x + EPSILON + OFFSET * 2, y, z);
-      const m3x = noise(x - EPSILON + OFFSET * 2, y, z);
-      const p3y = noise(x + OFFSET * 2, y + EPSILON, z);
-      const m3y = noise(x + OFFSET * 2, y - EPSILON, z);
+      noise(x, y + EPSILON, z, 0);
+      noise(x, y - EPSILON, z, 1);
+      noise(x, y, z + EPSILON, 2);
+      noise(x, y, z - EPSILON, 3);
+      noise(x + EPSILON + OFFSET, y, z, 4);
+      noise(x - EPSILON + OFFSET, y, z, 5);
+      noise(x + OFFSET, y, z + EPSILON, 6);
+      noise(x + OFFSET, y, z - EPSILON, 7);
+      noise(x + EPSILON + OFFSET * 2, y, z, 8);
+      noise(x - EPSILON + OFFSET * 2, y, z, 9);
+      noise(x + OFFSET * 2, y + EPSILON, z, 10);
+      noise(x + OFFSET * 2, y - EPSILON, z, 11);
 
       const inverse = 1 / (2 * EPSILON);
-      out[0] = (p3y - m3y - (p2z - m2z)) * inverse;
-      out[1] = (p1z - m1z - (p3x - m3x)) * inverse;
-      out[2] = (p2x - m2x - (p1y - m1y)) * inverse;
+      // Finish all components before writing out, including for an accessor-
+      // backed output that could invoke another sample during assignment.
+      const cx = (samples[10]! - samples[11]! - (samples[6]! - samples[7]!)) * inverse;
+      const cy = (samples[2]! - samples[3]! - (samples[8]! - samples[9]!)) * inverse;
+      const cz = (samples[4]! - samples[5]! - (samples[0]! - samples[1]!)) * inverse;
+      out[0] = cx;
+      out[1] = cy;
+      out[2] = cz;
     },
   };
 }

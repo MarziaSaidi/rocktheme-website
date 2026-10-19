@@ -1,0 +1,103 @@
+{
+  "source": "/tmp/portfolio-fixes/performance-noise",
+  "method": "Three repeats per tier/window; delivered RAF intervals, nearest-rank percentiles; arrival filtered to 0.60\u20130.76. B = 4x CPU stress test; no emulated GPU claim.",
+  "strictStatus": "B p95/p99 pass in sampled runs; A p95 not consistently <=16.7ms. Individual outliers remain. Physical iPhone unverified.",
+  "results": [
+    {
+      "tier": "B",
+      "window": "arrival-0",
+      "frames": 77,
+      "p95": 16.7,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "B",
+      "window": "travel-0",
+      "frames": 356,
+      "p95": 16.8,
+      "p99": 16.8,
+      "max": 83.3
+    },
+    {
+      "tier": "B",
+      "window": "arrival-1",
+      "frames": 77,
+      "p95": 16.8,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "B",
+      "window": "travel-1",
+      "frames": 361,
+      "p95": 16.7,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "B",
+      "window": "arrival-2",
+      "frames": 77,
+      "p95": 16.7,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "B",
+      "window": "travel-2",
+      "frames": 353,
+      "p95": 16.8,
+      "p99": 16.8,
+      "max": 133.3
+    },
+    {
+      "tier": "A",
+      "window": "arrival-0",
+      "frames": 77,
+      "p95": 16.8,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "A",
+      "window": "travel-0",
+      "frames": 354,
+      "p95": 16.7,
+      "p99": 16.8,
+      "max": 100.0
+    },
+    {
+      "tier": "A",
+      "window": "arrival-1",
+      "frames": 77,
+      "p95": 16.7,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "A",
+      "window": "travel-1",
+      "frames": 360,
+      "p95": 16.8,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "A",
+      "window": "arrival-2",
+      "frames": 77,
+      "p95": 16.7,
+      "p99": 16.8,
+      "max": 16.8
+    },
+    {
+      "tier": "A",
+      "window": "travel-2",
+      "frames": 360,
+      "p95": 16.8,
+      "p99": 16.8,
+      "max": 16.8
+    }
+  ]
+}

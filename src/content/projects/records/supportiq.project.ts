@@ -32,7 +32,7 @@ export const supportIqProject = {
   category: "AI support",
   role: ["Design", "Build"],
   featured: false,
-  enabled: true,
+  enabled: false,
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,

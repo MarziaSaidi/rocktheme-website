@@ -1,0 +1,23 @@
+--- a/src/components/sections/ProjectExplorer.tsx
++++ b/src/components/sections/ProjectExplorer.tsx
+@@ -178,8 +178,7 @@
+         if (!el) return;
+         el.hidden = !rect;
+         if (rect) {
+-          el.style.left = `${rect.x}px`;
+-          el.style.top = `${rect.y}px`;
++          el.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`;
+           el.style.width = `${rect.width}px`;
+           el.style.height = `${rect.height}px`;
+         }
+--- a/src/components/sections/ProjectExplorer.module.css
++++ b/src/components/sections/ProjectExplorer.module.css
+@@ -174,6 +174,8 @@
+ }
+ .guide {
+   position: fixed;
++  left: 0;
++  top: 0;
+   z-index: var(--layer-navigation);
+   background: none;
+   border: 0;

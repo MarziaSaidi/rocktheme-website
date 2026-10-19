@@ -157,7 +157,7 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
 
   if (visual.type === "palette") {
     return (
-      <div className={styles.palette}>
+      <div className={styles.palette} tabIndex={0} role="group" aria-label="Color palette">
         {visual.colors.map((color) => (
           <figure key={color.label} className={styles.colorSample}>
             <span
@@ -177,7 +177,12 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
 
   if (visual.type === "typography") {
     return (
-      <div className={styles.typeSpecimen}>
+      <div
+        className={styles.typeSpecimen}
+        tabIndex={0}
+        role="group"
+        aria-label="Typography specimen"
+      >
         <p className={styles.specimenLabel}>{visual.family}</p>
         <p className={styles.typeAlphabet}>
           Aa<span>0123456789</span>
@@ -194,7 +199,13 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
 
   if (visual.type === "assets") {
     return (
-      <div className={styles.assetBoard} data-layout={visual.layout}>
+      <div
+        className={styles.assetBoard}
+        data-layout={visual.layout}
+        tabIndex={0}
+        role="group"
+        aria-label="Design assets"
+      >
         {visual.items.map((item) => (
           <figure className={styles.assetSample} key={item.media.src}>
             <a
@@ -220,7 +231,7 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
 
   if (visual.type === "spacing") {
     return (
-      <div className={styles.spacingScale}>
+      <div className={styles.spacingScale} tabIndex={0} role="group" aria-label="Spacing scale">
         {visual.steps.map((step) => (
           <div className={styles.spacingStep} key={step.value}>
             <strong>
@@ -242,7 +253,7 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
     return (
       <figure className={styles.codeArtifact}>
         {visual.label ? <figcaption className={styles.codeLabel}>{visual.label}</figcaption> : null}
-        <pre>
+        <pre tabIndex={0}>
           <code data-language={visual.language}>{visual.code}</code>
         </pre>
       </figure>
@@ -335,6 +346,7 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
   const progressRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLElement>(null);
   const storyRef = useRef<HTMLElement>(null);
+  const storyHadFocus = useRef(false);
   const touchStart = useRef<number | null>(null);
   const elapsedMs = useRef(0);
   const stageIndex = Math.max(
@@ -347,6 +359,10 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
   const storyKey = `${stage?.id}-${story?.id}`;
   const atStart = stageIndex === 0 && storyIndex === 0;
   const atEnd = stageIndex === stages.length - 1 && storyIndex >= storyCount - 1;
+
+  useLayoutEffect(() => {
+    if (storyHadFocus.current) storyRef.current?.focus({ preventScroll: true });
+  }, [storyKey]);
 
   const loopSeconds = mediaSeconds?.key === storyKey ? mediaSeconds.seconds : undefined;
   const durationMs =
@@ -544,12 +560,23 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       }}
       onBlurCapture={() => setKeyboardFocus(false)}
     >
-      <header className={`${styles.rail} ${styles.mobileHeader}`}>
+      <header
+        className={`${styles.rail} ${styles.mobileHeader}`}
+        role="group"
+        aria-label="Project information"
+        tabIndex={mobile ? undefined : 0}
+      >
         <h1>
           <span className={styles.titleMask}>
             <span className={styles.titleInner}>{project.title}</span>
           </span>
         </h1>
+        <p className={styles.contributionSummary}>
+          {project.role.join(" / ")}
+          {info?.responsibilities?.length
+            ? ` · ${info.responsibilities.slice(0, 3).join(" · ")}`
+            : ""}
+        </p>
         <details className={styles.infoDisclosure} open={!mobile}>
           <summary>Project info</summary>
           <p className={styles.projectDescription}>{project.shortDescription}</p>
@@ -592,6 +619,7 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
           key={stage.id}
           ref={progressRef}
           className={styles.storyProgress}
+          role="group"
           data-autoplay={autoplay ? "on" : "off"}
           style={{ gridTemplateColumns: `repeat(${storyCount}, minmax(0, 1fr))` }}
           aria-label={`Story ${storyIndex + 1} of ${storyCount}`}
@@ -677,6 +705,14 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       <section
         ref={storyRef}
         className={styles.story}
+        tabIndex={mobile ? undefined : 0}
+        aria-label="Case study story"
+        onFocus={() => {
+          storyHadFocus.current = true;
+        }}
+        onBlur={() => {
+          storyHadFocus.current = false;
+        }}
         aria-live="polite"
         key={`copy-${storyKey}`}
         onMouseEnter={() => setReading(true)}

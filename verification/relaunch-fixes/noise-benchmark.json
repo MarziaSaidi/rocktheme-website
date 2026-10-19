@@ -1,0 +1,14 @@
+[
+  {
+    "label": "before",
+    "calls": 200000,
+    "ms": 132.7000000178814,
+    "sampledAllocatedBytes": 319411700
+  },
+  {
+    "label": "after",
+    "calls": 200000,
+    "ms": 53.20000001788139,
+    "sampledAllocatedBytes": 30963852
+  }
+]

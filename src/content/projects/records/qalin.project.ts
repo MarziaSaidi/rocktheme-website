@@ -41,7 +41,7 @@ export const qalinProject = {
   category: "E-commerce",
   role: ["Design", "Build"],
   featured: false,
-  enabled: true,
+  enabled: false,
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,

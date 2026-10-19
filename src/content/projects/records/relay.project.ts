@@ -40,7 +40,7 @@ export const relayProject = {
   category: "Logistics platform",
   role: ["Product", "Code"],
   featured: false,
-  enabled: true,
+  enabled: false,
   contentStatus: "placeholder",
   placeholderFields: PLACEHOLDER_FIELDS,
   homepageImage,
