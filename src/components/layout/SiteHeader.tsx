@@ -12,7 +12,7 @@ import styles from "./SiteHeader.module.css";
 
 export function SiteHeader() {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-site-header="">
       <div className={styles.scrim} aria-hidden="true" />
 
       <Link className={styles.wordmark} href="/" style={{ "--nav-index": 0 } as CSSProperties}>

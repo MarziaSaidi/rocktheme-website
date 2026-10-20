@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import {
@@ -61,6 +62,14 @@ function subscribeEntry(listener: () => void): () => void {
 const REVEAL_MS = 1100;
 
 export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>) {
+  const pathname = usePathname();
+  // Isolated review surface; the approved entrance remains the default.
+  if (pathname === "/preview/hiring" || pathname?.startsWith("/preview/hiring/"))
+    return <>{children}</>;
+  return <CinematicEntry>{children}</CinematicEntry>;
+}
+
+function CinematicEntry({ children }: Readonly<{ children: React.ReactNode }>) {
   const [forcedEntered, setForcedEntered] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const gate = useRef<HTMLElement>(null);
