@@ -1,0 +1,83 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  overflow: hidden;
+}
+.flight {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 110px;
+  height: 118px;
+  transform: translate(calc(100vw + 120px), var(--start-y));
+  transition: transform 1.35s cubic-bezier(0.3, 0.05, 0.2, 1);
+}
+.flight[data-phase="stay"] {
+  transform: translate(var(--end-x), var(--end-y));
+}
+.fairy {
+  width: 110px;
+  height: 118px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 7px #fff2bb75);
+  animation: hover 1.5s ease-in-out infinite alternate;
+}
+.flight[data-phase="leave"] .fairy {
+  scale: -1 1;
+}
+.shower {
+  position: absolute;
+  top: 25px;
+  left: 20px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.flight[data-phase="stay"] .shower {
+  opacity: 1;
+  transition-delay: 0.7s;
+}
+.sparkle {
+  position: absolute;
+  left: var(--x);
+  top: 0;
+  color: #ffe386;
+  font-size: var(--size);
+  line-height: 1;
+  text-shadow:
+    0 0 4px #fff,
+    0 0 10px #ffd56b;
+  animation: shower var(--duration) linear infinite;
+  animation-delay: var(--delay);
+}
+.sparkle:nth-child(3n) {
+  color: #fffce8;
+}
+@keyframes hover {
+  to {
+    translate: 0 -9px;
+    rotate: -3deg;
+  }
+}
+@keyframes shower {
+  0% {
+    opacity: 0;
+    transform: translate(0, -15px) scale(0.4) rotate(0);
+  }
+  15% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift), 260px) scale(0.2) rotate(100deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    display: none;
+  }
+}

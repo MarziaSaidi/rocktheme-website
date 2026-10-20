@@ -1,0 +1,40 @@
+[
+  {
+    "width": 1440,
+    "heights": [
+      511,
+      511,
+      511,
+      511,
+      511,
+      511,
+      511,
+      511
+    ],
+    "sameRow": true,
+    "gap": "21px",
+    "padding": "22px 28px",
+    "scrollable": true,
+    "overflow": false,
+    "stories": 17
+  },
+  {
+    "width": 375,
+    "heights": [
+      270,
+      270,
+      270,
+      270,
+      270,
+      270,
+      270,
+      270
+    ],
+    "sameRow": true,
+    "gap": "21px",
+    "padding": "22px 28px",
+    "scrollable": true,
+    "overflow": false,
+    "stories": 17
+  }
+]
