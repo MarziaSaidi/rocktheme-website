@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ActionContent } from "@/components/primitives/ActionContent";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -153,6 +154,9 @@ function CinematicEntry({ children }: Readonly<{ children: React.ReactNode }>) {
           aria-label="Enter the portfolio"
         >
           <div className={styles.sky} aria-hidden="true" />
+          <Link href="/preview/hiring" className={styles.hiringLink} prefetch={false}>
+            Hiring? View my work <span aria-hidden="true">→</span>
+          </Link>
           <IntroDoorway ref={doorway} surface={gate} onCrossed={reveal} />
           <div className={styles.choices}>
             <button
