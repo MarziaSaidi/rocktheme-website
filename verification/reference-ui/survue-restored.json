@@ -1,0 +1,94 @@
+[
+  {
+    "width": 1440,
+    "stages": [
+      "context",
+      "structure",
+      "wireframes",
+      "detection",
+      "foundations",
+      "final",
+      "delivery"
+    ],
+    "stories": [
+      "second-pair-of-eyes",
+      "complete-flow",
+      "whole-system",
+      "setup-detail",
+      "retrospective-reference",
+      "distance-and-risk",
+      "position-warning",
+      "final-direction",
+      "color",
+      "typography",
+      "components",
+      "icons",
+      "spacing",
+      "pairing",
+      "gallery",
+      "settings",
+      "whole-product"
+    ],
+    "brokenImages": [],
+    "overflow": false,
+    "videos": [
+      {
+        "src": "http://127.0.0.1:3105/media/projects/survue/interaction-prototype.mp4",
+        "controls": true,
+        "duration": 27.3
+      },
+      {
+        "src": "http://127.0.0.1:3105/media/projects/survue/interaction-prototype.mp4",
+        "controls": true,
+        "duration": 27.3
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 375,
+    "stages": [
+      "context",
+      "structure",
+      "wireframes",
+      "detection",
+      "foundations",
+      "final",
+      "delivery"
+    ],
+    "stories": [
+      "second-pair-of-eyes",
+      "complete-flow",
+      "whole-system",
+      "setup-detail",
+      "retrospective-reference",
+      "distance-and-risk",
+      "position-warning",
+      "final-direction",
+      "color",
+      "typography",
+      "components",
+      "icons",
+      "spacing",
+      "pairing",
+      "gallery",
+      "settings",
+      "whole-product"
+    ],
+    "brokenImages": [],
+    "overflow": false,
+    "videos": [
+      {
+        "src": "http://127.0.0.1:3105/media/projects/survue/interaction-prototype.mp4",
+        "controls": true,
+        "duration": 27.3
+      },
+      {
+        "src": "http://127.0.0.1:3105/media/projects/survue/interaction-prototype.mp4",
+        "controls": true,
+        "duration": 27.3
+      }
+    ],
+    "errors": []
+  }
+]

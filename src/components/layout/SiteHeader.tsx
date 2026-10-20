@@ -13,7 +13,7 @@ import styles from "./SiteHeader.module.css";
 
 export function SiteHeader() {
   return (
-    <header className={styles.header}>
+    <header className={styles.header} data-site-header="">
       <div className={styles.scrim} aria-hidden="true" />
 
       {/* On a phone the place label sits beside the wordmark; elsewhere this box is invisible. */}

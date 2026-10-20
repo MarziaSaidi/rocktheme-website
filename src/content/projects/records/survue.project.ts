@@ -151,11 +151,10 @@ export const survueProject = {
       timeline: "September-December 2024",
       responsibilities: [
         "Product design",
-        "Interaction design",
-        "App structure and user flows",
+        "App structure and interaction flows",
+        "C# settings: theme, sound, user warnings, and Help",
         "Prototyping",
         "Visual foundations and components",
-        "C# implementation",
       ],
       tools: ["Figma", "C#", ".NET"],
       platform: "Mobile · iOS",
@@ -171,7 +170,7 @@ export const survueProject = {
             eyebrow: "Founding product designer",
             title: "Make approaching traffic easier to interpret.",
             description:
-              "Survue connects a rear-facing device with a cycling app for vehicle awareness and recordings. As founding product designer, I shaped the app structure, interaction flows, components, and prototype using the founder's palette and Helvetica Neue typography. A rider cannot study a screen while moving. Traffic information needed to be understandable at a glance, without asking the rider to decode a new interface each time.",
+              "Survue connects a rear-facing device with a cycling app for vehicle awareness and recordings. As founding product designer, I shaped the app structure, interaction flows, components, and prototype using the founder's palette and Helvetica Neue typography. A rider cannot study a screen while moving. Traffic information needed to be understandable at a glance, without asking the rider to decode a new interface each time. My hypothesis: if the road view stays the same and only the vehicle's position and warning colour change, riders would read urgency faster than from a distance or a risk number.",
             decision: "Keep the road view familiar while the warning state changes.",
             supportingPoints: [
               "Before the ride → discover and pair the device",
@@ -504,11 +503,11 @@ export const survueProject = {
             eyebrow: "Delivery / evidence and next steps",
             title: "A connected interface, with validation still to establish.",
             description:
-              "The final screen set and interaction prototype connect setup, detection, recordings, and settings. My contribution spans product design, prototyping, and C# implementation. This case study documents the interface work; it does not establish a production release, hardware detection performance, or a measured safety outcome.",
+              "The final screen set and interaction prototype connect setup, detection, recordings, and settings. I designed the interface and prototype, and built the app's settings section in C#: theme settings, the sound toggle, user warnings, and Help. This case study does not establish a production release, hardware detection performance, or a measured safety outcome.",
             outcome:
               "An app structure, original wireframes, detection explorations, final UI, and an interaction prototype.",
             constraint:
-              "The next validation priorities are warning comprehension while riding, non-color cues, and connection-loss behavior. The C# implementation scope is not detailed in this case study.",
+              "The C# implementation described here covers settings; the other screens document design and prototype work. The next validation priorities are warning comprehension while riding, non-color cues, and connection-loss behavior. To test the hypothesis, I would measure how quickly and correctly riders name the warning level from a brief glance.",
             supportingVideo: { media: prototype, label: "Watch the interaction prototype" },
             visual: {
               type: "sequence",

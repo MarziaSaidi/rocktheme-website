@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { ActionContent } from "@/components/primitives/ActionContent";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -54,6 +55,12 @@ function subscribeEntry(listener: () => void): () => void {
 const REVEAL_MS = 1100;
 
 export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>) {
+  const pathname = usePathname();
+  if (pathname === "/preview/hiring" || pathname?.startsWith("/preview/hiring/"))
+    return <>{children}</>;
+  return <CinematicEntry>{children}</CinematicEntry>;
+}
+function CinematicEntry({ children }: Readonly<{ children: React.ReactNode }>) {
   const [forcedEntered, setForcedEntered] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const gate = useRef<HTMLElement>(null);
