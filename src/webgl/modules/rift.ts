@@ -58,6 +58,8 @@ import { applyWaterlineContact } from "./rocks";
  * scripts/prepare-rift.mjs.
  */
 export type Rift = Readonly<{
+  /** Fetch the bio's assets while the visitor is in the preceding chapter. */
+  preload: () => void;
   setPresence: (presence: number) => void;
   /** The bio camera's resting eye, and whether this is a phone or tablet layout. */
   setViewer: (eye: readonly [number, number, number], compact: boolean) => void;
@@ -110,9 +112,6 @@ const PLACEMENT = {
 
 /** The point of the capture that shows through the opening: the fire pit and the peak beyond it. */
 const WORLD_BEHIND = { x: 0.4, y: 0.33 } as const;
-
-/** Heavier downloads wait until the hero has had the network to itself. */
-const LOAD_AFTER_MS = 4500;
 
 /** The crossing, wide and compact, in seconds. */
 const CROSSING = {
@@ -249,7 +248,7 @@ const STONE_POSITION = /* glsl */ `
   transformed = centre + local;
 `;
 
-export function createRift(scene: Scene, reducedMotion: boolean): Rift {
+export function createRift(scene: Scene, reducedMotion: boolean, onLoaded?: () => void): Rift {
   const group = new Group();
   group.name = "rift";
   group.visible = false;
@@ -308,16 +307,18 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
   let windowMesh: Mesh | null = null;
   disposables.push(windowMaterial);
 
-  new TextureLoader().load(WORLD_CAPTURE.src, (texture) => {
-    if (destroyed) {
-      texture.dispose();
-      return;
-    }
-    // Display values, written unconverted, like the water.
-    windowUniforms.uWorld!.value = texture;
-    windowUniforms.uHasWorld!.value = 1;
-    disposables.push(texture);
-  });
+  const loadWorld = () =>
+    new TextureLoader().load(WORLD_CAPTURE.src, (texture) => {
+      if (destroyed) {
+        texture.dispose();
+        return;
+      }
+      // Display values, written unconverted, like the water.
+      windowUniforms.uWorld!.value = texture;
+      windowUniforms.uHasWorld!.value = 1;
+      disposables.push(texture);
+      onLoaded?.();
+    });
 
   // ---------------------------------------------------------------- stones
   const stoneUniforms = {
@@ -471,10 +472,15 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
 
     loaded = true;
     place();
+    onLoaded?.();
   };
-  const loadTimer = window.setTimeout(() => {
+  let requested = false;
+  const preload = () => {
+    if (requested || destroyed) return;
+    requested = true;
+    loadWorld();
     load().catch((error: unknown) => console.error("Rift failed to load", error));
-  }, LOAD_AFTER_MS);
+  };
 
   // ---------------------------------------------------------------- placing it
   const origin = new Vector3();
@@ -548,6 +554,7 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
   const flightProgress = () => (flight ? Math.min(1, flight.age / flight.timing.seconds) : 0);
 
   return {
+    preload,
     setPresence: (next) => {
       presence = MathUtils.clamp(next, 0, 1);
     },
@@ -822,7 +829,6 @@ export function createRift(scene: Scene, reducedMotion: boolean): Rift {
 
     destroy: () => {
       destroyed = true;
-      window.clearTimeout(loadTimer);
       scene.remove(group);
       disposables.forEach((item) => item.dispose());
     },

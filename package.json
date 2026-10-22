@@ -11,10 +11,11 @@
     "validate:content": "node --import tsx scripts/validate-content.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "validate": "npm run format:check && npm run lint && npm run validate:content && npm run validate:scene && npm run validate:scroll && npm run typecheck && npm run build",
+    "validate": "npm run format:check && npm run lint && npm run validate:content && npm run validate:delivery && npm run validate:scene && npm run validate:scroll && npm run typecheck && npm run build",
     "validate:scene": "node --import tsx scripts/check-scene.ts",
     "prepare:rocks": "node scripts/prepare-rocks.mjs",
     "prepare:selected-work": "node scripts/prepare-rocks.mjs --selected-work assets-src/selected-work",
+    "prepare:homepage": "node --import tsx scripts/prepare-homepage-assets.mjs",
     "prepare:hero": "node scripts/prepare-rocks.mjs --hero assets-src/hero",
     "prepare:intro-arch": "node scripts/prepare-rocks.mjs --intro-arch assets-src/intro",
     "prepare:monolith-screens": "node scripts/prepare-monolith-screens.mjs",
@@ -23,7 +24,8 @@
     "prepare:rift": "node scripts/prepare-rift.mjs",
     "prepare:aerial": "node scripts/aerial-terrain.mjs",
     "prepare:cabin": "node scripts/prepare-cabin-assets.mjs",
-    "validate:scroll": "node --import tsx --test scripts/check-project-stepper.ts scripts/check-scroll-catch.ts"
+    "validate:scroll": "node --import tsx --test scripts/check-project-stepper.ts scripts/check-scroll-catch.ts",
+    "validate:delivery": "node --import tsx --test scripts/check-delivery.ts"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

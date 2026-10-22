@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { ActionContent } from "@/components/primitives/ActionContent";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -19,7 +20,14 @@ import {
 } from "@/webgl/entryChannel";
 
 import styles from "./SiteEntry.module.css";
-import { IntroDoorway, type IntroDoorwayHandle } from "./IntroDoorway";
+import type { IntroDoorwayHandle } from "./IntroDoorway";
+
+const IntroDoorway = dynamic(() => import("./IntroDoorway").then((module) => module.IntroDoorway), {
+  ssr: false,
+});
+const subscribeHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
 
 const ENTRY_KEY = "marzia-saidi:entered";
 const ENTRY_EVENT = "marzia-saidi:entry-change";
@@ -69,6 +77,9 @@ function CinematicEntry({ children }: Readonly<{ children: React.ReactNode }>) {
   const sound = useSyncExternalStore(subscribeSoundState, getSoundState, getServerSoundState);
   const storedEntry = useSyncExternalStore(subscribeEntry, hasEntered, () => false);
   const entered = storedEntry || forcedEntered;
+  // Read the stored-entry state before mounting its optional renderer. A return
+  // visit must not start a doorway download only to abort it one render later.
+  const hydrated = useSyncExternalStore(subscribeHydration, clientReady, serverReady);
 
   /*
    * While the gate is up, scrolling belongs to it: it walks the camera round
@@ -135,7 +146,8 @@ function CinematicEntry({ children }: Readonly<{ children: React.ReactNode }>) {
     setLeaving(true);
     // Entering before the doorway loaded: the landscape must not keep waiting.
     markDoorwayStanding();
-    doorway.current?.enter();
+    if (doorway.current) doorway.current.enter();
+    else reveal(); // Same fallback as entering before the doorway renderer is ready.
   };
 
   return (
@@ -153,7 +165,7 @@ function CinematicEntry({ children }: Readonly<{ children: React.ReactNode }>) {
           aria-label="Enter the portfolio"
         >
           <div className={styles.sky} aria-hidden="true" />
-          <IntroDoorway ref={doorway} surface={gate} onCrossed={reveal} />
+          {hydrated ? <IntroDoorway ref={doorway} surface={gate} onCrossed={reveal} /> : null}
           <div className={styles.choices}>
             <button
               className={styles.withSound}

@@ -20,6 +20,7 @@ import {
 } from "three";
 
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 
 import type { WeatherUniforms } from "../core/weather";
 import type { DistanceFogConfig } from "../sceneTypes";
@@ -152,8 +153,12 @@ export function createAerialTerrain(
    * The hero range's own rock: its colour and normal maps. The terrain samples
    * them in world space; the massifs (mesh-only files) wear them on their UVs.
    */
+  // The same file the hero loads on this screen (phones get the lighter one), so it is fetched once.
   const heroMaps = new GLTFLoader()
-    .loadAsync("/assets/hero/mountains.glb")
+    .setMeshoptDecoder(MeshoptDecoder)
+    .loadAsync(
+      window.innerWidth < 768 ? "/assets/hero/mountains.mobile.glb" : "/assets/hero/mountains.glb",
+    )
     .then(({ scene: model }) => {
       let found: { map: Texture | null; normalMap: Texture | null } = {
         map: null,
