@@ -50,6 +50,18 @@ html[data-menu-open] body {
   overflow: hidden;
 }
 
+/*
+ * No native scrollbars. Position is shown by ScrollProgress instead; wheel,
+ * touch, keyboard, and find-in-page scrolling all keep working.
+ */
+* {
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
 ::selection {
   color: var(--color-background);
   background: var(--color-accent);
