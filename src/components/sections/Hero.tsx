@@ -1,4 +1,3 @@
-import { ProjectIndex, type ExplorerProject } from "./ProjectExplorer";
 import { DisplayHeading } from "@/components/primitives/DisplayHeading";
 import { EnvironmentLayer } from "@/components/environment/EnvironmentLayer";
 import { sectionAnchors } from "@/config/sections";
@@ -9,7 +8,7 @@ import { RippleHeading } from "@/motion/RippleHeading";
 
 import styles from "./Hero.module.css";
 
-export function Hero({ projects }: Readonly<{ projects: readonly ExplorerProject[] }>) {
+export function Hero() {
   const { hero } = siteContent;
 
   return (
@@ -42,7 +41,6 @@ export function Hero({ projects }: Readonly<{ projects: readonly ExplorerProject
             <p className={styles.lead} data-scene-obstacle="">
               {hero.lead}
             </p>
-            <ProjectIndex projects={projects} />
           </div>
         </div>
       </div>

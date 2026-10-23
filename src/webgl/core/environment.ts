@@ -60,7 +60,6 @@ import {
 } from "../sceneConfig";
 import type { EnvironmentLightingConfig, Vector3Tuple } from "../sceneTypes";
 import { createAerialTerrain } from "../modules/aerialTerrain";
-import { publishGuideRect, readGuideInput } from "../robotGuideChannel";
 import { aerialMist, disposeAtmosphereTextures } from "../modules/distanceFog";
 import { workStretchesFor } from "../workJourney";
 import {
@@ -867,11 +866,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       pointer: pointer?.active && pointer.inside ? { x: normalisedX, y: -normalisedY } : null,
       camera: view,
       reducedMotion: options.reducedMotion,
-      greeting: readGuideInput().greeting,
-      guiding: readGuideInput().engaged,
+      greeting: 0,
+      guiding: false,
     });
-
-    publishGuideRect(heroLandscape.screenRect(view, width, height));
 
     rocks.update(
       options.reducedMotion ? 0 : normalisedX,
@@ -1302,7 +1299,6 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
       rift.destroy();
       bioDust.destroy();
       portalRain.destroy();
-      publishGuideRect(null);
       publishRiftRect(null);
       publishRiftAnchor(null);
       monolith.destroy();

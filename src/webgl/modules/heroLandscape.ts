@@ -13,15 +13,11 @@ import {
   Sprite,
   SpriteMaterial,
   Vector3,
-  type Camera,
   type Material,
   type Object3D,
   type Scene,
 } from "three";
 
-import { rigRobotGait } from "./robotGait";
-import { readGuideInput } from "../robotGuideChannel";
-import type { GuideRect } from "../robotGuideChannel";
 import type { WeatherUniforms } from "../core/weather";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
@@ -69,7 +65,6 @@ export type HeroLandscape = Readonly<{
   reflectionExclusions: () => readonly Object3D[];
   /** The robot's life: its head follows the cursor, it breathes and blinks. */
   update: (delta: number, input: RobotLifeInput) => void;
-  screenRect: (camera: Camera, width: number, height: number) => GuideRect | null;
   destroy: () => void;
 }>;
 
@@ -260,7 +255,6 @@ export function createHeroLandscape(
       }
     }
     robot.position.set(seat.x, y, seat.z);
-    restingPosition?.copy(robot.position);
     robotLight.distance = seat.height * 6;
   };
 
@@ -304,9 +298,6 @@ export function createHeroLandscape(
   };
 
   // --------------------------------------------------------------------- loading
-  let robotGait: ReturnType<typeof rigRobotGait> | null = null;
-  const restingPosition = new Vector3();
-  let walkedDistance = 0;
   const load = (
     part: Part,
     source: string,
@@ -324,15 +315,6 @@ export function createHeroLandscape(
           disposeModel(model);
           handlers.onFailure?.(part);
           return;
-        }
-        if (part === "robot") {
-          const meshes: Mesh[] = [];
-          model.traverse((item) => {
-            if (item instanceof Mesh) meshes.push(item);
-          });
-          meshes.forEach((mesh) => {
-            robotGait = rigRobotGait(mesh);
-          });
         }
         model.traverse((item) => {
           if (!(item instanceof Mesh)) return;
@@ -389,46 +371,7 @@ export function createHeroLandscape(
   applyPlacement();
   applyPresence();
 
-  const guideBounds = new Box3(),
-    guidePoint = new Vector3();
   return {
-    screenRect: (camera, width, height) => {
-      if (
-        !robot.visible ||
-        nearPresence < 0.85 ||
-        !ready.robot ||
-        readGuideInput().phase !== "idle"
-      )
-        return null;
-      guideBounds.setFromObject(robot);
-      let left = Infinity,
-        top = Infinity,
-        right = -Infinity,
-        bottom = -Infinity;
-      for (let i = 0; i < 8; i++) {
-        guidePoint
-          .set(
-            i & 1 ? guideBounds.max.x : guideBounds.min.x,
-            i & 2 ? guideBounds.max.y : guideBounds.min.y,
-            i & 4 ? guideBounds.max.z : guideBounds.min.z,
-          )
-          .project(camera);
-        if (guidePoint.z < -1 || guidePoint.z > 1) return null;
-        const x = ((guidePoint.x + 1) * width) / 2,
-          y = ((1 - guidePoint.y) * height) / 2;
-        left = Math.min(left, x);
-        right = Math.max(right, x);
-        top = Math.min(top, y);
-        bottom = Math.max(bottom, y);
-      }
-      if (right < 0 || left > width || bottom < 0 || top > height) return null;
-      return {
-        x: left,
-        y: top,
-        width: Math.max(44, right - left),
-        height: Math.max(44, bottom - top),
-      };
-    },
     setMoonDistance: (eye, lift) => {
       const placement = resolveResponsiveValue(config.placement, viewport);
       const [mx, my, mz] = placement.moon;
@@ -476,55 +419,11 @@ export function createHeroLandscape(
      */
     reflectionExclusions: () => [moonDisc],
     update: (delta, input) => {
-      const movement = readGuideInput();
-
-      if (ready.robot && ready.perch) {
-        const seat = resolveResponsiveValue(config.placement, viewport).robot;
-        const targetX = restingPosition.x + movement.travel * 0.8;
-        const targetZ = restingPosition.z - movement.travel * 1.15;
-        const k = 1 - Math.exp(-Math.min(delta, 0.05) * 8);
-        const previousX = robot.position.x,
-          previousZ = robot.position.z;
-        robot.position.x += (targetX - robot.position.x) * k;
-        robot.position.z += (targetZ - robot.position.z) * k;
-        if (movement.travel > 0) {
-          walkedDistance +=
-            Math.hypot(robot.position.x - previousX, robot.position.z - previousZ) / seat.height;
-        } else walkedDistance = 0;
-        const turn = Math.min(1, Math.max(0, (movement.stand - 0.85) / 0.15));
-        const heading = seat.yaw + (-2.18 - seat.yaw) * turn;
-        robot.rotation.y += (heading - robot.rotation.y) * k;
-        if (movement.travel > 0) {
-          probe.set(robot.position.x, 100, robot.position.z);
-          root.localToWorld(probe);
-          raycaster.set(probe, down);
-          const hit = raycaster.intersectObjects(perchMeshes, false)[0];
-          const surface = hit
-            ? root.worldToLocal(hit.point.clone()).y - seat.height * 0.02
-            : restingPosition.y;
-          robot.position.y += (surface - robot.position.y) * k;
-        } else robot.position.y += (restingPosition.y - robot.position.y) * k;
-      }
-      robotGait?.update(delta, movement.stand, movement.walk, walkedDistance);
-      if (robot.visible && robotGait && movement.walk > 0) {
-        const gait = robotGait;
-        const modelScale = gait.mesh.getWorldScale(new Vector3()).y;
-        const base = gait.mesh.localToWorld(new Vector3(0, 0, 0)).y;
-        const heights = gait.feet.map((foot) => {
-          foot.getWorldPosition(probe);
-          probe.y = 100;
-          raycaster.set(probe, down);
-          const hit = raycaster.intersectObjects(perchMeshes, false)[0];
-          return hit ? (hit.point.y - base) / modelScale : 0;
-        });
-        gait.setGround(heights);
-      } else robotGait?.setGround([0, 0]);
       if (robot.visible) robotLife?.update(delta, input);
     },
     destroy: () => {
       destroyed = true;
       flank.clear();
-      robotGait?.mesh.skeleton.dispose();
       disposeModel(root);
       moonMap?.dispose();
       moonMaterial.dispose();
