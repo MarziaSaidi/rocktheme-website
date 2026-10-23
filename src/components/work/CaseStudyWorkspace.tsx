@@ -865,7 +865,7 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
   const previous = useCallback(() => scrollToPlace(current - 1), [current, scrollToPlace]);
   const next = useCallback(() => scrollToPlace(current + 1), [current, scrollToPlace]);
 
-  /** Chooses a stage from the rail or the contents: a history entry, then the scroll. */
+  /** Chooses a stage from the rail: a history entry, then the scroll. */
   const choose = useCallback(
     (id: string) => {
       if (location.hash.slice(1) !== id) history.pushState({ stage: id }, "", `#${id}`);
@@ -969,23 +969,6 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
           />
         </div>
       </section>
-
-      <nav className={styles.contents} aria-label="In this case study">
-        {stages.map((item, index) => (
-          <a
-            key={item.id}
-            href={`#${item.id}`}
-            style={{ "--i": index } as React.CSSProperties}
-            onClick={(event) => {
-              event.preventDefault();
-              choose(item.id);
-            }}
-          >
-            <b>{twoDigits(index + 1)}</b>
-            {item.label}
-          </a>
-        ))}
-      </nav>
 
       {stages.map((item, stageIndex) => (
         <section

@@ -72,7 +72,7 @@ Set `zoomable: true` on a wide image to provide a full-size link beneath the vie
 
 ## Page composition
 
-Each stage is a chapter. It opens with its number (for example `03 / 06`) on a gold rule and its label set large in the display face, and every chapter is listed under the cover so the case study's shape is known up front.
+Each stage is a chapter. It opens with its number (for example `03 / 06`) on a gold rule and its label set large in the display face. The chapter rail along the bottom lists every chapter.
 
 A story is composed from the shape of its evidence; content never chooses the layout except for pairs:
 

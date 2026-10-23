@@ -1,5 +1,5 @@
 /*
- * The case study on black, read by scrolling. The cover, a contents line,
+ * The case study on black, read by scrolling. The cover,
  * then each stage as a chapter: a numbered opener in the display face and
  * its stories, each composed for its evidence (wide, tall, or a pair).
  *
@@ -47,30 +47,6 @@
   min-height: 34rem;
 }
 
-/* ------------------------------------------------------------- contents */
-
-/* The case study's shape, known up front: every chapter, numbered, one tap away. */
-.contents {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
-  gap: var(--space-4) var(--grid-gap);
-  margin-block-start: var(--space-12);
-  padding-block-start: var(--space-6);
-  border-block-start: var(--rule);
-}
-
-.contents a {
-  display: grid;
-  gap: var(--space-2);
-  align-content: start;
-  min-height: 2.75rem;
-  color: var(--color-text-secondary);
-  font-size: 0.9375rem;
-  text-decoration: none;
-  transition: color var(--duration-interface) var(--ease-interface);
-}
-
-.contents b,
 .stageNav button b,
 .chapterNumber b {
   color: var(--color-highlight);
@@ -78,18 +54,6 @@
   font-size: var(--text-micro);
   font-weight: 400;
   letter-spacing: var(--tracking-micro);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .contents a:hover {
-    color: var(--color-text-primary);
-  }
-}
-
-.contents a:focus-visible {
-  color: var(--color-text-primary);
-  outline: 1px solid var(--color-line-strong);
-  outline-offset: 0.25rem;
 }
 
 /* ------------------------------------------------------------- chapters */
@@ -1267,10 +1231,6 @@
 
   .facts {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .contents {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
