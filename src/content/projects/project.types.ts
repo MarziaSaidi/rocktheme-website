@@ -217,19 +217,6 @@ export type CaseStudyInfo = Readonly<{
 /** A part of an image the story's copy names, in percent of the image. */
 export type FocusRegion = Readonly<{ x: number; y: number; width: number; height: number }>;
 
-/**
- * A still of the world at the project's Selected Work station, behind its case
- * study. Framings are [x %, y %, scale] of the still: the cover, the first
- * chapter, and the last (the chapters between ease from one to the other).
- */
-export type CaseStudyBackdrop = Readonly<{
-  image: ImageMedia;
-  phone?: ImageMedia;
-  cover: readonly [number, number, number];
-  story: readonly [number, number, number];
-  end?: readonly [number, number, number];
-}>;
-
 export type StoryVisual =
   | Readonly<{
       type: "image";
@@ -345,7 +332,6 @@ export type Project = Readonly<{
     stages?: readonly CaseStudyStage[];
     blocks?: readonly CaseStudyBlock[];
     info?: CaseStudyInfo;
-    backdrop?: CaseStudyBackdrop;
     /** Screens that stand behind the cover's media, as on the Selected Work card. */
     coverFlanks?: readonly ImageMedia[];
   }>;

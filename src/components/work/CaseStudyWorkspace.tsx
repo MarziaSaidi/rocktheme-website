@@ -508,13 +508,6 @@ function CoverMedia({
   );
 }
 
-/** Eases a framing of the world still from one chapter's to another's. */
-const mix = (
-  from: readonly [number, number, number],
-  to: readonly [number, number, number],
-  t: number,
-) => from.map((value, index) => value + (to[index]! - value) * t) as [number, number, number];
-
 type HistoryMode = "push" | "replace" | "none";
 
 export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStudyWorkspaceProps) {
@@ -778,17 +771,6 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
 
   if (!stage || story === undefined) return null;
   const info = project.caseStudy.info;
-  const backdrop = project.caseStudy.backdrop;
-  // The camera stands a little further along the shore with each chapter.
-  const framing = backdrop
-    ? isCover
-      ? backdrop.cover
-      : mix(
-          backdrop.story,
-          backdrop.end ?? backdrop.story,
-          stages.length > 1 ? stageIndex / (stages.length - 1) : 0,
-        )
-    : null;
   const upcoming =
     storyIndex + 1 < storyCount
       ? stories[storyIndex + 1]?.title
@@ -811,26 +793,6 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
       }}
       onBlurCapture={() => setKeyboardFocus(false)}
     >
-      {backdrop && framing ? (
-        <div
-          className={styles.world}
-          aria-hidden="true"
-          style={
-            {
-              "--world-x": `${framing[0]}%`,
-              "--world-y": `${framing[1]}%`,
-              "--world-scale": framing[2],
-            } as React.CSSProperties
-          }
-        >
-          <picture>
-            <source media="(max-width: 47.99rem)" srcSet={(backdrop.phone ?? backdrop.image).src} />
-            {/* An art-directed backdrop, swapped per screen by <picture> and sized by CSS. */}
-            <img src={backdrop.image.src} alt="" decoding="async" />
-          </picture>
-        </div>
-      ) : null}
-
       <header className={styles.head}>
         <Link className={styles.back} href={`/#${sectionAnchors["selected-work"]}`}>
           <SwapGlyph direction="left" className={styles.backGlyph}>

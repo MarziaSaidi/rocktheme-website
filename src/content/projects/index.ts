@@ -21,7 +21,6 @@ export type {
   BlockMediaPosition,
   BlockTone,
   BlockWidth,
-  CaseStudyBackdrop,
   CaseStudyBlock,
   CaseStudyInfo,
   CaseStudyStage,

@@ -1,9 +1,9 @@
-/* The case study happens in the world; CaseStudyWorkspace draws it behind the page. */
 .page {
   position: relative;
   z-index: var(--layer-content);
   min-height: 100dvh;
   padding-block: calc(var(--header-height) + var(--space-2)) var(--space-4);
+  background: #000;
 }
 
 @media (max-width: 47.99rem) {

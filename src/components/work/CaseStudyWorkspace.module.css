@@ -1,7 +1,6 @@
 /*
- * The case study happens at its project's own station on the lake: a still of
- * the world behind everything, the evidence lit and floating over the range,
- * the reading column beside it, and the chapters along the bottom.
+ * The case study on black: the evidence lit and floating, the reading column
+ * beside it, and the chapters along the bottom.
  *
  * Cover: title, what I did, a few facts and the work playing large.
  * Story: the project's mark, the evidence, the reading column.
@@ -38,88 +37,6 @@
     "details viewer"
     "rail rail";
   row-gap: var(--space-8);
-}
-
-/* ------------------------------------------------------------- the world */
-
-.world {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-  background: var(--brand-aubergine);
-}
-
-.world img {
-  position: absolute;
-  inset: -3%;
-  width: 106%;
-  height: 106%;
-  object-fit: cover;
-  transform: translate(var(--world-x, 0%), var(--world-y, 0%)) scale(var(--world-scale, 1));
-  filter: blur(var(--world-blur, 4.5px)) brightness(0.9) saturate(0.92);
-  transition:
-    transform 900ms var(--ease-interface),
-    filter 900ms var(--ease-interface);
-}
-
-.workspace[data-mode="cover"] .world {
-  --world-blur: 2.5px;
-}
-
-/* Two veils, crossfaded: the cover keeps its left side calm for the title,
-   the stories keep the reading column calm on the right. */
-.world::before,
-.world::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transition: opacity 700ms var(--ease-interface);
-}
-
-.world::before {
-  background:
-    linear-gradient(
-      90deg,
-      rgb(16 11 24 / 0.8) 0%,
-      rgb(16 11 24 / 0.56) 30%,
-      rgb(16 11 24 / 0.12) 52%,
-      transparent 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgb(16 11 24 / 0.5) 0%,
-      transparent 18%,
-      transparent 72%,
-      rgb(16 11 24 / 0.62) 100%
-    );
-  opacity: 0;
-}
-
-.world::after {
-  background:
-    linear-gradient(
-      90deg,
-      rgb(16 11 24 / 0.4) 0%,
-      rgb(16 11 24 / 0.3) 52%,
-      rgb(16 11 24 / 0.78) 65%,
-      rgb(16 11 24 / 0.84) 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgb(16 11 24 / 0.5) 0%,
-      transparent 20%,
-      transparent 72%,
-      rgb(16 11 24 / 0.62) 100%
-    );
-}
-
-.workspace[data-mode="cover"] .world::before {
-  opacity: 1;
-}
-.workspace[data-mode="cover"] .world::after {
-  opacity: 0;
 }
 
 /* ------------------------------------------------------------- head */
@@ -483,7 +400,7 @@
 }
 
 .focus path {
-  fill: rgb(16 11 24 / 0.3);
+  fill: rgb(0 0 0 / 0.38);
 }
 
 .focus rect {
@@ -1015,10 +932,6 @@
     padding: var(--space-4) var(--layout-gutter) 6rem;
   }
 
-  .world img {
-    transform: none;
-  }
-
   .head {
     order: 1;
   }
@@ -1120,7 +1033,7 @@
     max-height: 60svh;
   }
 
-  /* The chapters dock to the bottom edge, on the water. They scroll sideways; the arrow moves on. */
+  /* The chapters dock to the bottom edge, They scroll sideways; the arrow moves on. */
   .rail {
     position: fixed;
     inset: auto 0 0;
@@ -1128,7 +1041,7 @@
     gap: 0;
     height: 4rem;
     padding-inline-start: var(--layout-gutter);
-    background: linear-gradient(180deg, rgb(16 11 24 / 0.55), rgb(16 11 24 / 0.94) 40%);
+    background: linear-gradient(180deg, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.94) 40%);
     border-block-start: 1px solid var(--color-line);
   }
 
@@ -1171,9 +1084,6 @@
   .focus {
     animation: none;
   }
-  .world img,
-  .world::before,
-  .world::after,
   .stageNav[data-indicator="ready"] .stageIndicator {
     transition: none;
   }

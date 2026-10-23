@@ -94,25 +94,6 @@ export const quillAndPigeonProject = {
   caseStudy: {
     storyPlayback: "manual",
     titleSignature: "ink",
-    backdrop: {
-      image: {
-        kind: "image",
-        src: "/images/projects/quill-and-pigeon/case-world.webp",
-        alt: "Night over the mountains at the project's Selected Work station.",
-        width: 2400,
-        height: 1500,
-      },
-      phone: {
-        kind: "image",
-        src: "/images/projects/quill-and-pigeon/case-world-phone.webp",
-        alt: "Night over the mountains at the project's Selected Work station.",
-        width: 830,
-        height: 1800,
-      },
-      cover: [-0.7, -3.9, 1.2],
-      story: [-12.8, 4.1, 1.3],
-      end: [-17.9, 8.2, 1.45],
-    },
     info: {
       timeline: "January-August 2025",
       timelineLabel: "Internship",

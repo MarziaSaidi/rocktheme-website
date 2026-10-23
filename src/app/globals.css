@@ -37,7 +37,7 @@ body {
 }
 
 body:has([data-case-study-page]) {
-  background: var(--brand-aubergine);
+  background: #000;
 }
 
 body:has([data-site-entry]) {
