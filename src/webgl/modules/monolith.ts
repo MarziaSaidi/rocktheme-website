@@ -20,6 +20,7 @@ import {
 
 import type { WeatherUniforms } from "../core/weather";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 
 import {
   sceneViewportForWidth,
@@ -214,7 +215,7 @@ export function createMonolith(
   handlers: Readonly<{ onFailure?: (asset: string) => void; onLoaded?: () => void }> = {},
   weather?: WeatherUniforms,
 ): Monolith {
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const textureLoader = new TextureLoader();
   let destroyed = false;
   let viewport: SceneViewport = "desktop";
@@ -434,7 +435,9 @@ export function createMonolith(
   }
 
   loader.load(
-    config.mountains.source,
+    window.innerWidth < 768
+      ? config.mountains.source.replace(/\.glb$/, ".mobile.glb")
+      : config.mountains.source,
     ({ scene: model }) => {
       if (destroyed) {
         disposeModel(model);

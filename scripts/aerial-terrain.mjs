@@ -26,6 +26,11 @@ const wx = (i) => X0 + i * CELL;
 const wz = (k) => Z0 + k * CELL;
 
 // ------------------------------------------------------------- existing ranges
+// The ranges are read as source geometry, so they must be the originals. The
+// public copies are simplified delivery models (scripts/prepare-homepage-assets.mjs);
+// export the originals first, e.g. `git archive d2e2f71 public/assets | tar -x -C /tmp/aerial`,
+// and run with AERIAL_SOURCE=/tmp/aerial/public/assets.
+const SOURCE = process.env.AERIAL_SOURCE ?? "public/assets";
 const io = new NodeIO();
 async function loadTris(path) {
   const doc = await io.read(path);
@@ -112,8 +117,8 @@ function raster(m, tf) {
       }
   }
 }
-const heroM = await loadTris("public/assets/hero/mountains.glb");
-const swM = await loadTris("public/assets/selected-work/mountains.glb");
+const heroM = await loadTris(`${SOURCE}/hero/mountains.glb`);
+const swM = await loadTris(`${SOURCE}/selected-work/mountains.glb`);
 // desktop + mobile hero placements (both must stay protected)
 raster(
   heroM,
@@ -514,7 +519,7 @@ await writeFile("public/assets/aerial/terrain.bin", Buffer.concat([head, Buffer.
     ["massif.glb", 0.3, 0.002],
     ["massif-lo.glb", 0.1, 0.01],
   ]) {
-    const doc = await io.read("public/assets/hero/mountains.glb");
+    const doc = await io.read(`${SOURCE}/hero/mountains.glb`);
     await doc.transform(weld(), simplify({ simplifier: MeshoptSimplifier, ratio, error }));
     doc
       .getRoot()

@@ -341,7 +341,9 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
 
   // The patch of water beside the bio that looks down into the winter cabin's world.
   // The split mountain beside the bio: the way into /my-world.
-  const rift: Rift = createRift(worldScene, options.reducedMotion);
+  const rift: Rift = createRift(worldScene, options.reducedMotion, () => {
+    if (options.reducedMotion) renderOnce(0);
+  });
   rift.setViewport(width, height, cappedRatio());
   // The bio shows the rift the way it was made: drawn, built, then lit.
   const passes = createRenderPasses(worldScene, {
@@ -690,6 +692,10 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     // The rift is there while the camera is at the bio. It comes while the
     // camera is still turning toward it, out of frame, and stays as the
     // camera sets off, until it has slid out of frame by parallax.
+    // Its downloads start once the journey leaves the hero, never on an idle
+    // hero timer; the footer rock waits until the bio.
+    if (stopsKnown && state.from !== "hero") rift.preload();
+    if (stopsKnown && (state.from === "about" || state.to === "footer")) rocks.preload("footer");
     rift.setPresence(
       state.to === "about" && state.from !== "about"
         ? smootherstep((state.blend - 0.3) / 0.4)
