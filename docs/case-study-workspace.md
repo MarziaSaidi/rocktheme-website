@@ -4,7 +4,7 @@
 
 The `/work/[slug]` route remains a statically generated Next.js App Router page. It loads one project record on the server, resolves its stages, and passes serializable content into a focused client component.
 
-- `CaseStudyWorkspace` lays the cover and every story out as one scrolling page, follows the reader's place for the chapter rail, and keeps the URL hash on the stage being read.
+- `CaseStudyWorkspace` lays the cover and every story out as one scrolling page and keeps the URL hash on the stage being read.
 - `StoryVisualView` renders images, videos, labeled screen sequences, image groups, code artifacts, and before/after comparisons without knowing any project names.
 - `ProjectFacts` filters optional metadata before rendering, so missing values never leave empty labels.
 - `getCaseStudyStages` returns authored stages unchanged. It also adapts the original block records while they are migrated.
@@ -72,7 +72,7 @@ Set `zoomable: true` on a wide image to provide a full-size link beneath the vie
 
 ## Page composition
 
-Each stage is a chapter. It opens with its number (for example `03 / 06`) on a gold rule and its label set large in the display face. The chapter rail along the bottom lists every chapter.
+Each stage is a chapter. It opens with its number (for example `03 / 06`) on a gold rule and its label set large in the display face.
 
 A story is composed from the shape of its evidence; content never chooses the layout except for pairs:
 
@@ -88,7 +88,7 @@ Spacing follows one scale: 8, 16, 24, 32, 48, 64, 96 and 160 px, on a 12-column 
 
 The case study reads top to bottom: the cover, then every story of every stage. On desktop each story's evidence stays in view beside its copy; on phones the evidence sits above the copy. A story's copy and evidence arrive the first time it scrolls into view.
 
-The chapter rail stays along the bottom and follows the reader. Its gold segments mark the story being read within the current stage. Choosing a stage scrolls to it; the previous and next buttons and the left and right arrow keys scroll one story back or on. At the end of the last story the rail offers the next case study.
+There is no fixed navigation over the page: the chapter openers are the signposts, and the site's progress line shows how far along the reader is. The left and right arrow keys scroll one story back or on.
 
 `caseStudy.storyPlayback` is no longer read; nothing advances on a timer.
 
@@ -100,4 +100,4 @@ Reduced-motion mode scrolls without smoothing and shows content without transiti
 
 ## Direct links
 
-The stage being read is stored as a clean URL hash, for example `/work/project-slug#context`, and a link with a hash opens on that stage. Scrolling replaces the hash without adding history; choosing a stage in the rail adds a history entry, so back and forward return to it.
+The stage being read is stored as a clean URL hash, for example `/work/project-slug#context`, and a link with a hash opens on that stage. Scrolling replaces the hash without adding history. Following a link to another stage's hash adds a history entry, so back and forward return to it.

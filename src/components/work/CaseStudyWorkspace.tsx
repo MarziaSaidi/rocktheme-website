@@ -34,7 +34,7 @@ import { prepareStoryTitle } from "./storySignature";
 type CaseStudyWorkspaceProps = Readonly<{
   project: Project;
   stages: readonly CaseStudyStage[];
-  /** The next case study, offered at the end of the rail. */
+  /** The next case study, offered at the end of the page. */
   next?: Readonly<{ title: string; href: string }>;
 }>;
 
@@ -697,12 +697,7 @@ function StoryBeat({
 }
 
 /** A place in the case study: the cover, or one story of one stage. */
-type Place = Readonly<{
-  stageIndex: number;
-  /** Within the stage; the first stage counts its cover as story 0. */
-  storyIndex: number;
-  title?: string;
-}>;
+type Place = Readonly<{ stageIndex: number }>;
 
 /** Where on screen a story counts as the one being read. */
 const READING_LINE = 0.45;
@@ -712,38 +707,27 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
   /** Set once a link's own stage has been honoured, so the address is not overwritten first. */
   const [arrived, setArrived] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
-  const navRef = useRef<HTMLDivElement>(null);
   const titleSignature = project.caseStudy.titleSignature;
 
   /*
    * The whole case study as one run of places, top to bottom: the cover, then
-   * every story of every stage. The rail, the pager and the keys all move
-   * along it; scrolling is what moves the reader.
+   * every story of every stage. Scrolling moves the reader along it; the
+   * address follows, and the arrow keys step one story back or on.
    */
   const places = useMemo<readonly Place[]>(
     () => [
-      { stageIndex: 0, storyIndex: 0 },
-      ...stages.flatMap((stage, stageIndex) =>
-        stage.stories.map((story, index) => ({
-          stageIndex,
-          storyIndex: stageIndex === 0 ? index + 1 : index,
-          title: story.title,
-        })),
-      ),
+      { stageIndex: 0 },
+      ...stages.flatMap((stage, stageIndex) => stage.stories.map(() => ({ stageIndex }))),
     ],
     [stages],
   );
   const place = places[Math.min(current, places.length - 1)];
   const stage = stages[place?.stageIndex ?? 0];
   const stageId = stage?.id ?? "";
-  const storyCount = (stage?.stories.length ?? 0) + (place?.stageIndex === 0 ? 1 : 0);
-  const atStart = current === 0;
-  const atEnd = current >= places.length - 1;
-  const upcoming = places[current + 1]?.title;
 
   /*
    * The cover and each story, in reading order. A stage's first story is
-   * reached at its chapter opener, so the rail changes as the chapter begins.
+   * reached at its chapter opener, so the address changes as the chapter begins.
    */
   const placeElements = useCallback(
     () =>
@@ -865,15 +849,6 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
   const previous = useCallback(() => scrollToPlace(current - 1), [current, scrollToPlace]);
   const next = useCallback(() => scrollToPlace(current + 1), [current, scrollToPlace]);
 
-  /** Chooses a stage from the rail: a history entry, then the scroll. */
-  const choose = useCallback(
-    (id: string) => {
-      if (location.hash.slice(1) !== id) history.pushState({ stage: id }, "", `#${id}`);
-      scrollToPlace(id === stages[0]?.id ? 0 : placeOfStage(id));
-    },
-    [placeOfStage, scrollToPlace, stages],
-  );
-
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target;
@@ -891,36 +866,6 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
     addEventListener("keydown", keydown);
     return () => removeEventListener("keydown", keydown);
   }, [next, previous]);
-
-  // Keeps the selected stage centred when the stage list scrolls sideways.
-  useEffect(() => {
-    const nav = navRef.current;
-    const selected = nav?.querySelector<HTMLElement>(`[data-stage-id="${stageId}"]`);
-    if (!nav || !selected) return;
-    nav.scrollTo({
-      left: selected.offsetLeft - (nav.clientWidth - selected.clientWidth) / 2,
-      behavior: reduced() ? "instant" : "smooth",
-    });
-  }, [stageId]);
-
-  // Moves the stage indicator onto the selected stage, and follows resizes.
-  useLayoutEffect(() => {
-    const nav = navRef.current;
-    const selected = nav?.querySelector<HTMLElement>(`[data-stage-id="${stageId}"]`);
-    if (!nav || !selected) return;
-    const position = () => {
-      nav.style.setProperty("--indicator-x", `${selected.offsetLeft}px`);
-      nav.style.setProperty("--indicator-width", `${selected.offsetWidth}px`);
-    };
-    position();
-    const frame = requestAnimationFrame(() => nav.setAttribute("data-indicator", "ready"));
-    const observer = new ResizeObserver(position);
-    observer.observe(nav);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
-  }, [stageId]);
 
   if (!stage || !place) return null;
   const info = project.caseStudy.info;
@@ -1037,76 +982,6 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
           </SwapGlyph>
         </Link>
       ) : null}
-
-      <nav className={styles.rail} aria-label="Case study stages">
-        <div ref={navRef} className={styles.stageNav}>
-          <span
-            className={styles.stageIndicator}
-            aria-label={`Story ${place.storyIndex + 1} of ${storyCount}`}
-          >
-            {Array.from({ length: storyCount }, (_, index) => (
-              <span
-                key={index}
-                data-state={
-                  index < place.storyIndex
-                    ? "past"
-                    : index === place.storyIndex
-                      ? "current"
-                      : "future"
-                }
-              />
-            ))}
-          </span>
-          {stages.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              data-stage-id={item.id}
-              style={{ "--i": index } as React.CSSProperties}
-              aria-current={item.id === stage.id ? "step" : undefined}
-              onClick={() => choose(item.id)}
-            >
-              <b aria-hidden="true">{twoDigits(index + 1)}</b>
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <div className={styles.pager}>
-          <button
-            type="button"
-            className={styles.pagerPrevious}
-            onClick={previous}
-            disabled={atStart}
-            aria-label="Previous story"
-          >
-            <SwapGlyph direction="left" className={styles.pagerGlyph}>
-              <ArrowGlyph direction="left" />
-            </SwapGlyph>
-          </button>
-          {!atEnd ? (
-            <button
-              type="button"
-              className={styles.pagerNext}
-              onClick={next}
-              aria-label={upcoming ? `Next story: ${upcoming}` : "Next story"}
-            >
-              <span className={styles.pagerLabel}>Next</span>
-              <span className={styles.pagerTitle}>{upcoming}</span>
-              <SwapGlyph direction="right" className={styles.pagerGlyph}>
-                <ArrowGlyph direction="right" />
-              </SwapGlyph>
-            </button>
-          ) : nextStudy ? (
-            <Link className={styles.pagerNext} href={nextStudy.href}>
-              <span className={styles.pagerLabel}>Next case study</span>
-              <span className={styles.pagerTitle}>{nextStudy.title}</span>
-              <SwapGlyph direction="right" className={styles.pagerGlyph}>
-                <ArrowGlyph direction="right" />
-              </SwapGlyph>
-            </Link>
-          ) : null}
-        </div>
-      </nav>
     </article>
   );
 }

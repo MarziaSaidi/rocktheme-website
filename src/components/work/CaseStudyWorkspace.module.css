@@ -7,7 +7,6 @@
  * tight inside a group and generous between them, on a 12-column grid.
  */
 .workspace {
-  --rail-height: 4.5rem;
   --plane-rim: 0 0 0 1px var(--color-plane-rim);
   --plane-drop: 0 2.5rem 5rem -1.25rem rgb(0 0 0 / 0.9);
   --rule: 1px solid var(--color-line);
@@ -43,11 +42,10 @@
     "details viewer";
   column-gap: clamp(2.5rem, 5.3vw, 5.5rem);
   row-gap: var(--space-8);
-  height: calc(100dvh - var(--header-height) - var(--rail-height) - var(--space-12));
+  height: calc(100dvh - var(--header-height) - var(--space-16));
   min-height: 34rem;
 }
 
-.stageNav button b,
 .chapterNumber b {
   color: var(--color-highlight);
   font-family: var(--font-technical);
@@ -242,10 +240,6 @@
   outline-offset: var(--space-2);
 }
 
-.end + .rail {
-  margin-block-start: 0;
-}
-
 /* ------------------------------------------------------------- head */
 
 .head {
@@ -288,14 +282,12 @@
   transition-duration: var(--duration-interface), var(--motion-press-in);
 }
 
-.backGlyph,
-.pagerGlyph {
+.backGlyph {
   width: 1.5rem;
   height: auto;
 }
 
-.backGlyph svg,
-.pagerGlyph svg {
+.backGlyph svg {
   display: block;
   width: 100%;
   height: auto;
@@ -359,7 +351,6 @@
 .fact dt,
 .eyebrow,
 .caption,
-.pagerLabel,
 .playerBar {
   margin: 0;
   color: var(--color-text-muted);
@@ -999,173 +990,6 @@
   text-transform: uppercase;
 }
 
-/* ------------------------------------------------------------- the rail */
-
-/* The chapters stay along the bottom; the gold line is the visitor's place in the story. */
-.rail {
-  position: sticky;
-  bottom: 0;
-  z-index: var(--layer-navigation);
-  display: flex;
-  gap: var(--space-8);
-  align-items: center;
-  justify-content: space-between;
-  min-width: 0;
-  height: var(--rail-height);
-  margin-block-start: var(--space-12);
-}
-
-/* Black edge to edge behind the rail, and the page fading out just above it. */
-.rail::before,
-.rail::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 0 -100vw;
-  background: #000;
-  pointer-events: none;
-}
-
-.rail::before {
-  inset: -3rem -100vw 100%;
-  background: linear-gradient(180deg, transparent, #000);
-}
-
-.stageNav {
-  position: relative;
-  display: flex;
-  gap: clamp(1rem, 2vw, 2rem);
-  align-items: stretch;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  /* The track the indicator runs along. */
-  box-shadow: inset 0 -1px 0 var(--color-line);
-}
-
-.stageNav button {
-  position: relative;
-  flex: 0 0 auto;
-  min-height: 3rem;
-  padding: 0;
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: 0.9375rem;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  transition: color var(--duration-interface) var(--ease-interface);
-}
-
-.stageNav button:hover {
-  color: var(--color-text-secondary);
-}
-
-/* Colour and the gold line mark the current stage, so no label changes width. */
-.stageNav button[aria-current="step"] {
-  color: var(--color-text-primary);
-}
-
-.stageNav button b {
-  margin-inline-end: var(--space-2);
-  color: inherit;
-  transition: color var(--duration-interface) var(--ease-interface);
-}
-
-.stageNav button[aria-current="step"] b {
-  color: var(--color-highlight);
-}
-
-.stageNav button:focus-visible {
-  outline: 1px solid var(--color-line-strong);
-  outline-offset: 0.25rem;
-}
-
-/* The same gold lit line as the header's, split into the stage's stories. */
-.stageIndicator {
-  position: absolute;
-  inset-block-end: 0;
-  inset-inline-start: 0;
-  display: flex;
-  gap: 4px;
-  width: var(--indicator-width, 0);
-  height: 1px;
-  translate: var(--indicator-x, 0) 0;
-}
-
-.stageIndicator > span {
-  flex: 1;
-  background: color-mix(in srgb, var(--color-highlight) 34%, transparent);
-}
-
-.stageIndicator > span[data-state="past"],
-.stageIndicator > span[data-state="current"] {
-  background: var(--color-highlight);
-}
-
-.stageNav[data-indicator="ready"] .stageIndicator {
-  transition:
-    translate 480ms var(--ease-interface),
-    width 480ms var(--ease-interface);
-}
-
-.pager {
-  display: flex;
-  flex: 0 1 auto;
-  gap: var(--space-4);
-  align-items: center;
-  min-width: 0;
-}
-
-.pagerPrevious,
-.pagerNext {
-  display: inline-flex;
-  gap: var(--space-4);
-  align-items: center;
-  min-width: 0;
-  min-height: 2.75rem;
-  padding: 0;
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: 0.9375rem;
-  text-decoration: none;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  transition:
-    color var(--duration-interface) var(--ease-interface),
-    scale var(--motion-press-out) var(--motion-ease-interface);
-}
-
-.pagerPrevious {
-  margin-inline-end: var(--space-4);
-  color: var(--color-text-muted);
-}
-
-.pagerPrevious:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.pagerPrevious:active:not(:disabled),
-.pagerNext:active {
-  scale: var(--motion-press-scale);
-  transition-duration: var(--duration-interface), var(--motion-press-in);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .pagerPrevious:hover:not(:disabled) {
-    color: var(--color-text-primary);
-  }
-}
-
-.pagerTitle {
-  overflow: hidden;
-  max-width: 18rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* ------------------------------------------------------------- tablets */
 
 @media (max-width: 74.99rem) {
@@ -1174,9 +998,6 @@
   }
   .beat[data-layout="tall"] .copy {
     grid-column: 1 / span 5;
-  }
-  .pagerTitle {
-    max-width: 10rem;
   }
 }
 
@@ -1188,7 +1009,7 @@
     --gap-chapter: var(--space-24);
 
     width: 100%;
-    padding: var(--space-4) var(--layout-gutter) 6rem;
+    padding: var(--space-4) var(--layout-gutter) 0;
   }
 
   .workspace::before {
@@ -1350,52 +1171,6 @@
   .comparisonItem img {
     max-height: 60svh;
   }
-
-  /* The chapters dock to the bottom edge, They scroll sideways; the arrow moves on. */
-  .rail {
-    position: fixed;
-    inset: auto 0 0;
-    z-index: var(--layer-navigation);
-    gap: 0;
-    height: 4rem;
-    margin: 0;
-    padding-inline-start: var(--layout-gutter);
-    background: linear-gradient(180deg, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.94) 40%);
-    border-block-start: 1px solid var(--color-line);
-  }
-
-  .rail::before,
-  .rail::after {
-    display: none;
-  }
-
-  .stageNav {
-    flex: 1;
-    gap: var(--space-6);
-    box-shadow: none;
-    mask-image: linear-gradient(90deg, #000 80%, transparent 98%);
-  }
-
-  .pager {
-    flex: none;
-    gap: 0;
-    align-self: stretch;
-  }
-
-  .pagerPrevious,
-  .pagerLabel,
-  .pagerTitle {
-    display: none;
-  }
-
-  .pagerNext {
-    align-items: center;
-    justify-content: center;
-    min-width: 4rem;
-    height: 100%;
-    padding-inline: var(--space-4);
-    border-inline-start: 1px solid var(--color-line);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1404,17 +1179,13 @@
   .focus {
     animation: none;
   }
-  .stageNav[data-indicator="ready"] .stageIndicator {
-    transition: none;
-  }
 }
 
 /* ======================================================== opening motion */
 
 /*
  * The case study opens in reading order: the title rises out of its mask like
- * every display line on the site, the rail follows top to bottom, and the
- * stage list arrives alongside so the structure is visible early. Behind the
+ * every display line on the site, and the facts follow top to bottom. Behind the
  * entry doorway the page is inert and these wait (SiteEntry pauses them).
  * Timing lives in src/motion/motion.css; reduced motion turns each into a
  * short fade there.
@@ -1441,8 +1212,6 @@
 .coverLead,
 .fact,
 .coverAction,
-.stageNav button,
-.pager,
 .caption,
 .zoomLink {
   animation-name: var(--motion-keyframes-copy);
@@ -1465,25 +1234,8 @@
   );
 }
 
-.coverAction,
-.pager {
+.coverAction {
   animation-delay: calc(var(--motion-case-facts-at) + 8 * var(--motion-case-fact-stagger));
-}
-
-.stageNav button {
-  animation-delay: calc(var(--motion-case-nav-at) + var(--i, 0) * var(--motion-case-nav-stagger));
-}
-
-/* The indicator is placed with `translate`, so it only fades. */
-.stageIndicator {
-  animation: indicator-in var(--motion-small-duration) var(--motion-ease-interface) backwards;
-  animation-delay: var(--motion-case-nav-at);
-}
-
-@keyframes indicator-in {
-  from {
-    opacity: 0;
-  }
 }
 
 /* Captions belong to the story; they arrive with each one, after its visual. */
