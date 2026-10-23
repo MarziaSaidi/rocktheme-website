@@ -299,6 +299,8 @@ export type CaseStudyStory = Readonly<{
 export type CaseStudyStage = Readonly<{
   id: string;
   label: string;
+  /** `pair`: exactly two stories, shown side by side as two states of one step. */
+  layout?: "pair";
   stories: readonly CaseStudyStory[];
 }>;
 

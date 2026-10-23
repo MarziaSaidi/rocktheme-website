@@ -487,21 +487,159 @@ function CoverMedia({ visual, flanks }: { visual?: StoryVisual; flanks?: readonl
 }
 
 /**
- * One story: its evidence, held in view, beside the copy that reads it.
- * The copy waits unseen until the story scrolls in, then arrives line by line.
+ * How a story is composed, from the shape of its evidence:
+ * - `wide`: the claim and its reasoning read across, then the evidence spans the page;
+ * - `tall`: phone screens and portrait evidence run on the right while the copy holds on the left;
+ * - `pair`: one of two states of a step, side by side (an authored stage layout).
+ */
+type BeatLayout = "wide" | "tall" | "pair";
+
+const layoutOf = (visual: StoryVisual | undefined): BeatLayout => {
+  if (!visual) return "wide";
+  if (visual.type === "sequence" || visual.type === "comparison") return "tall";
+  if (visual.type === "image") return visual.media.height > visual.media.width ? "tall" : "wide";
+  if (visual.type === "video") {
+    return visual.media.poster.height > visual.media.poster.width ? "tall" : "wide";
+  }
+  return "wide";
+};
+
+const twoDigits = (value: number) => String(value).padStart(2, "0");
+
+/** Decision, constraint and outcome, side by side under one rule: annotations, not a form. */
+function Notes({ story }: { story: CaseStudyStory }) {
+  const notes = [
+    ["Decision", story.decision],
+    ["Constraint", story.constraint],
+    ["Outcome", story.outcome],
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
+  if (!notes.length) return null;
+  return (
+    <dl className={styles.notes} style={{ "--notes": notes.length } as React.CSSProperties}>
+      {notes.map(([label, text]) => (
+        <div key={label}>
+          <dt>
+            <Lines text={label} />
+          </dt>
+          <dd>
+            <Lines text={text} />
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** The reasoning: what happened, any supporting points and figures, and the notes. */
+function Reasoning({ story }: { story: CaseStudyStory }) {
+  return (
+    <div className={styles.why}>
+      <p className={styles.storyDescription}>
+        <Lines text={story.description} />
+      </p>
+      {story.supportingPoints?.length ? (
+        <ul className={styles.points}>
+          {story.supportingPoints.slice(0, 4).map((point) => (
+            <li key={point}>
+              <Lines text={point} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {story.metric ? (
+        <p className={styles.metric}>
+          <strong>
+            <Lines text={story.metric.value} />
+          </strong>
+          <Lines text={story.metric.label} />
+        </p>
+      ) : null}
+      {story.quote ? (
+        <blockquote>
+          <Lines text={story.quote.text} />
+          {story.quote.attribution ? (
+            <cite>
+              <Lines text={story.quote.attribution} />
+            </cite>
+          ) : null}
+        </blockquote>
+      ) : null}
+      <Notes story={story} />
+      {story.supportingVideo ? (
+        <a
+          className={styles.supportingVideo}
+          href={story.supportingVideo.media.src}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+/** The evidence in its frame, with its caption and full-size link on one ruled line beneath. */
+function Evidence({ story }: { story: CaseStudyStory }) {
+  const visual = story.visual;
+  if (!visual) return null;
+  const zoom = visual?.type === "image" && visual.zoomable ? visual.media.src : undefined;
+  const ratio =
+    visual?.type === "image"
+      ? visual.media.width / visual.media.height
+      : visual?.type === "video"
+        ? visual.media.poster.width / visual.media.poster.height
+        : undefined;
+  return (
+    <figure className={styles.fig}>
+      <div
+        className={styles.visualFrame}
+        data-board={
+          visual && ["palette", "typography", "assets", "spacing"].includes(visual.type)
+            ? "true"
+            : undefined
+        }
+        data-kind={visual?.type}
+        style={ratio ? ({ "--ar": ratio } as React.CSSProperties) : undefined}
+      >
+        <StoryVisualView visual={visual} />
+      </div>
+      {story.caption || zoom ? (
+        <figcaption className={styles.figCaption}>
+          <span className={styles.caption}>{story.caption}</span>
+          {zoom ? (
+            <a className={styles.zoomLink} href={zoom} target="_blank" rel="noopener noreferrer">
+              <WeightLabel text="Open full size" /> <SwapGlyph direction="up-right">↗</SwapGlyph>
+            </a>
+          ) : null}
+        </figcaption>
+      ) : null}
+    </figure>
+  );
+}
+
+/**
+ * One story, composed for its evidence. The copy waits unseen until the story
+ * scrolls in, then arrives line by line.
  */
 function StoryBeat({
   story,
   stage,
   signature,
+  layout,
+  first,
+  onCover = false,
 }: {
   story: CaseStudyStory;
   stage: CaseStudyStage;
   signature?: Project["caseStudy"]["titleSignature"];
+  layout: BeatLayout;
+  first: boolean;
+  /** Its evidence already plays on the cover, so the story is told in words alone. */
+  onCover?: boolean;
 }) {
-  const storyRef = useRef<HTMLDivElement>(null);
+  const beatRef = useRef<HTMLElement>(null);
   const emphasis = story.emphasis;
-  const visual = story.visual;
 
   /*
    * Numbers the wrapped lines of the copy so they rise one after another.
@@ -509,9 +647,9 @@ function StoryBeat({
    * step shrinks for long copy so the last line never trails far behind.
    */
   useLayoutEffect(() => {
-    const copy = storyRef.current;
-    const words = copy?.querySelectorAll<HTMLElement>("[data-word]");
-    if (!copy || !words?.length) return;
+    const beat = beatRef.current;
+    const words = beat?.querySelectorAll<HTMLElement>("[data-word]");
+    if (!beat || !words?.length) return;
     let line = -1;
     let lineTop = -Infinity;
     for (const word of words) {
@@ -522,113 +660,39 @@ function StoryBeat({
       }
       word.style.setProperty("--line", String(line));
     }
-    copy.style.setProperty("--line-step", `${Math.min(70, 900 / Math.max(1, line))}ms`);
+    beat.style.setProperty("--line-step", `${Math.min(70, 900 / Math.max(1, line))}ms`);
     // Then the title's signature, measured against those lines, still before paint.
-    return prepareStoryTitle(copy, signature, emphasis);
+    return prepareStoryTitle(beat, signature, emphasis);
   }, [signature, emphasis]);
 
+  const claim = (
+    <div className={styles.claim}>
+      <p className={styles.eyebrow}>
+        <Lines text={story.eyebrow ?? stage.label} />
+      </p>
+      <h3 className={styles.storyTitle} data-story-title="">
+        <Lines text={story.title} />
+      </h3>
+    </div>
+  );
+
   return (
-    <section
+    <article
+      ref={beatRef}
       id={`${stage.id}-${story.id}`}
       className={styles.beat}
       data-beat=""
+      data-first={first ? "" : undefined}
+      data-layout={layout}
       aria-label={`${stage.label}: ${story.title}`}
     >
-      <div className={styles.viewer}>
-        <div
-          className={styles.visualFrame}
-          data-board={
-            visual && ["palette", "typography", "assets", "spacing"].includes(visual.type)
-              ? "true"
-              : undefined
-          }
-          data-ar={visual?.type === "image" ? "" : undefined}
-          style={
-            visual?.type === "image"
-              ? ({ "--frame-ar": visual.media.width / visual.media.height } as React.CSSProperties)
-              : undefined
-          }
-        >
-          <StoryVisualView visual={visual} />
-        </div>
-        {story.caption ? <p className={styles.caption}>{story.caption}</p> : null}
-        {visual?.type === "image" && visual.zoomable ? (
-          <a
-            className={styles.zoomLink}
-            href={visual.media.src}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <WeightLabel text="Open full size" /> <SwapGlyph direction="up-right">↗</SwapGlyph>
-          </a>
-        ) : null}
+      {layout === "pair" && !onCover ? <Evidence story={story} /> : null}
+      <div className={styles.copy}>
+        {claim}
+        <Reasoning story={story} />
       </div>
-
-      <div ref={storyRef} className={styles.story}>
-        <p className={styles.eyebrow}>
-          <Lines text={story.eyebrow ?? stage.label} />
-        </p>
-        <h2>
-          <Lines text={story.title} />
-        </h2>
-        <p className={styles.storyDescription}>
-          <Lines text={story.description} />
-        </p>
-        {story.supportingPoints?.length ? (
-          <ul className={styles.points}>
-            {story.supportingPoints.slice(0, 4).map((point) => (
-              <li key={point}>
-                <Lines text={point} />
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {(
-          [
-            ["Decision", story.decision],
-            ["Constraint", story.constraint],
-            ["Outcome", story.outcome],
-          ] as const
-        ).map(([label, text]) =>
-          text ? (
-            <p key={label} className={styles.detail}>
-              <strong>
-                <Lines text={label} />
-              </strong>
-              <Lines text={text} />
-            </p>
-          ) : null,
-        )}
-        {story.metric ? (
-          <p className={styles.metric}>
-            <strong>
-              <Lines text={story.metric.value} />
-            </strong>
-            <Lines text={story.metric.label} />
-          </p>
-        ) : null}
-        {story.quote ? (
-          <blockquote>
-            <Lines text={story.quote.text} />
-            {story.quote.attribution ? (
-              <cite>
-                <Lines text={story.quote.attribution} />
-              </cite>
-            ) : null}
-          </blockquote>
-        ) : null}
-        {story.supportingVideo ? (
-          <a
-            className={styles.supportingVideo}
-            href={story.supportingVideo.media.src}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
-          </a>
-        ) : null}
-      </div>
-    </section>
+      {layout === "pair" || onCover ? null : <Evidence story={story} />}
+    </article>
   );
 }
 
@@ -677,11 +741,19 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
   const atEnd = current >= places.length - 1;
   const upcoming = places[current + 1]?.title;
 
-  /** The cover and each story, in reading order. */
+  /*
+   * The cover and each story, in reading order. A stage's first story is
+   * reached at its chapter opener, so the rail changes as the chapter begins.
+   */
   const placeElements = useCallback(
-    () => [
-      ...(articleRef.current?.querySelectorAll<HTMLElement>("[data-cover], [data-beat]") ?? []),
-    ],
+    () =>
+      [
+        ...(articleRef.current?.querySelectorAll<HTMLElement>("[data-cover], [data-beat]") ?? []),
+      ].map((element) =>
+        element.hasAttribute("data-first")
+          ? (element.closest<HTMLElement>("[data-chapter]") ?? element)
+          : element,
+      ),
     [],
   );
 
@@ -702,7 +774,7 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
   const placeOfStage = useCallback(
     (id: string) => {
       const index = stages.findIndex((item) => item.id === id);
-      return index <= 0 ? 0 : places.findIndex((item) => item.stageIndex === index);
+      return index < 0 ? 0 : places.findIndex((item, at) => at > 0 && item.stageIndex === index);
     },
     [places, stages],
   );
@@ -737,7 +809,7 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
     };
   }, [placeElements]);
 
-  // Each story's copy and evidence arrive the first time it scrolls into view.
+  // Chapter openers and stories arrive the first time they scroll into view.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -749,9 +821,11 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
       },
       { rootMargin: "0px 0px -15% 0px" },
     );
-    placeElements().forEach((element) => observer.observe(element));
+    articleRef.current
+      ?.querySelectorAll("[data-opener], [data-beat], [data-end]")
+      .forEach((element) => observer.observe(element));
     return () => observer.disconnect();
-  }, [placeElements]);
+  }, []);
 
   // The address names the stage being read, without adding history as it scrolls.
   useEffect(() => {
@@ -765,7 +839,7 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
     const go = (smooth: boolean) => {
       const id = location.hash.slice(1);
       if (!stages.some((item) => item.id === id)) return;
-      const index = placeOfStage(id);
+      const index = id === stages[0]?.id ? 0 : placeOfStage(id);
       const target = placeElements()[index];
       if (!smooth || reduced()) {
         if (index === 0) scrollTo({ top: 0 });
@@ -788,6 +862,15 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
 
   const previous = useCallback(() => scrollToPlace(current - 1), [current, scrollToPlace]);
   const next = useCallback(() => scrollToPlace(current + 1), [current, scrollToPlace]);
+
+  /** Chooses a stage from the rail or the contents: a history entry, then the scroll. */
+  const choose = useCallback(
+    (id: string) => {
+      if (location.hash.slice(1) !== id) history.pushState({ stage: id }, "", `#${id}`);
+      scrollToPlace(id === stages[0]?.id ? 0 : placeOfStage(id));
+    },
+    [placeOfStage, scrollToPlace, stages],
+  );
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -839,6 +922,7 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
 
   if (!stage || !place) return null;
   const info = project.caseStudy.info;
+  const total = twoDigits(stages.length);
 
   return (
     <article
@@ -846,7 +930,7 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
       className={styles.workspace}
       aria-label={`${project.title} case study`}
     >
-      <section className={styles.cover} data-cover="" data-seen="" aria-label={project.title}>
+      <section className={styles.cover} data-cover="" aria-label={project.title}>
         <header className={styles.head}>
           <Link className={styles.back} href={`/#${sectionAnchors["selected-work"]}`}>
             <SwapGlyph direction="left" className={styles.backGlyph}>
@@ -884,13 +968,90 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
         </div>
       </section>
 
-      {stages.map((item) => (
-        <div key={item.id} id={item.id} className={styles.chapter} data-stage-id={item.id}>
-          {item.stories.map((story) => (
-            <StoryBeat key={story.id} story={story} stage={item} signature={titleSignature} />
-          ))}
-        </div>
+      <nav className={styles.contents} aria-label="In this case study">
+        {stages.map((item, index) => (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            style={{ "--i": index } as React.CSSProperties}
+            onClick={(event) => {
+              event.preventDefault();
+              choose(item.id);
+            }}
+          >
+            <b>{twoDigits(index + 1)}</b>
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      {stages.map((item, stageIndex) => (
+        <section
+          key={item.id}
+          id={item.id}
+          className={styles.chapter}
+          data-chapter=""
+          aria-labelledby={`${item.id}-title`}
+        >
+          <header className={styles.opener} data-opener="">
+            <p className={styles.chapterNumber}>
+              <b>
+                {twoDigits(stageIndex + 1)} / {total}
+              </b>
+              <span>
+                {item.stories.length} {item.stories.length === 1 ? "story" : "stories"}
+              </span>
+            </p>
+            <h2 id={`${item.id}-title`} className={styles.chapterTitle}>
+              <span className={styles.titleMask}>
+                <span className={styles.titleInner}>{item.label}</span>
+              </span>
+            </h2>
+          </header>
+          <div
+            className={styles.chapterStories}
+            data-layout={item.layout === "pair" && item.stories.length === 2 ? "pair" : undefined}
+          >
+            {item.stories.map((story, index) => (
+              <StoryBeat
+                key={story.id}
+                story={story}
+                stage={item}
+                signature={titleSignature}
+                layout={
+                  item.layout === "pair" && item.stories.length === 2
+                    ? "pair"
+                    : stageIndex === 0 &&
+                        index === 0 &&
+                        (story.visual?.type === "video" || story.visual?.type === "image")
+                      ? "wide"
+                      : layoutOf(story.visual)
+                }
+                first={index === 0}
+                onCover={
+                  stageIndex === 0 &&
+                  index === 0 &&
+                  (story.visual?.type === "video" || story.visual?.type === "image")
+                }
+              />
+            ))}
+          </div>
+        </section>
       ))}
+
+      {nextStudy ? (
+        <Link className={styles.end} href={nextStudy.href} data-end="">
+          <span className={styles.endLabel}>Next case study</span>
+          <span className={styles.endTitle}>
+            <span className={styles.titleMask}>
+              <span className={styles.titleInner}>{nextStudy.title}</span>
+            </span>
+          </span>
+          <SwapGlyph direction="right" className={styles.endGlyph}>
+            <ArrowGlyph direction="right" />
+          </SwapGlyph>
+        </Link>
+      ) : null}
 
       <nav className={styles.rail} aria-label="Case study stages">
         <div ref={navRef} className={styles.stageNav}>
@@ -918,13 +1079,9 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
               data-stage-id={item.id}
               style={{ "--i": index } as React.CSSProperties}
               aria-current={item.id === stage.id ? "step" : undefined}
-              onClick={() => {
-                if (location.hash.slice(1) !== item.id) {
-                  history.pushState({ stage: item.id }, "", `#${item.id}`);
-                }
-                scrollToPlace(placeOfStage(item.id));
-              }}
+              onClick={() => choose(item.id)}
             >
+              <b aria-hidden="true">{twoDigits(index + 1)}</b>
               {item.label}
             </button>
           ))}
@@ -955,9 +1112,9 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
               </SwapGlyph>
             </button>
           ) : nextStudy ? (
-            <Link className={styles.pagerCase} href={nextStudy.href}>
+            <Link className={styles.pagerNext} href={nextStudy.href}>
               <span className={styles.pagerLabel}>Next case study</span>
-              <span className={styles.pagerCaseTitle}>{nextStudy.title}</span>
+              <span className={styles.pagerTitle}>{nextStudy.title}</span>
               <SwapGlyph direction="right" className={styles.pagerGlyph}>
                 <ArrowGlyph direction="right" />
               </SwapGlyph>

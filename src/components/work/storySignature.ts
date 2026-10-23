@@ -32,7 +32,7 @@ export function prepareStoryTitle(
   signature: TitleSignature | undefined,
   emphasis: string | undefined,
 ): () => void {
-  const title = story.querySelector("h2");
+  const title = story.querySelector<HTMLElement>("[data-story-title]");
   const words = title ? [...title.querySelectorAll<HTMLElement>("[data-word]")] : [];
   if (!title || !signature || words.length === 0) return () => {};
   story.dataset.signature = signature;

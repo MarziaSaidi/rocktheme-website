@@ -70,6 +70,20 @@ Use `cover` only for photography or presentation imagery where cropping is inten
 
 Set `zoomable: true` on a wide image to provide a full-size link beneath the viewer. A story may also supply `supportingVideo` to link to a prototype recording without displacing its primary visual.
 
+## Page composition
+
+Each stage is a chapter. It opens with its number (for example `03 / 06`) on a gold rule and its label set large in the display face, and every chapter is listed under the cover so the case study's shape is known up front.
+
+A story is composed from the shape of its evidence; content never chooses the layout except for pairs:
+
+- **Wide** (landscape images and videos, code, and the palette, type, asset and spacing boards): the eyebrow and title on the left, the description and notes on the right, then the evidence across the page. Evidence never grows taller than the window.
+- **Tall** (portrait images and videos, comparisons, and phone-screen sequences): the copy holds still on the left while the evidence runs on the right.
+- **Pair**: set `layout: "pair"` on a stage with exactly two stories to show them side by side, staggered, as two states of one step. The validator rejects a pair stage without exactly two stories.
+
+Decision, constraint and outcome are set as notes under one rule. A caption and the full-size link share a ruled line beneath the evidence. The first story's evidence is not repeated when the cover already shows it. The page ends with the next case study, set large.
+
+Spacing follows one scale: 8, 16, 24, 32, 48, 64, 96 and 160 px, on a 12-column grid.
+
 ## Story behavior
 
 The case study reads top to bottom: the cover, then every story of every stage. On desktop each story's evidence stays in view beside its copy; on phones the evidence sits above the copy. A story's copy and evidence arrive the first time it scrolls into view.

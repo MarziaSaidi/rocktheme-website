@@ -158,6 +158,7 @@ export const quillAndPigeonProject = {
       {
         id: "import-states",
         label: "File setup",
+        layout: "pair",
         stories: [
           {
             id: "select",
