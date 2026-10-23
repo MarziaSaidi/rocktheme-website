@@ -846,6 +846,8 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
         else target?.scrollIntoView({ block: "start" });
       } else scrollToPlace(index);
     };
+    // At once, and again once the first frame has laid out, in case anything moved the page meanwhile.
+    go(false);
     const initialFrame = requestAnimationFrame(() => {
       go(false);
       setArrived(true);
