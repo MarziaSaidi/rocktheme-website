@@ -11,6 +11,7 @@ import { getHandoff, releaseHandoff } from "@/cabin/worldHandoff";
 import type { MarziaTheme } from "@/cabin/scenery";
 import type { CabinState, CabinWorld as World } from "@/cabin/world";
 
+import { WorldBridge } from "./WorldBridge";
 import { CabinStick } from "./CabinStick";
 import styles from "./CabinWorld.module.css";
 
@@ -89,6 +90,7 @@ export function CabinWorld() {
     const container = host.current;
     if (!container) return;
     setStatus("loading");
+    setLive(false);
     let disposed = false;
     let mounted: World | null = null;
     const abandon = new AbortController();
@@ -101,7 +103,7 @@ export function CabinWorld() {
     canvas.setAttribute("role", "img");
     canvas.setAttribute(
       "aria-label",
-      "A snowy clearing with a small log cabin and the word MARZIA standing in the snow. Move the mouse to look, click or use W A S D to walk.",
+      "A moonlit snowy clearing with a small log cabin and the word MARZIA standing in the snow. Move the mouse to look, click or use W A S D to walk.",
     );
     container.appendChild(canvas);
 
@@ -121,7 +123,7 @@ export function CabinWorld() {
               ? { kind: "rift", zoom: () => bridgeZoom(Date.now() - handoffAt) }
               : capture
                 ? { kind: "capture" }
-                : undefined,
+                : { kind: "rift", zoom: () => 1 },
           onFirstFrame: () => {
             if (disposed) return;
             setLive(true);
@@ -170,13 +172,17 @@ export function CabinWorld() {
       data-status={status}
       data-live={live ? "true" : "false"}
       data-arrival={handoffAt !== null ? "rift" : capture ? "capture" : undefined}
-      aria-label="Winter cabin"
+      aria-label="Winter cabin at night"
     >
       <div ref={host} className={styles.host} />
 
-      {/* The way in carries its own picture across; it never shows a loading line. */}
-      {status === "loading" && handoffAt === null && !capture && (
-        <p className={styles.notice}>Building the cabin…</p>
+      {/* Server-rendered scenery is visible before JS, downloads or shader warm-up. */}
+      {handoffAt === null && !capture && (
+        <WorldBridge
+          handoffAt={null}
+          frozen
+          leaving={live || status === "failed" || status === "lost"}
+        />
       )}
       {status === "lost" && (
         <div className={styles.notice} role="alert">

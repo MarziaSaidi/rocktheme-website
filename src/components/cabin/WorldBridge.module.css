@@ -18,7 +18,23 @@
   position: absolute;
   top: 50%;
   left: 50%;
+  /* Match bridgeSize before hydration: 2 / tan(56deg / 2). */
+  width: 376.1453vh;
+  height: 188.0726vh;
   max-width: none;
   transform: translate(-50%, -50%);
   transform-origin: 50% 50%;
+}
+
+@media (max-aspect-ratio: 4/5) {
+  .image {
+    width: 285.6296vh;
+    height: 142.8148vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bridge {
+    transition: none;
+  }
 }

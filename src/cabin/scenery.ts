@@ -24,7 +24,6 @@ import {
   Quaternion,
   Scene,
   SRGBColorSpace,
-  ImageBitmapLoader,
   Vector3,
   type Material,
   type Object3D,
@@ -40,7 +39,9 @@ import { color, mix, normalWorld, smoothstep, texture, uv, vec4 } from "three/ts
 import { MeshStandardNodeMaterial } from "three/webgpu";
 
 import { buildCabinExterior, DECK, PIT_CHAIRS } from "./cabinExterior";
+import { CABIN_PROP_IDS as PROP_IDS } from "./assets";
 import { buildFlames } from "./flames";
+import { buildNightSky } from "./nightSky";
 import { buildHall, buildHallSign } from "./hall";
 import { buildMarziaPanel } from "./marziaPanel";
 import { HALL, MARZIA, type Vec3 } from "./stations";
@@ -54,8 +55,8 @@ import {
 } from "./surfaces";
 
 /**
- * The winter cabin as a real place: a photographed snowy sky for light and
- * backdrop, Poly Haven scanned props and surfaces, firs with snow on their
+ * The winter cabin at night: a starry sky, cool moonlight,
+ * Poly Haven scanned props and surfaces, firs with snow on their
  * branches, and MARZIA standing in the clearing: the old site's own effect.
  *
  * Every asset is prepared by `npm run prepare:cabin`.
@@ -94,21 +95,6 @@ export type SceneryOptions = Readonly<{
   maxAnisotropy: number;
 }>;
 
-/**
- * The sky photo, decoded off the main thread. It is 6144 pixels wide: left
- * as an image, the browser decodes it on the main thread when it first goes
- * to the GPU, stalling the page.
- */
-async function loadBackdrop(url: string) {
-  const loader = new ImageBitmapLoader();
-  loader.setOptions({ imageOrientation: "flipY" });
-  const texture = new Texture(await loader.loadAsync(url));
-  // The bitmap is already flipped; the GPU upload must not flip it again.
-  texture.flipY = false;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): Promise<Scenery> {
   const scene = new Scene();
   const disposables = new Set<{ dispose: () => void }>();
@@ -121,31 +107,33 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
   const gltf = new GLTFLoader();
   gltf.setMeshoptDecoder(MeshoptDecoder);
 
-  const [manifest, surfaces, lighting, backdrop, props] = await Promise.all([
+  const [manifest, surfaces, lighting, props] = await Promise.all([
     fetch(`${ASSETS}/manifest.json`).then((response) => response.json() as Promise<Manifest>),
     loadSurfaces(maxAnisotropy),
     new HDRLoader().loadAsync(`${ASSETS}/sky/lighting.hdr`),
-    loadBackdrop(`${ASSETS}/sky/backdrop.webp`),
     loadProps(gltf),
   ]);
   surfaces.forEach((set) => Object.values(set).forEach((t: Texture) => keep(t)));
 
-  // ------------------------------------------------------------ sky and sun
+  // ------------------------------------------------------------ winter night
+  const backdrop = buildNightSky();
   lighting.mapping = EquirectangularReflectionMapping;
   backdrop.mapping = EquirectangularReflectionMapping;
   backdrop.colorSpace = SRGBColorSpace;
   keep(lighting);
   keep(backdrop);
   scene.environment = lighting;
+  // Keep the scanned surfaces readable under moonlight without daylight reflections.
+  scene.environmentIntensity = 0.12;
   scene.background = backdrop;
   scene.environmentRotation.y = SKY_TURN;
   scene.backgroundRotation.y = SKY_TURN;
-  scene.fog = new Fog("#dfe7ef", 45, 160);
+  scene.fog = new Fog("#24354b", 38, 145);
 
   const sunDirection = new Vector3(...manifest.sun)
     .applyAxisAngle(new Vector3(0, 1, 0), SKY_TURN)
     .normalize();
-  const sun = new DirectionalLight("#fff3e2", 3.4);
+  const sun = new DirectionalLight("#abcaff", 0.85);
   const focus = new Vector3(-2, 0, -8);
   sun.position.copy(focus).addScaledVector(sunDirection, 50);
   sun.target.position.copy(focus);
@@ -305,6 +293,9 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
 
   // ------------------------------------------------------------ fire
   const fire = buildFire(cabin, keep, surfaces);
+  const interiorGlow = new PointLight("#ffd3a0", 14, 11, 2);
+  interiorGlow.position.set(7.6, 2.5, 0);
+  cabin.add(interiorGlow);
 
   // ------------------------------------------------------------ firs
   const firs = buildFirs(
@@ -316,10 +307,8 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
   scene.add(firs.group);
 
   // ------------------------------------------------------------ MARZIA
-  // The old site followed the system theme; a visitor's choice on the sign wins.
-  let theme: MarziaTheme =
-    readStoredTheme() ??
-    (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  // Start the sign in its night palette; a visitor’s saved choice still wins.
+  let theme: MarziaTheme = readStoredTheme() ?? "dark";
   const marzia = buildMarziaPanel({ theme });
   keep(marzia);
   marzia.panel.userData.kind = "marzia";
@@ -383,22 +372,6 @@ export async function buildScenery({ mobile, maxAnisotropy }: SceneryOptions): P
 
 // ------------------------------------------------------------------ props
 
-const PROP_IDS = [
-  "vintage_electric_kettle",
-  "tea_set_01",
-  "Ottoman_01",
-  "modern_arm_chair_01",
-  "coffee_table_round_01",
-  "dining_chair_02",
-  "hatchet",
-  "wooden_axe",
-  "Lantern_01",
-  "painted_wooden_chair_01",
-  "desk_lamp_arm_01",
-  "book_encyclopedia_set_01",
-  "fir",
-  "fir-lite",
-] as const;
 type PropId = (typeof PROP_IDS)[number];
 
 async function loadProps(loader: GLTFLoader) {

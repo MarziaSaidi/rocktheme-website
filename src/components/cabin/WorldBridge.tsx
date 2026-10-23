@@ -7,8 +7,8 @@ import { bridgeSize, bridgeZoom, WORLD_CAPTURE } from "@/cabin/worldCapture";
 import styles from "./WorldBridge.module.css";
 
 type WorldBridgeProps = Readonly<{
-  /** When the homepage handed over (Date.now()), shared by both pages. */
-  handoffAt: number;
+  /** When the homepage handed over; null for a stationary direct-entry preview. */
+  handoffAt: number | null;
   /** Stop drifting: the live world has taken over at this zoom. */
   frozen?: boolean;
   /** Fade out, once the live world is fully up over it. */
@@ -35,7 +35,8 @@ export function WorldBridge({ handoffAt, frozen = false, leaving = false }: Worl
       const size = bridgeSize(window.innerWidth, window.innerHeight);
       node.style.width = `${size.width}px`;
       node.style.height = `${size.height}px`;
-      node.style.transform = `translate(-50%, -50%) scale(${bridgeZoom(Date.now() - handoffAt)})`;
+      const zoom = handoffAt === null ? 1 : bridgeZoom(Date.now() - handoffAt);
+      node.style.transform = `translate(-50%, -50%) scale(${zoom})`;
     };
     const tick = () => {
       place();
@@ -53,7 +54,15 @@ export function WorldBridge({ handoffAt, frozen = false, leaving = false }: Worl
   return (
     <div className={styles.bridge} data-leaving={leaving ? "true" : "false"} aria-hidden="true">
       {/* eslint-disable-next-line @next/next/no-img-element -- sized by hand to the cabin camera's framing */}
-      <img ref={image} className={styles.image} src={WORLD_CAPTURE.src} alt="" decoding="sync" />
+      <img
+        ref={image}
+        className={styles.image}
+        src={WORLD_CAPTURE.src}
+        alt=""
+        decoding="sync"
+        loading="eager"
+        fetchPriority="high"
+      />
     </div>
   );
 }

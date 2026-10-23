@@ -1,3 +1,5 @@
+import { CABIN_PROP_IDS } from "./assets";
+
 /**
  * The bridge between the homepage and /my-world.
  *
@@ -73,27 +75,26 @@ export function bridgeSize(width: number, height: number) {
 
 let prefetched = false;
 
-/**
- * Warms the browser's cache with the cabin's heavier files once the visitor
- * has found the way in, so the live world is ready sooner after the crossing.
- */
+/** Start real cacheable downloads before the visitor commits to the crossing. */
 export function prefetchCabin() {
   if (prefetched || typeof document === "undefined") return;
   prefetched = true;
-  const hint = (href: string) => {
-    const link = document.createElement("link");
-    link.rel = "prefetch";
-    link.href = href;
-    document.head.appendChild(link);
-  };
-  hint("/assets/cabin/sky/lighting.hdr");
-  hint("/assets/cabin/sky/backdrop.webp");
-  void fetch("/assets/cabin/manifest.json")
-    .then((response) => response.json() as Promise<{ props?: Record<string, { file: string }> }>)
-    .then((manifest) => {
-      Object.values(manifest.props ?? {}).forEach((prop) => hint(`/assets/cabin/${prop.file}`));
-    })
-    .catch(() => {
-      // Only a head start; the world loads them itself regardless.
-    });
+  const assets = [
+    WORLD_CAPTURE.src,
+    "/assets/cabin/manifest.json",
+    "/assets/cabin/sky/lighting.hdr",
+    ...CABIN_PROP_IDS.map((id) => `/assets/cabin/props/${id}.glb`),
+    ...["walls", "roof", "stone", "floor", "snow", "timber"].flatMap((role) =>
+      ["color", "normal", "orm"].map((map) => `/assets/cabin/materials/${role}/${map}.webp`),
+    ),
+  ];
+  for (const url of assets) {
+    void fetch(url, { priority: "low" })
+      .then((response) => {
+        if (response.ok) return response.arrayBuffer();
+      })
+      .catch(() => {
+        // The live loaders retry normally if this optional head start fails.
+      });
+  }
 }

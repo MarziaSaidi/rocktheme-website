@@ -10,7 +10,7 @@
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #e3ebf2;
+  background: #080f1d;
   touch-action: none;
 }
 
@@ -25,7 +25,7 @@
   height: 100%;
   cursor: grab;
   opacity: 0;
-  transition: opacity 1.4s ease;
+  transition: opacity 0.3s ease;
 }
 
 /* The world fades up once it has drawn its first frame. */
@@ -232,4 +232,3 @@
 .stage[data-arrival="capture"] > :not(.host) {
   display: none;
 }
-

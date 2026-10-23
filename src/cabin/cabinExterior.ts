@@ -398,7 +398,7 @@ export function buildCabinExterior({
       cabin.add(light);
     }
   }
-  const spill = new PointLight("#ffc98a", 2.4, 6.5, 2);
+  const spill = new PointLight("#ffc98a", 9, 9, 2);
   spill.position.set(7.2, roofUnderside(5.2) - 0.3, 5.2);
   cabin.add(spill);
 

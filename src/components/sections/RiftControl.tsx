@@ -76,22 +76,31 @@ export function RiftControl() {
     if (warmed.current) return;
     warmed.current = true;
     router.prefetch(MY_WORLD);
-    void import("@/cabin/world");
+    void import("@/cabin/world").catch(() => {
+      // Navigation can retry a failed speculative import.
+    });
     void predecode(WORLD_CAPTURE.src);
     prefetchCabin();
   }, [router]);
 
+  // Seeing the portal gives the cabin the visitor's reading/holding time to load.
+  useEffect(() => {
+    if (rect) warm();
+  }, [rect, warm]);
+
   const engage = useCallback(
     (on: boolean) => {
       if (crossing.current) return;
+      if (on) warm();
       setPhase(on ? "engaged" : "idle");
       setRiftEngaged(on);
-      if (on) warm();
     },
     [warm],
   );
 
   const handOff = useCallback(() => {
+    // Also cover programmatic crossings that did not expose the portal first.
+    warm();
     // The scene holds the world beyond on screen meanwhile, so waiting for
     // the picture to be decoded costs nothing visible.
     const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, 1200));
@@ -99,7 +108,7 @@ export function RiftControl() {
       beginHandoff(Date.now());
       router.push(MY_WORLD);
     });
-  }, [router]);
+  }, [router, warm]);
 
   const goThrough = useCallback(() => {
     if (crossing.current) return;
