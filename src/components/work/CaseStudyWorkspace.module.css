@@ -1,42 +1,58 @@
 /*
- * The case study on black: the evidence lit and floating, the reading column
- * beside it, and the chapters along the bottom.
+ * The case study on black, read by scrolling: the cover first, then every
+ * story in turn, its evidence held in view beside the copy, and the chapters
+ * along the bottom following the reader.
  *
  * Cover: title, what I did, a few facts and the work playing large.
- * Story: the project's mark, the evidence, the reading column.
+ * Story: the evidence, the reading column.
  */
 .workspace {
   --rail-height: 4.5rem;
+  /* One story's height: a screen, less the header and the rail. */
+  --beat-height: max(30rem, calc(100dvh - var(--header-height) - var(--rail-height) - 5.5rem));
   --plane-rim: 0 0 0 1px var(--color-plane-rim);
   --plane-drop: 0 2.5rem 5rem -1.25rem rgb(0 0 0 / 0.9);
 
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 25.5rem);
-  grid-template-rows: auto minmax(0, 1fr) var(--rail-height);
-  grid-template-areas:
-    "head head"
-    "viewer story"
-    "rail rail";
-  column-gap: clamp(2.5rem, 5.3vw, 5.5rem);
-  row-gap: var(--space-8);
   width: min(calc(100vw - var(--layout-gutter) * 2), 96rem);
-  height: calc(100dvh - var(--header-height) - var(--space-6));
-  min-height: 38rem;
   margin-inline: auto;
   color: var(--color-text-primary);
   isolation: isolate;
 }
 
-.workspace[data-mode="cover"] {
+/* The copy scrolls away under the site header, not through its links. */
+.workspace::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--layer-navigation);
+  height: calc(var(--header-height) + var(--space-6));
+  background: linear-gradient(180deg, #000 72%, transparent);
+  pointer-events: none;
+}
+
+.cover {
+  display: grid;
   grid-template-columns: minmax(0, 32rem) minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) var(--rail-height);
+  grid-template-rows: auto auto minmax(0, 1fr);
   grid-template-areas:
     "head viewer"
     "lead viewer"
-    "details viewer"
-    "rail rail";
+    "details viewer";
+  column-gap: clamp(2.5rem, 5.3vw, 5.5rem);
   row-gap: var(--space-8);
+  height: calc(100dvh - var(--header-height) - var(--rail-height) - var(--space-12));
+  min-height: 34rem;
+}
+
+.beat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 25.5rem);
+  grid-template-areas: "viewer story";
+  column-gap: clamp(2.5rem, 5.3vw, 5.5rem);
+  min-height: var(--beat-height);
+  margin-block-start: var(--space-24);
+  scroll-margin-top: calc(var(--header-height) + var(--space-6));
 }
 
 /* ------------------------------------------------------------- head */
@@ -105,7 +121,7 @@
   text-wrap: balance;
 }
 
-.workspace[data-mode="cover"] .title {
+.cover .title {
   max-width: 5.6em;
   margin-block-start: var(--space-4);
   font-size: clamp(3.5rem, 7.6vw, 7rem);
@@ -328,8 +344,16 @@
   min-height: 0;
 }
 
-.workspace[data-mode="cover"] .viewer {
+.cover .viewer {
   justify-content: center;
+}
+
+/* The evidence stays in view while its copy is read. */
+.beat .viewer {
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-6));
+  align-self: start;
+  height: var(--beat-height);
 }
 
 .visualFrame {
@@ -631,18 +655,10 @@
 /* ------------------------------------------------------------- reading */
 
 .story {
-  /*
-   * Positioned so the absolute .srOnly labels scroll and clip with the copy.
-   * Without it they escape to the workspace and stretch the page below it.
-   */
-  --scroll-progress-inset: calc(var(--space-6) / 2);
-
+  /* Positioned so the absolute .srOnly labels stay with the copy. */
   grid-area: story;
   position: relative;
   min-width: 0;
-  min-height: 0;
-  padding-inline-end: var(--space-6);
-  overflow: auto;
 }
 
 /* Each wrapped line rises in turn; --line is counted after the copy wraps. */
@@ -754,14 +770,34 @@
 
 /* ------------------------------------------------------------- the rail */
 
-/* The chapters sit on the horizon; the gold line is the visitor's place in the story. */
+/* The chapters stay along the bottom; the gold line is the visitor's place in the story. */
 .rail {
-  grid-area: rail;
+  position: sticky;
+  bottom: 0;
+  z-index: var(--layer-navigation);
   display: flex;
   gap: var(--space-8);
   align-items: center;
   justify-content: space-between;
   min-width: 0;
+  height: var(--rail-height);
+  margin-block-start: var(--space-12);
+}
+
+/* Black edge to edge behind the rail, and the page fading out just above it. */
+.rail::before,
+.rail::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 -100vw;
+  background: #000;
+  pointer-events: none;
+}
+
+.rail::before {
+  inset: -3rem -100vw 100%;
+  background: linear-gradient(180deg, transparent, #000);
 }
 
 .stageNav {
@@ -907,10 +943,10 @@
 /* ------------------------------------------------------------- tablets */
 
 @media (max-width: 74.99rem) {
-  .workspace {
+  .beat {
     grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
   }
-  .workspace[data-mode="cover"] {
+  .cover {
     grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
   }
   .pagerTitle {
@@ -921,15 +957,33 @@
 /* ------------------------------------------------------------- phones */
 
 @media (max-width: 47.99rem) {
-  .workspace,
-  .workspace[data-mode="cover"] {
+  .workspace {
+    width: 100%;
+    padding: var(--space-4) var(--layout-gutter) 6rem;
+  }
+
+  .cover,
+  .beat {
     display: flex;
     flex-direction: column;
     gap: var(--space-6);
-    width: 100%;
     height: auto;
     min-height: 0;
-    padding: var(--space-4) var(--layout-gutter) 6rem;
+  }
+
+  .beat {
+    margin-block-start: var(--space-16);
+    scroll-margin-top: calc(var(--header-height-phone) + var(--space-4));
+  }
+
+  .beat .viewer {
+    position: static;
+    align-self: stretch;
+    height: auto;
+  }
+
+  .workspace::before {
+    height: calc(var(--header-height-phone) + var(--space-3));
   }
 
   .head {
@@ -940,8 +994,6 @@
   }
   .viewer {
     order: 3;
-    /* Lands clear of the fixed header when a chapter changes. */
-    scroll-margin-top: calc(var(--header-height-phone) + var(--space-4));
   }
   .coverDetails {
     order: 4;
@@ -951,7 +1003,7 @@
     overflow: visible;
   }
 
-  .workspace[data-mode="cover"] .title {
+  .cover .title {
     font-size: clamp(3.25rem, 17vw, 4.25rem);
   }
 
@@ -1040,9 +1092,15 @@
     z-index: var(--layer-navigation);
     gap: 0;
     height: 4rem;
+    margin: 0;
     padding-inline-start: var(--layout-gutter);
     background: linear-gradient(180deg, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.94) 40%);
     border-block-start: 1px solid var(--color-line);
+  }
+
+  .rail::before,
+  .rail::after {
+    display: none;
   }
 
   .stageNav {
@@ -1066,6 +1124,7 @@
 
   .pagerNext,
   .pagerCase {
+    align-items: center;
     justify-content: center;
     min-width: 4rem;
     height: 100%;
@@ -1640,4 +1699,15 @@
   .titleMask {
     animation: none;
   }
+}
+
+/* ===================================================== arriving by scroll */
+
+/*
+ * A story's evidence and copy hold their first frame until the story scrolls
+ * into view (the workspace marks it seen), then arrive as they always have.
+ * Signature titles wait for their own cue (storySignature.ts).
+ */
+.beat:not([data-seen]) :is(.visualFrame, .focus, .caption, .zoomLink, .word) {
+  animation-play-state: paused !important;
 }

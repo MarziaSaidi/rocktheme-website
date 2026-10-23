@@ -2,7 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ActionContent } from "@/components/primitives/ActionContent";
 import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
@@ -10,7 +18,6 @@ import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { sectionAnchors } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
-import { ScrollProgress } from "@/motion/ScrollProgress";
 import type {
   CaseStudyInfo,
   CaseStudyStage,
@@ -22,23 +29,13 @@ import type {
 } from "@/content/projects";
 
 import styles from "./CaseStudyWorkspace.module.css";
-import { prepareStoryTitle, readingSeconds } from "./storySignature";
+import { prepareStoryTitle } from "./storySignature";
 
 type CaseStudyWorkspaceProps = Readonly<{
   project: Project;
   stages: readonly CaseStudyStage[];
   /** The next case study, offered at the end of the rail. */
   next?: Readonly<{ title: string; href: string }>;
-}>;
-
-/** Seconds a story stays up when its content does not say otherwise. */
-const DEFAULT_STORY_SECONDS = 6;
-
-type MediaCallbacks = Readonly<{
-  /** A video with controls started or stopped playing. */
-  onPlayingChange?: (playing: boolean) => void;
-  /** A looping video reported how long one pass takes. */
-  onDuration?: (seconds: number) => void;
 }>;
 
 type VideoVisual = Extract<StoryVisual, { type: "video" }>;
@@ -54,12 +51,7 @@ const clock = (seconds: number) => {
  * screen itself (or the button) plays and pauses. On the cover it loops
  * silently; in a story it waits for the reader.
  */
-function StoryVideo({
-  visual,
-  loop = false,
-  onPlayingChange,
-  onDuration,
-}: { visual: VideoVisual; loop?: boolean } & MediaCallbacks) {
+function StoryVideo({ visual, loop = false }: { visual: VideoVisual; loop?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const silent = loop || visual.playback === "silent-loop";
   const [playing, setPlaying] = useState(false);
@@ -141,24 +133,12 @@ function StoryVideo({
           title={visual.media.title}
           src={visual.media.src}
           onClick={toggle}
-          onPlay={() => {
-            setPlaying(true);
-            if (!silent) onPlayingChange?.(true);
-          }}
-          onPause={() => {
-            setPlaying(false);
-            if (!silent) onPlayingChange?.(false);
-          }}
-          onEnded={() => {
-            setPlaying(false);
-            if (!silent) onPlayingChange?.(false);
-          }}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => setPlaying(false)}
           onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
           onDurationChange={(event) => setDuration(event.currentTarget.duration)}
-          onLoadedMetadata={(event) => {
-            setDuration(event.currentTarget.duration);
-            if (silent) onDuration?.(event.currentTarget.duration);
-          }}
+          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
         />
       </div>
     </figure>
@@ -182,10 +162,12 @@ function EvidenceImage({
   media,
   focus,
   sizes,
+  priority = false,
 }: {
   media: ImageMedia;
   focus?: readonly FocusRegion[];
   sizes: string;
+  priority?: boolean;
 }) {
   const plane = {
     "--ar": `${media.width} / ${media.height}`,
@@ -201,7 +183,7 @@ function EvidenceImage({
           width={media.width}
           height={media.height}
           sizes={sizes}
-          priority
+          priority={priority}
         />
         {focus?.length ? (
           <svg
@@ -248,7 +230,7 @@ function EvidenceImage({
   );
 }
 
-function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaCallbacks) {
+function StoryVisualView({ visual }: { visual?: StoryVisual }) {
   if (!visual) {
     return (
       <p className={styles.textOnly}>This stage is told through its decisions and outcomes.</p>
@@ -256,7 +238,7 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
   }
 
   if (visual.type === "video") {
-    return <StoryVideo visual={visual} {...media} />;
+    return <StoryVideo visual={visual} />;
   }
 
   if (visual.type === "comparison") {
@@ -481,11 +463,7 @@ function CoverFacts({ project, info }: { project: Project; info?: CaseStudyInfo 
 }
 
 /** The cover's media: the work playing large, with any screens that stand behind it. */
-function CoverMedia({
-  visual,
-  flanks,
-  ...media
-}: { visual?: StoryVisual; flanks?: readonly ImageMedia[] } & MediaCallbacks) {
+function CoverMedia({ visual, flanks }: { visual?: StoryVisual; flanks?: readonly ImageMedia[] }) {
   return (
     <div className={styles.coverMedia} data-flanked={flanks?.length ? "" : undefined}>
       {flanks?.slice(0, 2).map((flank, index) => (
@@ -500,198 +478,316 @@ function CoverMedia({
         </span>
       ))}
       {visual?.type === "video" ? (
-        <StoryVideo visual={visual} loop {...media} />
+        <StoryVideo visual={visual} loop />
       ) : visual?.type === "image" ? (
-        <EvidenceImage media={visual.media} sizes="(max-width: 767px) 92vw, 50vw" />
+        <EvidenceImage media={visual.media} sizes="(max-width: 767px) 92vw, 50vw" priority />
       ) : null}
     </div>
   );
 }
 
-type HistoryMode = "push" | "replace" | "none";
+/**
+ * One story: its evidence, held in view, beside the copy that reads it.
+ * The copy waits unseen until the story scrolls in, then arrives line by line.
+ */
+function StoryBeat({
+  story,
+  stage,
+  signature,
+}: {
+  story: CaseStudyStory;
+  stage: CaseStudyStage;
+  signature?: Project["caseStudy"]["titleSignature"];
+}) {
+  const storyRef = useRef<HTMLDivElement>(null);
+  const emphasis = story.emphasis;
+  const visual = story.visual;
+
+  /*
+   * Numbers the wrapped lines of the copy so they rise one after another.
+   * Runs before paint, so no word is ever seen before its line's turn. The
+   * step shrinks for long copy so the last line never trails far behind.
+   */
+  useLayoutEffect(() => {
+    const copy = storyRef.current;
+    const words = copy?.querySelectorAll<HTMLElement>("[data-word]");
+    if (!copy || !words?.length) return;
+    let line = -1;
+    let lineTop = -Infinity;
+    for (const word of words) {
+      const top = word.getBoundingClientRect().top;
+      if (top > lineTop + 2) {
+        line += 1;
+        lineTop = top;
+      }
+      word.style.setProperty("--line", String(line));
+    }
+    copy.style.setProperty("--line-step", `${Math.min(70, 900 / Math.max(1, line))}ms`);
+    // Then the title's signature, measured against those lines, still before paint.
+    return prepareStoryTitle(copy, signature, emphasis);
+  }, [signature, emphasis]);
+
+  return (
+    <section
+      id={`${stage.id}-${story.id}`}
+      className={styles.beat}
+      data-beat=""
+      aria-label={`${stage.label}: ${story.title}`}
+    >
+      <div className={styles.viewer}>
+        <div
+          className={styles.visualFrame}
+          data-board={
+            visual && ["palette", "typography", "assets", "spacing"].includes(visual.type)
+              ? "true"
+              : undefined
+          }
+          data-ar={visual?.type === "image" ? "" : undefined}
+          style={
+            visual?.type === "image"
+              ? ({ "--frame-ar": visual.media.width / visual.media.height } as React.CSSProperties)
+              : undefined
+          }
+        >
+          <StoryVisualView visual={visual} />
+        </div>
+        {story.caption ? <p className={styles.caption}>{story.caption}</p> : null}
+        {visual?.type === "image" && visual.zoomable ? (
+          <a
+            className={styles.zoomLink}
+            href={visual.media.src}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <WeightLabel text="Open full size" /> <SwapGlyph direction="up-right">↗</SwapGlyph>
+          </a>
+        ) : null}
+      </div>
+
+      <div ref={storyRef} className={styles.story}>
+        <p className={styles.eyebrow}>
+          <Lines text={story.eyebrow ?? stage.label} />
+        </p>
+        <h2>
+          <Lines text={story.title} />
+        </h2>
+        <p className={styles.storyDescription}>
+          <Lines text={story.description} />
+        </p>
+        {story.supportingPoints?.length ? (
+          <ul className={styles.points}>
+            {story.supportingPoints.slice(0, 4).map((point) => (
+              <li key={point}>
+                <Lines text={point} />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {(
+          [
+            ["Decision", story.decision],
+            ["Constraint", story.constraint],
+            ["Outcome", story.outcome],
+          ] as const
+        ).map(([label, text]) =>
+          text ? (
+            <p key={label} className={styles.detail}>
+              <strong>
+                <Lines text={label} />
+              </strong>
+              <Lines text={text} />
+            </p>
+          ) : null,
+        )}
+        {story.metric ? (
+          <p className={styles.metric}>
+            <strong>
+              <Lines text={story.metric.value} />
+            </strong>
+            <Lines text={story.metric.label} />
+          </p>
+        ) : null}
+        {story.quote ? (
+          <blockquote>
+            <Lines text={story.quote.text} />
+            {story.quote.attribution ? (
+              <cite>
+                <Lines text={story.quote.attribution} />
+              </cite>
+            ) : null}
+          </blockquote>
+        ) : null}
+        {story.supportingVideo ? (
+          <a
+            className={styles.supportingVideo}
+            href={story.supportingVideo.media.src}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
+          </a>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+/** A place in the case study: the cover, or one story of one stage. */
+type Place = Readonly<{
+  stageIndex: number;
+  /** Within the stage; the first stage counts its cover as story 0. */
+  storyIndex: number;
+  title?: string;
+}>;
+
+/** Where on screen a story counts as the one being read. */
+const READING_LINE = 0.45;
 
 export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStudyWorkspaceProps) {
-  const initialId = stages[0]?.id ?? "";
-  const [stageId, setStageId] = useState(initialId);
-  const [storyIndex, setStoryIndex] = useState(0);
-  const [mobile, setMobile] = useState(false);
-  const [documentHidden, setDocumentHidden] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  /*
-   * Autoplay holds only for deliberate reasons: reading the copy, pressing
-   * and holding the visual, moving through by keyboard, or watching a video.
-   * Resting the mouse over the visual (where the arrows are) does not.
-   */
-  const [reading, setReading] = useState(false);
-  const [holding, setHolding] = useState(false);
-  const [keyboardFocus, setKeyboardFocus] = useState(false);
-  const [videoPlaying, setVideoPlaying] = useState(false);
-  const [mediaSeconds, setMediaSeconds] = useState<{ key: string; seconds: number } | null>(null);
+  const [current, setCurrent] = useState(0);
+  /** Set once a link's own stage has been honoured, so the address is not overwritten first. */
+  const [arrived, setArrived] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef<HTMLSpanElement>(null);
-  const viewerRef = useRef<HTMLElement>(null);
-  const storyRef = useRef<HTMLElement>(null);
-  const touchStart = useRef<number | null>(null);
-  const elapsedMs = useRef(0);
-  const stageIndex = Math.max(
-    0,
-    stages.findIndex((item) => item.id === stageId),
-  );
-  const stage = stages[stageIndex];
+  const titleSignature = project.caseStudy.titleSignature;
+
   /*
-   * The first stage opens on a cover: the title, what I did, a few facts and
-   * the work playing large. It is that stage's first beat (null), ahead of its
-   * stories, so the arrows, keys and rail treat it like any other story.
+   * The whole case study as one run of places, top to bottom: the cover, then
+   * every story of every stage. The rail, the pager and the keys all move
+   * along it; scrolling is what moves the reader.
    */
-  const storiesOf = useCallback(
-    (index: number): readonly (CaseStudyStory | null)[] => {
-      const target = stages[index];
-      if (!target) return [];
-      return index === 0 ? [null, ...target.stories] : target.stories;
-    },
+  const places = useMemo<readonly Place[]>(
+    () => [
+      { stageIndex: 0, storyIndex: 0 },
+      ...stages.flatMap((stage, stageIndex) =>
+        stage.stories.map((story, index) => ({
+          stageIndex,
+          storyIndex: stageIndex === 0 ? index + 1 : index,
+          title: story.title,
+        })),
+      ),
+    ],
     [stages],
   );
-  const stories = storiesOf(stageIndex);
-  const story = storyIndex < stories.length ? stories[storyIndex] : stories[0];
-  const isCover = story === null;
-  const storyCount = stories.length;
-  const storyKey = `${stage?.id}-${story?.id ?? "cover"}`;
-  const titleSignature = project.caseStudy.titleSignature;
-  const emphasis = story?.emphasis;
-  const atStart = stageIndex === 0 && storyIndex === 0;
-  const atEnd = stageIndex === stages.length - 1 && storyIndex >= storyCount - 1;
+  const place = places[Math.min(current, places.length - 1)];
+  const stage = stages[place?.stageIndex ?? 0];
+  const stageId = stage?.id ?? "";
+  const storyCount = (stage?.stories.length ?? 0) + (place?.stageIndex === 0 ? 1 : 0);
+  const atStart = current === 0;
+  const atEnd = current >= places.length - 1;
+  const upcoming = places[current + 1]?.title;
 
-  const loopSeconds = mediaSeconds?.key === storyKey ? mediaSeconds.seconds : undefined;
-  /*
-   * An autoplaying story stays up at least as long as it takes to read
-   * (docs/typography-motion-system.md, §11); a shorter authored or video
-   * duration is raised to it.
-   */
-  const readingFloor = story
-    ? readingSeconds([
-        story.title,
-        story.description,
-        ...(story.supportingPoints ?? []),
-        story.decision,
-        story.constraint,
-        story.outcome,
-        story.metric?.label,
-        story.quote?.text,
-      ])
-    : readingSeconds([project.shortDescription]);
-  const durationMs =
-    Math.max(
-      readingFloor,
-      story?.durationSeconds ??
-        (loopSeconds ? Math.min(30, Math.max(4, loopSeconds)) : DEFAULT_STORY_SECONDS),
-    ) * 1000;
-  const autoplay =
-    project.caseStudy.storyPlayback !== "manual" && !mobile && !reducedMotion && !atEnd;
-  const running =
-    autoplay && !documentHidden && !reading && !holding && !keyboardFocus && !videoPlaying;
-
-  const show = useCallback((nextId: string, nextIndex: number, mode: HistoryMode) => {
-    setStageId(nextId);
-    setStoryIndex(nextIndex);
-    setVideoPlaying(false);
-    if (mode === "push") history.pushState({ stage: nextId }, "", `#${nextId}`);
-    if (mode === "replace") history.replaceState({ stage: nextId }, "", `#${nextId}`);
-  }, []);
-
-  /**
-   * One story on or back. At either end of a stage it carries into the
-   * neighbouring stage, so the arrows, keys and autoplay run the whole case
-   * study rather than stopping at every stage boundary.
-   */
-  const step = useCallback(
-    (direction: 1 | -1, mode: HistoryMode) => {
-      const within = storyIndex + direction;
-      if (within >= 0 && within < storyCount) {
-        setStoryIndex(within);
-        setVideoPlaying(false);
-        return;
-      }
-      const target = stages[stageIndex + direction];
-      if (!target) return;
-      show(target.id, direction > 0 ? 0 : storiesOf(stageIndex + direction).length - 1, mode);
-    },
-    [show, stageIndex, stages, storiesOf, storyCount, storyIndex],
+  /** The cover and each story, in reading order. */
+  const placeElements = useCallback(
+    () => [
+      ...(articleRef.current?.querySelectorAll<HTMLElement>("[data-cover], [data-beat]") ?? []),
+    ],
+    [],
   );
-  const previous = useCallback(() => step(-1, "push"), [step]);
-  const next = useCallback(() => step(1, "push"), [step]);
-  const advanceRef = useRef(() => {});
-  useEffect(() => {
-    advanceRef.current = () => step(1, "replace");
-  }, [step]);
 
+  const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const scrollToPlace = useCallback(
+    (index: number) => {
+      const target = placeElements()[index];
+      if (!target) return;
+      const behavior: ScrollBehavior = reduced() ? "auto" : "smooth";
+      if (index === 0) scrollTo({ top: 0, behavior });
+      else target.scrollIntoView({ block: "start", behavior });
+    },
+    [placeElements],
+  );
+
+  /** The first place of a stage. */
+  const placeOfStage = useCallback(
+    (id: string) => {
+      const index = stages.findIndex((item) => item.id === id);
+      return index <= 0 ? 0 : places.findIndex((item) => item.stageIndex === index);
+    },
+    [places, stages],
+  );
+
+  // Follows the reader: the story crossing the reading line is the current one.
   useEffect(() => {
-    const media = matchMedia("(max-width: 47.99rem)");
-    const motion = matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setMobile(media.matches);
-    const syncMotion = () => setReducedMotion(motion.matches);
-    sync();
-    syncMotion();
-    media.addEventListener("change", sync);
-    motion.addEventListener("change", syncMotion);
-    const fromHash = location.hash.slice(1);
-    const initialFrame = requestAnimationFrame(() => {
-      if (stages.some((item) => item.id === fromHash)) show(fromHash, 0, "none");
-      else if (initialId) history.replaceState({ stage: initialId }, "", `#${initialId}`);
-    });
-    const pop = () => {
-      const id = location.hash.slice(1);
-      if (stages.some((item) => item.id === id)) show(id, 0, "none");
-      else if (!id && initialId) show(initialId, 0, "none");
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const elements = placeElements();
+      const line = innerHeight * READING_LINE;
+      let index = 0;
+      elements.forEach((element, at) => {
+        if (element.getBoundingClientRect().top <= line) index = at;
+      });
+      // At the very bottom the last story is current, however short it is.
+      if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) {
+        index = elements.length - 1;
+      }
+      setCurrent(index);
     };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      removeEventListener("scroll", schedule);
+      removeEventListener("resize", schedule);
+    };
+  }, [placeElements]);
+
+  // Each story's copy and evidence arrive the first time it scrolls into view.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          (entry.target as HTMLElement).dataset.seen = "";
+          observer.unobserve(entry.target);
+        }
+      },
+      { rootMargin: "0px 0px -15% 0px" },
+    );
+    placeElements().forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [placeElements]);
+
+  // The address names the stage being read, without adding history as it scrolls.
+  useEffect(() => {
+    if (arrived && stageId && location.hash.slice(1) !== stageId) {
+      history.replaceState({ stage: stageId }, "", `#${stageId}`);
+    }
+  }, [arrived, stageId]);
+
+  // A link to a stage opens on it; back and forward return to theirs.
+  useEffect(() => {
+    const go = (smooth: boolean) => {
+      const id = location.hash.slice(1);
+      if (!stages.some((item) => item.id === id)) return;
+      const index = placeOfStage(id);
+      const target = placeElements()[index];
+      if (!smooth || reduced()) {
+        if (index === 0) scrollTo({ top: 0 });
+        else target?.scrollIntoView({ block: "start" });
+      } else scrollToPlace(index);
+    };
+    const initialFrame = requestAnimationFrame(() => {
+      go(false);
+      setArrived(true);
+    });
+    const pop = () => go(true);
     addEventListener("popstate", pop);
     addEventListener("hashchange", pop);
     return () => {
-      media.removeEventListener("change", sync);
-      motion.removeEventListener("change", syncMotion);
       cancelAnimationFrame(initialFrame);
       removeEventListener("popstate", pop);
       removeEventListener("hashchange", pop);
     };
-  }, [show, initialId, stages]);
+  }, [placeElements, placeOfStage, scrollToPlace, stages]);
 
-  // A new story starts its clock from zero.
-  useEffect(() => {
-    elapsedMs.current = 0;
-  }, [storyKey]);
-
-  /*
-   * The autoplay clock. The same frame loop that counts the time paints the
-   * progress segment, so the bar and the advance can never disagree, and a
-   * pause keeps exactly the time already spent.
-   */
-  useEffect(() => {
-    const bar = progressRef.current;
-    const paint = () =>
-      bar?.style.setProperty(
-        "--story-progress",
-        String(Math.min(1, elapsedMs.current / durationMs)),
-      );
-    paint();
-    if (!running) return;
-    let last = performance.now();
-    let frame = requestAnimationFrame(function tick(now) {
-      // Behind the entry doorway the page is inert; the clock waits for it.
-      if (!articleRef.current?.closest("[inert]")) elapsedMs.current += now - last;
-      last = now;
-      paint();
-      if (elapsedMs.current >= durationMs) advanceRef.current();
-      else frame = requestAnimationFrame(tick);
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [durationMs, running, storyKey]);
-
-  useEffect(() => {
-    const visibility = () => setDocumentHidden(document.hidden);
-    visibility();
-    document.addEventListener("visibilitychange", visibility);
-    return () => document.removeEventListener("visibilitychange", visibility);
-  }, []);
+  const previous = useCallback(() => scrollToPlace(current - 1), [current, scrollToPlace]);
+  const next = useCallback(() => scrollToPlace(current + 1), [current, scrollToPlace]);
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -718,22 +814,22 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
     if (!nav || !selected) return;
     nav.scrollTo({
       left: selected.offsetLeft - (nav.clientWidth - selected.clientWidth) / 2,
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      behavior: reduced() ? "instant" : "smooth",
     });
-  }, [stageId, mobile]);
+  }, [stageId]);
 
   // Moves the stage indicator onto the selected stage, and follows resizes.
   useLayoutEffect(() => {
     const nav = navRef.current;
     const selected = nav?.querySelector<HTMLElement>(`[data-stage-id="${stageId}"]`);
     if (!nav || !selected) return;
-    const place = () => {
+    const position = () => {
       nav.style.setProperty("--indicator-x", `${selected.offsetLeft}px`);
       nav.style.setProperty("--indicator-width", `${selected.offsetWidth}px`);
     };
-    place();
+    position();
     const frame = requestAnimationFrame(() => nav.setAttribute("data-indicator", "ready"));
-    const observer = new ResizeObserver(place);
+    const observer = new ResizeObserver(position);
     observer.observe(nav);
     return () => {
       cancelAnimationFrame(frame);
@@ -741,250 +837,76 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
     };
   }, [stageId]);
 
-  /*
-   * Numbers the wrapped lines of the copy so they rise one after another.
-   * Runs before paint, so no word is ever seen before its line's turn. The
-   * step shrinks for long copy so the last line never trails far behind.
-   */
-  useLayoutEffect(() => {
-    const words = storyRef.current?.querySelectorAll<HTMLElement>("[data-word]");
-    if (!words?.length) return;
-    let line = -1;
-    let lineTop = -Infinity;
-    for (const word of words) {
-      const top = word.getBoundingClientRect().top;
-      if (top > lineTop + 2) {
-        line += 1;
-        lineTop = top;
-      }
-      word.style.setProperty("--line", String(line));
-    }
-    const step = Math.min(70, 900 / Math.max(1, line));
-    storyRef.current?.style.setProperty("--line-step", `${step}ms`);
-    // Then the title's signature, measured against those lines, still before paint.
-    return storyRef.current
-      ? prepareStoryTitle(storyRef.current, titleSignature, emphasis)
-      : undefined;
-  }, [storyKey, titleSignature, emphasis]);
-
-  const releaseHold = () => setHolding(false);
-
-  if (!stage || story === undefined) return null;
+  if (!stage || !place) return null;
   const info = project.caseStudy.info;
-  const upcoming =
-    storyIndex + 1 < storyCount
-      ? stories[storyIndex + 1]?.title
-      : storiesOf(stageIndex + 1)[0]?.title;
-  const mediaCallbacks: MediaCallbacks = {
-    onPlayingChange: setVideoPlaying,
-    onDuration: (seconds) => {
-      if (Number.isFinite(seconds) && seconds > 0) setMediaSeconds({ key: storyKey, seconds });
-    },
-  };
 
   return (
     <article
       ref={articleRef}
       className={styles.workspace}
-      data-mode={isCover ? "cover" : "story"}
       aria-label={`${project.title} case study`}
-      onFocusCapture={(event) => {
-        if ((event.target as Element).matches(":focus-visible")) setKeyboardFocus(true);
-      }}
-      onBlurCapture={() => setKeyboardFocus(false)}
     >
-      <header className={styles.head}>
-        <Link className={styles.back} href={`/#${sectionAnchors["selected-work"]}`}>
-          <SwapGlyph direction="left" className={styles.backGlyph}>
-            <ArrowGlyph direction="left" />
-          </SwapGlyph>
-          <WeightLabel text={siteContent.work.displayHeading} />
-        </Link>
-        <h1 className={styles.title}>
-          <span className={styles.titleMask}>
-            <span className={styles.titleInner}>{project.title}</span>
-          </span>
-        </h1>
-      </header>
-
-      {isCover ? (
-        <>
-          <p className={styles.coverLead}>{project.shortDescription}</p>
-          <div className={styles.coverDetails}>
-            <CoverFacts project={project} info={info} />
-            {info?.externalUrl ? (
-              <a
-                className={styles.coverAction}
-                href={info.externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-action-button=""
-                data-cursor="action"
-              >
-                <ActionContent text={info.externalLabel ?? "View live project"} arrow="↗" />
-              </a>
-            ) : null}
-          </div>
-        </>
-      ) : (
-        <section
-          ref={storyRef}
-          className={styles.story}
-          aria-live="polite"
-          key={`copy-${storyKey}`}
-          onMouseEnter={() => setReading(true)}
-          onMouseLeave={() => setReading(false)}
-        >
-          <p className={styles.eyebrow}>
-            <Lines text={story.eyebrow ?? stage.label} />
-          </p>
-          <h2>
-            <Lines text={story.title} />
-          </h2>
-          <p className={styles.storyDescription}>
-            <Lines text={story.description} />
-          </p>
-          {story.supportingPoints?.length ? (
-            <ul className={styles.points}>
-              {story.supportingPoints.slice(0, 4).map((point) => (
-                <li key={point}>
-                  <Lines text={point} />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {(
-            [
-              ["Decision", story.decision],
-              ["Constraint", story.constraint],
-              ["Outcome", story.outcome],
-            ] as const
-          ).map(([label, text]) =>
-            text ? (
-              <p key={label} className={styles.detail}>
-                <strong>
-                  <Lines text={label} />
-                </strong>
-                <Lines text={text} />
-              </p>
-            ) : null,
-          )}
-          {story.metric ? (
-            <p className={styles.metric}>
-              <strong>
-                <Lines text={story.metric.value} />
-              </strong>
-              <Lines text={story.metric.label} />
-            </p>
-          ) : null}
-          {story.quote ? (
-            <blockquote>
-              <Lines text={story.quote.text} />
-              {story.quote.attribution ? (
-                <cite>
-                  <Lines text={story.quote.attribution} />
-                </cite>
-              ) : null}
-            </blockquote>
-          ) : null}
-          {story.supportingVideo ? (
+      <section className={styles.cover} data-cover="" data-seen="" aria-label={project.title}>
+        <header className={styles.head}>
+          <Link className={styles.back} href={`/#${sectionAnchors["selected-work"]}`}>
+            <SwapGlyph direction="left" className={styles.backGlyph}>
+              <ArrowGlyph direction="left" />
+            </SwapGlyph>
+            <WeightLabel text={siteContent.work.displayHeading} />
+          </Link>
+          <h1 className={styles.title}>
+            <span className={styles.titleMask}>
+              <span className={styles.titleInner}>{project.title}</span>
+            </span>
+          </h1>
+        </header>
+        <p className={styles.coverLead}>{project.shortDescription}</p>
+        <div className={styles.coverDetails}>
+          <CoverFacts project={project} info={info} />
+          {info?.externalUrl ? (
             <a
-              className={styles.supportingVideo}
-              href={story.supportingVideo.media.src}
+              className={styles.coverAction}
+              href={info.externalUrl}
               target="_blank"
               rel="noopener noreferrer"
+              data-action-button=""
+              data-cursor="action"
             >
-              <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
+              <ActionContent text={info.externalLabel ?? "View live project"} arrow="↗" />
             </a>
           ) : null}
-          <ScrollProgress variant="panel" />
-        </section>
-      )}
-
-      <section
-        ref={viewerRef}
-        className={styles.viewer}
-        aria-label={isCover ? project.title : `${stage.label}: ${story.title}`}
-        onTouchStart={(event) => {
-          touchStart.current = event.touches[0]?.clientX ?? null;
-        }}
-        onTouchEnd={(event) => {
-          const end = event.changedTouches[0]?.clientX;
-          if (touchStart.current !== null && end !== undefined) {
-            const distance = end - touchStart.current;
-            if (Math.abs(distance) > 48) {
-              if (distance < 0) next();
-              else previous();
-            }
-          }
-          touchStart.current = null;
-        }}
-      >
-        {isCover ? (
+        </div>
+        <div className={styles.viewer}>
           <CoverMedia
             visual={stages[0]?.stories[0]?.visual}
             flanks={project.caseStudy.coverFlanks}
-            {...mediaCallbacks}
           />
-        ) : (
-          <div
-            className={styles.visualFrame}
-            data-board={
-              story.visual &&
-              ["palette", "typography", "assets", "spacing"].includes(story.visual.type)
-                ? "true"
-                : undefined
-            }
-            data-ar={story.visual?.type === "image" ? "" : undefined}
-            style={
-              story.visual?.type === "image"
-                ? ({
-                    "--frame-ar": story.visual.media.width / story.visual.media.height,
-                  } as React.CSSProperties)
-                : undefined
-            }
-            key={storyKey}
-            onPointerDown={(event) => {
-              if (!(event.target as Element).closest("button, a, video")) setHolding(true);
-            }}
-            onPointerUp={releaseHold}
-            onPointerCancel={releaseHold}
-            onPointerLeave={releaseHold}
-          >
-            <StoryVisualView visual={story.visual} {...mediaCallbacks} />
-          </div>
-        )}
-        {!isCover && story.caption ? (
-          <p key={`caption-${storyKey}`} className={styles.caption}>
-            {story.caption}
-          </p>
-        ) : null}
-        {!isCover && story.visual?.type === "image" && story.visual.zoomable ? (
-          <a
-            key={`zoom-${storyKey}`}
-            className={styles.zoomLink}
-            href={story.visual.media.src}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <WeightLabel text="Open full size" /> <SwapGlyph direction="up-right">↗</SwapGlyph>
-          </a>
-        ) : null}
+        </div>
       </section>
+
+      {stages.map((item) => (
+        <div key={item.id} id={item.id} className={styles.chapter} data-stage-id={item.id}>
+          {item.stories.map((story) => (
+            <StoryBeat key={story.id} story={story} stage={item} signature={titleSignature} />
+          ))}
+        </div>
+      ))}
 
       <nav className={styles.rail} aria-label="Case study stages">
         <div ref={navRef} className={styles.stageNav}>
           <span
-            ref={progressRef}
             className={styles.stageIndicator}
-            data-autoplay={autoplay ? "on" : "off"}
-            aria-label={`Story ${storyIndex + 1} of ${storyCount}`}
+            aria-label={`Story ${place.storyIndex + 1} of ${storyCount}`}
           >
-            {stories.map((item, index) => (
+            {Array.from({ length: storyCount }, (_, index) => (
               <span
-                key={item?.id ?? "cover"}
+                key={index}
                 data-state={
-                  index < storyIndex ? "past" : index === storyIndex ? "current" : "future"
+                  index < place.storyIndex
+                    ? "past"
+                    : index === place.storyIndex
+                      ? "current"
+                      : "future"
                 }
               />
             ))}
@@ -992,20 +914,15 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
           {stages.map((item, index) => (
             <button
               key={item.id}
+              type="button"
               data-stage-id={item.id}
               style={{ "--i": index } as React.CSSProperties}
               aria-current={item.id === stage.id ? "step" : undefined}
               onClick={() => {
-                if (item.id !== stage.id) show(item.id, 0, "push");
-                // On a phone the reader may be deep in the copy; bring the new
-                // stage's visual back into view.
-                const viewer = viewerRef.current;
-                if (mobile && viewer && viewer.getBoundingClientRect().top < 0) {
-                  viewer.scrollIntoView({
-                    block: "start",
-                    behavior: reducedMotion ? "auto" : "smooth",
-                  });
+                if (location.hash.slice(1) !== item.id) {
+                  history.pushState({ stage: item.id }, "", `#${item.id}`);
                 }
+                scrollToPlace(placeOfStage(item.id));
               }}
             >
               {item.label}

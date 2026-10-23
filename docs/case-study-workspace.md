@@ -4,7 +4,7 @@
 
 The `/work/[slug]` route remains a statically generated Next.js App Router page. It loads one project record on the server, resolves its stages, and passes serializable content into a focused client component.
 
-- `CaseStudyWorkspace` owns stage selection, story selection, timers, keyboard input, touch input, pausing, and URL hash state.
+- `CaseStudyWorkspace` lays the cover and every story out as one scrolling page, follows the reader's place for the chapter rail, and keeps the URL hash on the stage being read.
 - `StoryVisualView` renders images, videos, labeled screen sequences, image groups, code artifacts, and before/after comparisons without knowing any project names.
 - `ProjectFacts` filters optional metadata before rendering, so missing values never leave empty labels.
 - `getCaseStudyStages` returns authored stages unchanged. It also adapts the original block records while they are migrated.
@@ -72,16 +72,18 @@ Set `zoomable: true` on a wide image to provide a full-size link beneath the vie
 
 ## Story behavior
 
-By default, desktop stories advance after six seconds unless a story supplies `durationSeconds`. The clock pauses while reading the copy, holding the visual, using keyboard focus, playing controlled video, or when the document is hidden. Progress can carry into the next stage.
+The case study reads top to bottom: the cover, then every story of every stage. On desktop each story's evidence stays in view beside its copy; on phones the evidence sits above the copy. A story's copy and evidence arrive the first time it scrolls into view.
 
-Set `caseStudy.storyPlayback: "manual"` to disable the clock for a project. Previous/next buttons, stage navigation, keyboard arrows, and touch navigation remain available. This is used for Quill & Pigeon so readers can inspect the evidence at their own pace.
+The chapter rail stays along the bottom and follows the reader. Its gold segments mark the story being read within the current stage. Choosing a stage scrolls to it; the previous and next buttons and the left and right arrow keys scroll one story back or on. At the end of the last story the rail offers the next case study.
+
+`caseStudy.storyPlayback` is no longer read; nothing advances on a timer.
 
 `caseStudy.info.timelineLabel` optionally clarifies what a timeline represents (for example, "Internship"); other projects default to "Timeline".
 
-Mobile stories never auto-advance. People can tap the left or right side, swipe, or use a keyboard. Stage navigation scrolls horizontally when labels do not fit.
+Stage navigation scrolls horizontally when labels do not fit.
 
-Reduced-motion mode disables automatic progression and content transitions.
+Reduced-motion mode scrolls without smoothing and shows content without transitions.
 
 ## Direct links
 
-The selected stage is stored as a clean URL hash, for example `/work/project-slug#context`. Stage changes use browser history, and back or forward navigation restores the stage.
+The stage being read is stored as a clean URL hash, for example `/work/project-slug#context`, and a link with a hash opens on that stage. Scrolling replaces the hash without adding history; choosing a stage in the rail adds a history entry, so back and forward return to it.
