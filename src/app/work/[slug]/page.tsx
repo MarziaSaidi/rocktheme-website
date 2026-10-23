@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
-import { SwapGlyph } from "@/components/primitives/SwapGlyph";
-import { WeightLabel } from "@/components/primitives/WeightLabel";
 import { CaseStudyWorkspace } from "@/components/work/CaseStudyWorkspace";
-import { pageLandmarkIds, sectionAnchors } from "@/config/sections";
+import { pageLandmarkIds } from "@/config/sections";
 import {
   getCaseStudyStages,
   getNextProject,
@@ -14,7 +10,6 @@ import {
   getProjectRoute,
   getProjectStaticParams,
 } from "@/content/projects";
-import { siteContent } from "@/content/site/siteContent";
 
 import styles from "./page.module.css";
 
@@ -59,24 +54,15 @@ export default async function CaseStudyPage({ params }: CaseStudyPageProps) {
 
   return (
     <main id={pageLandmarkIds.main} className={styles.page} data-case-study-page="">
-      <CaseStudyWorkspace project={project} stages={getCaseStudyStages(project)} />
-      <nav className={styles.back} aria-label="Case studies">
-        <Link className={styles.backLink} href={`/#${sectionAnchors["selected-work"]}`}>
-          <SwapGlyph direction="left" className={styles.backArrow}>
-            <ArrowGlyph direction="left" />
-          </SwapGlyph>
-          <WeightLabel text={siteContent.work.displayHeading} />
-        </Link>
-        {next.slug !== project.slug ? (
-          <Link className={styles.backLink} href={getProjectRoute(next)}>
-            <span className={styles.nextLabel}>Next case study</span>{" "}
-            {next.title}
-            <SwapGlyph direction="right" className={styles.backArrow}>
-              <ArrowGlyph direction="right" />
-            </SwapGlyph>
-          </Link>
-        ) : null}
-      </nav>
+      <CaseStudyWorkspace
+        project={project}
+        stages={getCaseStudyStages(project)}
+        next={
+          next.slug !== project.slug
+            ? { title: next.title, href: getProjectRoute(next) }
+            : undefined
+        }
+      />
     </main>
   );
 }

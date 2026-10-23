@@ -214,18 +214,42 @@ export type CaseStudyInfo = Readonly<{
   externalLabel?: string;
 }>;
 
+/** A part of an image the story's copy names, in percent of the image. */
+export type FocusRegion = Readonly<{ x: number; y: number; width: number; height: number }>;
+
+/**
+ * A still of the world at the project's Selected Work station, behind its case
+ * study. Framings are [x %, y %, scale] of the still: the cover, the first
+ * chapter, and the last (the chapters between ease from one to the other).
+ */
+export type CaseStudyBackdrop = Readonly<{
+  image: ImageMedia;
+  phone?: ImageMedia;
+  cover: readonly [number, number, number];
+  story: readonly [number, number, number];
+  end?: readonly [number, number, number];
+}>;
+
 export type StoryVisual =
   | Readonly<{
       type: "image";
       media: ImageMedia;
       fit?: "contain" | "cover";
       zoomable?: boolean;
+      /** Stays lit while the rest of the image dims; on phones it comes forward. */
+      focus?: readonly FocusRegion[];
     }>
   | Readonly<{
       type: "video";
       media: VideoMedia;
       fit?: "contain" | "cover";
       playback?: "controls" | "silent-loop";
+      /** A short name for the player, e.g. "Prototype". */
+      label?: string;
+      /** Source pixels to trim from the recording's edges (letterboxing, a device's backdrop). */
+      crop?: Readonly<{ top: number; right: number; bottom: number; left: number }>;
+      /** Corner radius of a recorded device, in percent of the trimmed width and height. */
+      corner?: readonly [number, number];
     }>
   | Readonly<{
       type: "comparison";
@@ -321,6 +345,9 @@ export type Project = Readonly<{
     stages?: readonly CaseStudyStage[];
     blocks?: readonly CaseStudyBlock[];
     info?: CaseStudyInfo;
+    backdrop?: CaseStudyBackdrop;
+    /** Screens that stand behind the cover's media, as on the Selected Work card. */
+    coverFlanks?: readonly ImageMedia[];
   }>;
   nextProjectSlug: string;
 }>;

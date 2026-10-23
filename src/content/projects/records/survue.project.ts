@@ -147,6 +147,25 @@ export const survueProject = {
   caseStudy: {
     storyPlayback: "manual",
     titleSignature: "approach",
+    backdrop: {
+      image: {
+        kind: "image",
+        src: "/images/projects/survue/case-world.webp",
+        alt: "Night over the mountains at the project's Selected Work station.",
+        width: 2400,
+        height: 1500,
+      },
+      phone: {
+        kind: "image",
+        src: "/images/projects/survue/case-world-phone.webp",
+        alt: "Night over the mountains at the project's Selected Work station.",
+        width: 830,
+        height: 1800,
+      },
+      cover: [-1.2, -1.8, 1.1],
+      story: [-11.5, 4.7, 1.25],
+    },
+    coverFlanks: [media.home, media.gallery],
     info: {
       timeline: "September-December 2024",
       responsibilities: [
@@ -177,7 +196,15 @@ export const survueProject = {
               "During the ride → monitor vehicle position and warnings",
               "After the ride → review recordings in Gallery",
             ],
-            visual: { type: "video", media: prototype, fit: "contain", playback: "controls" },
+            visual: {
+              type: "video",
+              media: prototype,
+              fit: "contain",
+              playback: "controls",
+              label: "Prototype",
+              crop: { top: 4, right: 12, bottom: 3, left: 13 },
+              corner: [14, 6.5],
+            },
           },
         ],
       },

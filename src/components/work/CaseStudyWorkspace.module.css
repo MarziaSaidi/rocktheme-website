@@ -1,37 +1,238 @@
+/*
+ * The case study happens at its project's own station on the lake: a still of
+ * the world behind everything, the evidence lit and floating over the range,
+ * the reading column beside it, and the chapters along the bottom.
+ *
+ * Cover: title, what I did, a few facts and the work playing large.
+ * Story: the project's mark, the evidence, the reading column.
+ */
 .workspace {
-  --rail-width: clamp(12rem, 16vw, 16.5rem);
+  --rail-height: 4.5rem;
+  --plane-rim: 0 0 0 1px var(--color-plane-rim);
+  --plane-drop: 0 2.5rem 5rem -1.25rem rgb(0 0 0 / 0.9);
+
   position: relative;
   display: grid;
-  grid-template-columns: var(--rail-width) minmax(0, 1fr) minmax(15rem, 22vw);
-  grid-template-rows: minmax(0, 1fr) auto;
-  width: min(calc(100vw - var(--layout-gutter) * 2), 104rem);
-  height: calc(100dvh - var(--header-height) - 2.5rem);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 25.5rem);
+  grid-template-rows: auto minmax(0, 1fr) var(--rail-height);
+  grid-template-areas:
+    "head head"
+    "viewer story"
+    "rail rail";
+  column-gap: clamp(2.5rem, 5.3vw, 5.5rem);
+  row-gap: var(--space-8);
+  width: min(calc(100vw - var(--layout-gutter) * 2), 96rem);
+  height: calc(100dvh - var(--header-height) - var(--space-6));
   min-height: 38rem;
-  max-height: 64rem;
   margin-inline: auto;
   color: var(--color-text-primary);
-  background: #000;
   isolation: isolate;
 }
 
-.rail {
-  /* Same as .story: keeps hidden decode labels inside the scrolling rail. */
-  --rail-padding: clamp(1.25rem, 2.2vw, 2rem);
-  --scroll-progress-inset: calc(var(--rail-padding) / 2);
-
-  position: relative;
-  grid-row: 1 / 3;
-  min-width: 0;
-  padding: var(--rail-padding);
-  overflow: auto;
-  /* The rail stays put while everything right of it changes. */
-  border-inline-end: var(--border-hairline);
+.workspace[data-mode="cover"] {
+  grid-template-columns: minmax(0, 32rem) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) var(--rail-height);
+  grid-template-areas:
+    "head viewer"
+    "lead viewer"
+    "details viewer"
+    "rail rail";
+  row-gap: var(--space-8);
 }
 
-.railLabel,
+/* ------------------------------------------------------------- the world */
+
+.world {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--brand-aubergine);
+}
+
+.world img {
+  position: absolute;
+  inset: -3%;
+  width: 106%;
+  height: 106%;
+  object-fit: cover;
+  transform: translate(var(--world-x, 0%), var(--world-y, 0%)) scale(var(--world-scale, 1));
+  filter: blur(var(--world-blur, 4.5px)) brightness(0.9) saturate(0.92);
+  transition:
+    transform 900ms var(--ease-interface),
+    filter 900ms var(--ease-interface);
+}
+
+.workspace[data-mode="cover"] .world {
+  --world-blur: 2.5px;
+}
+
+/* Two veils, crossfaded: the cover keeps its left side calm for the title,
+   the stories keep the reading column calm on the right. */
+.world::before,
+.world::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transition: opacity 700ms var(--ease-interface);
+}
+
+.world::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgb(16 11 24 / 0.8) 0%,
+      rgb(16 11 24 / 0.56) 30%,
+      rgb(16 11 24 / 0.12) 52%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(16 11 24 / 0.5) 0%,
+      transparent 18%,
+      transparent 72%,
+      rgb(16 11 24 / 0.62) 100%
+    );
+  opacity: 0;
+}
+
+.world::after {
+  background:
+    linear-gradient(
+      90deg,
+      rgb(16 11 24 / 0.4) 0%,
+      rgb(16 11 24 / 0.3) 52%,
+      rgb(16 11 24 / 0.78) 65%,
+      rgb(16 11 24 / 0.84) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgb(16 11 24 / 0.5) 0%,
+      transparent 20%,
+      transparent 72%,
+      rgb(16 11 24 / 0.62) 100%
+    );
+}
+
+.workspace[data-mode="cover"] .world::before {
+  opacity: 1;
+}
+.workspace[data-mode="cover"] .world::after {
+  opacity: 0;
+}
+
+/* ------------------------------------------------------------- head */
+
+.head {
+  grid-area: head;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+}
+
+.back {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-self: start;
+  min-height: 2.75rem;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .back:hover {
+    color: var(--color-text-primary);
+  }
+}
+
+.back:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.back:active {
+  scale: var(--motion-press-scale);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
+}
+
+.backGlyph,
+.pagerGlyph {
+  width: 1.5rem;
+  height: auto;
+}
+
+.backGlyph svg,
+.pagerGlyph svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 2.4vw, 2.25rem);
+  font-weight: var(--weight-display);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.workspace[data-mode="cover"] .title {
+  max-width: 5.6em;
+  margin-block-start: var(--space-4);
+  font-size: clamp(3.5rem, 7.6vw, 7rem);
+}
+
+/* ------------------------------------------------------------- cover */
+
+.coverLead {
+  grid-area: lead;
+  max-width: 30ch;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-lead);
+  line-height: 1.48;
+  letter-spacing: var(--tracking-lead);
+  text-wrap: pretty;
+}
+
+.coverDetails {
+  grid-area: details;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-8);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5) var(--space-10);
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.fact dt,
 .eyebrow,
-.facts dt,
-.caption {
+.caption,
+.pagerLabel,
+.playerBar {
   margin: 0;
   color: var(--color-text-muted);
   font-family: var(--font-technical);
@@ -41,125 +242,200 @@
   text-transform: uppercase;
 }
 
-.rail h1,
-.mobileHeader h1 {
-  margin: var(--space-4) 0 0;
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 3vw, 3.4rem);
-  font-weight: var(--weight-display);
-  line-height: 0.95;
-  letter-spacing: var(--tracking-display);
-  text-transform: uppercase;
-}
-
-.projectDescription {
-  margin: var(--space-4) 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--text-small);
-  line-height: 1.65;
-  letter-spacing: var(--tracking-body);
-}
-
-.facts {
-  display: grid;
-  gap: var(--space-5);
-  margin: var(--space-8) 0 0;
-  padding-block-start: var(--space-6);
-  border-block-start: var(--border-hairline);
-}
-
 .fact dd {
-  margin: var(--space-2) 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--text-small);
-  line-height: 1.45;
+  max-width: 22ch;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.4;
 }
 
-.liveLink {
+.coverAction {
+  text-decoration: none;
+}
+
+.coverMedia {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Screens behind the main one, as on the Selected Work card. */
+.coverMedia[data-flanked] {
+  padding-inline: 14%;
+}
+
+.flank {
+  position: absolute;
+  z-index: -1;
+  aspect-ratio: 430 / 932;
+  height: 68%;
+  padding: 0.6%;
+  overflow: hidden;
+  background: linear-gradient(160deg, #3a3940 0%, #17161b 38%, #121115 70%, #2a2930 100%);
+  border-radius: 13% / 6%;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-lavender) 26%, transparent),
+    var(--plane-drop);
+  filter: brightness(0.6) blur(0.4px);
+}
+
+.flank[data-side="start"] {
+  inset-inline-start: 4%;
+  top: 22%;
+}
+
+.flank[data-side="end"] {
+  inset-inline-end: 2%;
+  top: 14%;
+  height: 62%;
+  filter: brightness(0.55) blur(0.6px);
+}
+
+.flank img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 11% / 5.1%;
+}
+
+/* ------------------------------------------------------------- player */
+
+.player {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0;
+}
+
+.player[data-portrait] {
+  width: auto;
+}
+
+.playerBar {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-secondary);
+}
+
+.playerToggle {
   display: inline-flex;
   gap: var(--space-3);
   align-items: center;
   min-height: 2.75rem;
-  margin-block-start: var(--space-8);
+  padding: 0;
   color: var(--color-text-primary);
-  font-family: var(--font-technical);
-  font-size: var(--text-micro-lg);
-  letter-spacing: var(--tracking-micro-tight);
-  text-decoration: none;
-  transition: scale var(--motion-press-out) var(--motion-ease-interface);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
 }
 
-.liveLink:active {
-  scale: var(--motion-press-scale);
-  transition-duration: var(--motion-press-in);
+.playerGlyph {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
 }
+
+.playerGlyph[data-playing] {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-inline: 2px solid currentColor;
+}
+
+.playerTrack {
+  position: relative;
+  height: 1px;
+  margin-block-end: var(--space-3);
+  background: color-mix(in srgb, var(--brand-lavender) 30%, transparent);
+}
+
+.playerTrack::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--played, 0) * 100%);
+  background: var(--color-text-primary);
+}
+
+.screen {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--radius-screen);
+  box-shadow: var(--plane-rim), var(--plane-drop);
+}
+
+/* A recorded device keeps its own corners; no rim around it. */
+.screen[data-device] {
+  background: transparent;
+  border-radius: var(--corner-x) / var(--corner-y);
+  box-shadow: var(--plane-drop);
+}
+
+.player[data-portrait] .screen {
+  height: clamp(20rem, 58dvh, 35rem);
+}
+
+.screenVideo {
+  display: block;
+  width: var(--video-width, 100%);
+  max-width: none;
+  height: auto;
+  margin-block-start: var(--video-top, 0);
+  margin-inline-start: var(--video-left, 0);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------- viewer */
 
 .viewer {
+  grid-area: viewer;
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: clamp(1rem, 2vw, 1.75rem);
-  background: transparent;
 }
 
-.storyProgress {
-  z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(var(--segments, 1), minmax(0, 1fr));
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: var(--space-2);
-  margin-block-end: var(--space-4);
-}
-
-.storyProgress > span {
-  height: 2px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--brand-lavender) 25%, transparent);
-}
-
-.storyProgress > span > span {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: var(--color-text-primary);
-  transform-origin: left;
-}
-
-.storyProgress > span[data-state="future"] > span {
-  scale: 0 1;
-}
-.storyProgress > span[data-state="past"] > span {
-  scale: 1 1;
-}
-/* Painted every frame by the autoplay clock through --story-progress. */
-.storyProgress > span[data-state="current"] > span {
-  scale: var(--story-progress, 0) 1;
-}
-
-/* With no clock running, the current segment simply reads as the current one. */
-.storyProgress[data-autoplay="off"] > span[data-state="current"] > span {
-  scale: 1 1;
+.workspace[data-mode="cover"] .viewer {
+  justify-content: center;
 }
 
 .visualFrame {
   position: relative;
   display: grid;
-  flex: 1;
-  place-items: center;
+  flex: 1 1 auto;
+  place-items: start;
   min-width: 0;
-  min-height: 18rem;
-  overflow: hidden;
-  background: transparent;
+  min-height: 0;
+  container-type: size;
   animation: visual-in 520ms var(--ease-interface) both;
+}
+
+/* An image's frame is only as tall as the image needs, so its caption sits right under it. */
+.visualFrame[data-ar] {
+  flex: 0 1 auto;
+  height: min(100%, calc(100cqw / var(--frame-ar)));
 }
 
 @keyframes visual-in {
   from {
-    opacity: 0.2;
-    scale: 0.985;
+    opacity: 0;
+    translate: 0 0.75rem;
   }
 }
 
@@ -170,20 +446,61 @@
   }
 }
 
-.visualMedia {
+/* ------------------------------------------------------------- evidence */
+
+.evidence {
+  display: block;
+  width: 100%;
+}
+
+/* As large as the zone allows at the image's own proportions, so the light lines up. */
+.plane {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--ar);
+  width: min(100cqw, calc(100cqh * var(--ar-n)));
+  border-radius: var(--radius-screen);
+  box-shadow: var(--plane-rim), var(--plane-drop);
+}
+
+.planeImage {
   display: block;
   width: 100%;
   height: 100%;
-  max-height: calc(100dvh - var(--header-height) - 12rem);
+  object-fit: contain;
+  border-radius: inherit;
 }
 
-img.visualMedia[data-fit="contain"],
-video.visualMedia[data-fit="contain"] {
-  object-fit: contain;
+/* Emphasis arrives as light: the rest dims, the named parts stay lit. */
+.focus {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: focus-in 400ms var(--ease-interface) 700ms both;
 }
-img.visualMedia[data-fit="cover"],
-video.visualMedia[data-fit="cover"] {
-  object-fit: cover;
+
+.focus path {
+  fill: rgb(16 11 24 / 0.3);
+}
+
+.focus rect {
+  fill: none;
+  stroke: rgb(183 147 210 / 0.75);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+@keyframes focus-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.pieces {
+  display: none;
 }
 
 .visualGroup {
@@ -193,49 +510,46 @@ video.visualMedia[data-fit="cover"] {
   gap: var(--space-3);
   width: 100%;
   height: 100%;
-  padding: var(--space-4);
 }
 
 .visualGroup[data-count="3"] > :first-child {
   grid-row: span 2;
 }
-.visualGroup .visualMedia {
+
+.visualMedia {
+  display: block;
+  width: 100%;
+  height: 100%;
   min-height: 0;
+  object-fit: contain;
 }
 
+/* Phone screens stand together over the range, each in its device. */
 .sequence {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: clamp(1rem, 2vw, 1.75rem);
   color: var(--color-text-primary);
-  background: #101015;
-}
-
-.sequence[data-tone="paper"] {
-  color: #171920;
-  background: #eeeff2;
 }
 
 .sequenceHeading {
   flex: 0 0 auto;
-  margin: 0 0 var(--space-4);
-  padding-block-end: var(--space-3);
+  margin: 0 0 var(--space-5);
+  color: var(--color-text-muted);
   font-family: var(--font-technical);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
-  opacity: 0.7;
 }
 
 .sequenceItems {
   display: grid;
   flex: 1;
   grid-template-columns: repeat(var(--sequence-count), minmax(0, 1fr));
-  gap: clamp(0.5rem, 1.25vw, 1.25rem);
-  align-items: center;
+  gap: clamp(1rem, 3vw, 3rem);
+  align-items: start;
   justify-content: center;
   min-width: 0;
   min-height: 0;
@@ -244,11 +558,13 @@ video.visualMedia[data-fit="cover"] {
 .sequence[data-layout="board"] .sequenceItems {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) clamp(1rem, 2.5vw, 2.5rem);
 }
 
 .sequence[data-layout="mosaic"] .sequenceItems {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-6);
 }
 
 .sequenceItem {
@@ -267,33 +583,68 @@ video.visualMedia[data-fit="cover"] {
   min-height: 0;
   max-height: 100%;
   aspect-ratio: 430 / 932;
-  padding: 3px;
+  padding: 2.4%;
   overflow: hidden;
-  background: #07070a;
-  border-radius: clamp(0.45rem, 1vw, 1rem);
-  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 22%);
+  background: linear-gradient(160deg, #3a3940 0%, #17161b 38%, #121115 70%, #2a2930 100%);
+  border-radius: 13% / 6%;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-lavender) 26%, transparent),
+    var(--plane-drop);
   text-decoration: none;
-}
-
-.sequence[data-tone="paper"] .sequenceScreen {
-  background: #fff;
-  box-shadow: 0 0.5rem 1.5rem rgb(30 36 50 / 12%);
 }
 
 .sequenceScreen img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 11% / 5.1%;
 }
 
 .sequenceItem figcaption {
   margin-block-start: var(--space-3);
+  color: var(--color-text-secondary);
   font-family: var(--font-technical);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-micro);
   line-height: 1.3;
   text-align: center;
+  text-transform: uppercase;
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.5rem, 4vw, 4rem);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.comparisonItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  margin: 0;
+}
+
+.comparisonItem img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: calc(100cqh - 2.5rem);
+  object-fit: contain;
+  border-radius: 11% / 5.1%;
+  box-shadow: var(--plane-rim), var(--plane-drop);
+}
+
+.comparisonItem figcaption {
+  margin-block-start: var(--space-3);
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
 }
 
@@ -324,131 +675,34 @@ video.visualMedia[data-fit="cover"] {
   white-space: pre;
 }
 
-.comparison {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-  width: 100%;
-  padding: var(--space-4);
-}
-
-.comparisonItem {
-  margin: 0;
-}
-.comparisonItem img {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-.comparisonItem figcaption {
-  margin-block-start: var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--text-small);
-}
-
 .textOnly {
   max-width: 28ch;
-  margin: 0;
+  margin: auto;
   color: var(--color-text-secondary);
   font-size: var(--text-lead);
   text-align: center;
   text-wrap: balance;
 }
 
-.previousControl,
-.nextControl {
-  position: absolute;
-  inset-block: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  width: 18%;
-  padding: 0 var(--space-5);
-  color: #fff;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  /* White over dark screens, dark over the paper boards: no card needed. */
-  mix-blend-mode: difference;
-}
-
-.previousControl:active .controlGlyph,
-.nextControl:active .controlGlyph {
-  scale: var(--motion-press-scale);
-  transition-duration: var(--duration-interface), var(--motion-press-in);
-}
-.previousControl {
-  inset-inline-start: 0;
-  justify-content: flex-start;
-}
-.nextControl {
-  inset-inline-end: 0;
-  justify-content: flex-end;
-}
-/* Keep native video controls clear of the story navigation hit areas. */
-.visualFrame[data-controlled-video="true"] .previousControl,
-.visualFrame[data-controlled-video="true"] .nextControl {
-  inset-block: 50% auto;
-  width: 3.5rem;
-  height: 3.5rem;
-  padding: 0;
-  justify-content: center;
-  translate: 0 -50%;
-}
-
-.previousControl[hidden],
-.nextControl[hidden] {
-  display: none;
-}
-
-.controlGlyph {
-  width: 1.75rem;
-  height: auto;
-  opacity: 0.55;
-  transition:
-    opacity var(--duration-interface) var(--ease-interface),
-    scale var(--motion-press-out) var(--motion-ease-interface);
-}
-
-.controlGlyph svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.previousControl:hover .controlGlyph,
-.nextControl:hover .controlGlyph,
-.previousControl:focus-visible .controlGlyph,
-.nextControl:focus-visible .controlGlyph {
-  opacity: 1;
-}
-.previousControl:focus-visible,
-.nextControl:focus-visible {
-  outline: none;
-}
-.previousControl:focus-visible .controlGlyph,
-.nextControl:focus-visible .controlGlyph {
-  outline: 1px solid currentColor;
-  outline-offset: 0.5rem;
-}
-
 .caption {
-  margin-block-start: var(--space-3);
+  margin-block-start: var(--space-4);
+  max-width: 60ch;
 }
 
 .zoomLink {
   display: inline-flex;
   gap: var(--space-2);
   align-items: center;
+  align-self: flex-start;
   min-height: 2.75rem;
   margin-block-start: var(--space-2);
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
   font-family: var(--font-technical);
   font-size: var(--text-micro);
   font-weight: var(--weight-signal);
   letter-spacing: var(--tracking-micro);
   text-decoration: none;
   text-transform: uppercase;
-  /* The weight comes from its WeightLabel. */
   transition: scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
@@ -457,31 +711,20 @@ video.visualMedia[data-fit="cover"] {
   transition-duration: var(--motion-press-in);
 }
 
-.supportingVideo {
-  display: inline-flex;
-  gap: var(--space-2);
-  align-items: center;
-  min-height: 2.75rem;
-  margin-block-start: var(--space-6);
-  color: var(--color-text-primary);
-  font-family: var(--font-technical);
-  font-size: var(--text-micro);
-  letter-spacing: var(--tracking-micro);
-  text-decoration: none;
-  text-transform: uppercase;
-}
+/* ------------------------------------------------------------- reading */
 
 .story {
   /*
    * Positioned so the absolute .srOnly labels scroll and clip with the copy.
    * Without it they escape to the workspace and stretch the page below it.
    */
-  --story-padding: clamp(1.5rem, 2.5vw, 2.5rem);
-  --scroll-progress-inset: calc(var(--story-padding) / 2);
+  --scroll-progress-inset: calc(var(--space-6) / 2);
 
+  grid-area: story;
   position: relative;
   min-width: 0;
-  padding: var(--story-padding);
+  min-height: 0;
+  padding-inline-end: var(--space-6);
   overflow: auto;
 }
 
@@ -502,28 +745,27 @@ video.visualMedia[data-fit="cover"] {
 }
 
 .story h2 {
-  max-width: 13ch;
-  margin: var(--space-5) 0 0;
-  font-size: clamp(1.5rem, 2vw, 2.35rem);
-  font-weight: var(--weight-body-strong);
+  margin: var(--space-4) 0 0;
+  font-size: clamp(1.75rem, 2.3vw, 2.125rem);
+  font-weight: var(--weight-title);
   line-height: 1.08;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
 .storyDescription {
-  margin: var(--space-5) 0 0;
+  margin: var(--space-6) 0 0;
   color: var(--color-text-secondary);
-  line-height: var(--leading-body);
-  letter-spacing: var(--tracking-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
 }
 
 .points {
   display: grid;
   gap: var(--space-3);
-  margin: var(--space-8) 0 0;
-  padding: var(--space-6) 0 0;
-  border-block-start: var(--border-hairline);
+  margin: var(--space-6) 0 0;
+  padding: 0;
   list-style: none;
 }
 
@@ -533,6 +775,7 @@ video.visualMedia[data-fit="cover"] {
   color: var(--color-text-secondary);
   font-size: var(--text-small);
 }
+
 .points li::before {
   position: absolute;
   inset-inline-start: 0;
@@ -543,25 +786,33 @@ video.visualMedia[data-fit="cover"] {
 .detail,
 .metric,
 .story blockquote {
-  margin: var(--space-6) 0 0;
-  padding-block-start: var(--space-5);
-  border-block-start: var(--border-hairline);
+  margin: var(--space-8) 0 0;
   color: var(--color-text-secondary);
+  line-height: 1.55;
 }
+
+.detail + .detail {
+  margin-block-start: var(--space-6);
+}
+
 .detail strong,
 .metric strong {
   display: block;
   margin-block-end: var(--space-2);
   color: var(--color-text-primary);
+  font-weight: var(--weight-title);
 }
+
 .metric strong {
   font-family: var(--font-display);
   font-size: var(--text-display-s);
   font-weight: var(--weight-display);
 }
+
 .story blockquote {
   font-size: var(--text-lead);
 }
+
 .story cite {
   display: block;
   margin-block-start: var(--space-3);
@@ -570,45 +821,52 @@ video.visualMedia[data-fit="cover"] {
   font-style: normal;
 }
 
+.supportingVideo {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 2.75rem;
+  margin-block-start: var(--space-6);
+  color: var(--color-text-primary);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- the rail */
+
+/* The chapters sit on the horizon; the gold line is the visitor's place in the story. */
+.rail {
+  grid-area: rail;
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
 .stageNav {
   position: relative;
-  grid-column: 2 / 4;
   display: flex;
-  gap: clamp(0.5rem, 2vw, 2rem);
+  gap: clamp(1rem, 2.6vw, 2.5rem);
   align-items: stretch;
-  justify-content: space-around;
   min-width: 0;
-  padding-inline: clamp(1rem, 2vw, 1.75rem);
   overflow-x: auto;
   scrollbar-width: none;
   /* The track the indicator runs along. */
-  box-shadow: inset 0 1px 0 var(--color-line);
-}
-
-/* The same gold lit line as the header's (SiteHeader.module.css, .litLine). */
-.stageIndicator {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  width: var(--indicator-width, 0);
-  height: 1px;
-  background: var(--color-highlight);
-  translate: var(--indicator-x, 0) 0;
-}
-.stageNav[data-indicator="ready"] .stageIndicator {
-  transition:
-    translate 480ms var(--ease-interface),
-    width 480ms var(--ease-interface);
+  box-shadow: inset 0 -1px 0 var(--color-line);
 }
 
 .stageNav button {
   position: relative;
   flex: 0 0 auto;
-  min-height: 4rem;
-  padding: 0 var(--space-3);
+  min-height: 3rem;
+  padding: 0;
   color: var(--color-text-muted);
   font: inherit;
-  font-size: var(--text-small);
+  font-size: 0.9375rem;
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -626,192 +884,296 @@ video.visualMedia[data-fit="cover"] {
 
 .stageNav button:focus-visible {
   outline: 1px solid var(--color-line-strong);
-  outline-offset: -0.75rem;
+  outline-offset: 0.25rem;
 }
 
-.infoDisclosure summary {
+/* The same gold lit line as the header's, split into the stage's stories. */
+.stageIndicator {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  display: flex;
+  gap: 4px;
+  width: var(--indicator-width, 0);
+  height: 1px;
+  translate: var(--indicator-x, 0) 0;
+}
+
+.stageIndicator > span {
+  flex: 1;
+  background: color-mix(in srgb, var(--color-highlight) 34%, transparent);
+}
+
+.stageIndicator > span[data-state="past"],
+.stageIndicator > span[data-state="current"] {
+  background: var(--color-highlight);
+}
+
+.stageNav[data-indicator="ready"] .stageIndicator {
+  transition:
+    translate 480ms var(--ease-interface),
+    width 480ms var(--ease-interface);
+}
+
+.pager {
+  display: flex;
+  flex: 0 1 auto;
+  gap: var(--space-4);
+  align-items: center;
+  min-width: 0;
+}
+
+.pagerPrevious,
+.pagerNext,
+.pagerCase {
+  display: inline-flex;
+  gap: var(--space-4);
+  align-items: center;
+  min-width: 0;
   min-height: 2.75rem;
+  padding: 0;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  background: none;
+  border: 0;
   cursor: pointer;
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
-@media (min-width: 75rem) {
-  .infoDisclosure summary {
-    display: none;
+.pagerPrevious {
+  margin-inline-end: var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.pagerPrevious:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.pagerPrevious:active:not(:disabled),
+.pagerNext:active,
+.pagerCase:active {
+  scale: var(--motion-press-scale);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pagerPrevious:hover:not(:disabled) {
+    color: var(--color-text-primary);
   }
 }
+
+.pagerTitle {
+  overflow: hidden;
+  max-width: 28rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pagerCase {
+  align-items: flex-end;
+}
+
+.pagerCaseTitle {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: var(--weight-display);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- tablets */
 
 @media (max-width: 74.99rem) {
   .workspace {
-    grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 1fr);
-    width: min(calc(100vw - var(--layout-gutter) * 2), 74rem);
-    height: auto;
-    min-height: auto;
-    max-height: none;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
   }
-  .rail {
-    grid-row: auto;
-    border-inline-end: 0;
-    border-block-end: var(--border-hairline);
+  .workspace[data-mode="cover"] {
+    grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
   }
-  .mobileHeader {
-    display: grid;
-    grid-column: 1 / 3;
-    grid-template-columns: 1fr auto;
-    align-items: end;
-    gap: var(--space-2) var(--space-6);
-    padding: var(--space-6);
-  }
-  .mobileHeader h1 {
-    margin: 0;
-  }
-  .mobileHeader > p {
-    margin: 0;
-    color: var(--color-text-secondary);
-    font-size: var(--text-small);
-  }
-  .infoDisclosure {
-    grid-column: 1 / 3;
-    margin-block-start: var(--space-3);
-  }
-  .infoDisclosure summary {
-    min-height: 2.75rem;
-    color: var(--color-text-primary);
-    cursor: pointer;
-    font-size: var(--text-small);
-  }
-  .infoDisclosure > p {
-    max-width: 50ch;
-    color: var(--color-text-secondary);
-  }
-  .infoDisclosure .facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .stageNav {
-    grid-column: 1 / 3;
+  .pagerTitle {
+    max-width: 16rem;
   }
 }
 
+/* ------------------------------------------------------------- phones */
+
 @media (max-width: 47.99rem) {
-  .workspace {
+  .workspace,
+  .workspace[data-mode="cover"] {
     display: flex;
     flex-direction: column;
+    gap: var(--space-6);
     width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: var(--space-4) var(--layout-gutter) 6rem;
   }
-  .mobileHeader {
-    display: block;
-    padding: var(--space-4) var(--layout-gutter) var(--space-5);
+
+  .world img {
+    transform: none;
   }
-  .mobileHeader h1 {
-    font-size: 2.5rem;
+
+  .head {
+    order: 1;
   }
-  .mobileHeader > p {
-    margin-block-start: var(--space-2);
-  }
-  .infoDisclosure {
-    margin-block-start: var(--space-4);
-  }
-  .infoDisclosure .facts {
-    grid-template-columns: 1fr;
+  .coverLead {
+    order: 2;
   }
   .viewer {
-    order: 2;
-    padding: var(--space-4) var(--layout-gutter) 0;
-    /* Lands clear of the fixed header and the sticky stage list. */
-    scroll-margin-top: calc(var(--header-height-phone) + 3rem);
+    order: 3;
+    /* Lands clear of the fixed header when a chapter changes. */
+    scroll-margin-top: calc(var(--header-height-phone) + var(--space-4));
   }
-  .storyProgress {
-    margin-block-end: var(--space-3);
-  }
-  /* The frame is as tall as what it shows: no fixed box, no empty band. */
-  .visualFrame {
-    min-height: 0;
-  }
-  .visualMedia {
-    height: auto;
-    max-height: 64svh;
+  .coverDetails {
+    order: 4;
   }
   .story {
-    order: 3;
-    padding: var(--space-6) var(--layout-gutter) var(--space-8);
+    order: 4;
     overflow: visible;
   }
-  .story h2 {
-    max-width: 17ch;
+
+  .workspace[data-mode="cover"] .title {
+    font-size: clamp(3.25rem, 17vw, 4.25rem);
   }
-  /*
-   * On a phone the stage list sits under the project title and stays pinned
-   * below the header, so every stage is one tap away from anywhere in the
-   * copy. It scrolls sideways; the faded edges say there is more.
-   */
-  .stageNav {
-    position: sticky;
-    inset-block-start: var(--header-height-phone);
-    z-index: 3;
-    order: 1;
-    gap: 0;
-    justify-content: flex-start;
-    padding-inline: var(--layout-gutter);
-    background: #000;
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 var(--layout-gutter),
-      #000 calc(100% - var(--layout-gutter)),
-      transparent
-    );
+
+  .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
   }
-  .stageNav button {
-    min-height: 2.75rem;
+
+  .visualFrame {
+    flex: none;
+    container-type: inline-size;
   }
-  .previousControl,
-  .nextControl {
-    inset-block: 50% auto;
-    width: 3.5rem;
-    height: 3.5rem;
-    padding: 0;
-    justify-content: center;
-    translate: 0 -50%;
+
+  .plane {
+    width: 100%;
   }
-  .controlGlyph {
-    opacity: 0.85;
-  }
-  .comparison {
-    grid-template-columns: 1fr;
-  }
-  .visualGroup {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
-  }
-  .sequence {
+
+  .visualFrame[data-ar] {
     height: auto;
-    padding: var(--space-4) var(--space-3);
   }
-  .sequenceItems {
-    min-height: 0;
-    grid-template-rows: auto;
+
+  /* The screenshot is too small to read here, so the lit parts come forward. */
+  .pieces {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-block-start: -1.75rem;
   }
-  /*
-   * Boards keep their desktop grid. Each screen still opens full size on
-   * tap, and the whole flow stays readable in one view instead of a column
-   * of phones taller than the screen.
-   */
+
+  .piece {
+    display: block;
+    width: 82%;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    border-radius: var(--radius-screen);
+    box-shadow:
+      var(--plane-rim),
+      0 1.5rem 3rem -1rem rgb(0 0 0 / 0.9);
+  }
+
+  .piece:first-child {
+    margin-inline-start: 3%;
+    rotate: -1.2deg;
+  }
+
+  .piece:nth-child(2) {
+    align-self: flex-end;
+    width: 70%;
+    rotate: 1.4deg;
+  }
+
+  .player[data-portrait] .screen {
+    height: min(70svh, 32rem);
+  }
+
+  .coverMedia[data-flanked] {
+    padding-inline: 18%;
+  }
+
+  .sequenceItems,
   .sequence[data-layout="board"] .sequenceItems,
   .sequence[data-layout="mosaic"] .sequenceItems {
     grid-template-rows: auto;
-    row-gap: var(--space-4);
+    row-gap: var(--space-5);
   }
+
+  .sequence[data-layout="mosaic"] .sequenceItems {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .sequenceItem figcaption {
     margin-block-start: var(--space-2);
     font-size: 0.625rem;
+  }
+
+  .comparisonItem img {
+    max-height: 60svh;
+  }
+
+  /* The chapters dock to the bottom edge, on the water. They scroll sideways; the arrow moves on. */
+  .rail {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--layer-navigation);
+    gap: 0;
+    height: 4rem;
+    padding-inline-start: var(--layout-gutter);
+    background: linear-gradient(180deg, rgb(16 11 24 / 0.55), rgb(16 11 24 / 0.94) 40%);
+    border-block-start: 1px solid var(--color-line);
+  }
+
+  .stageNav {
+    flex: 1;
+    gap: var(--space-6);
+    box-shadow: none;
+    mask-image: linear-gradient(90deg, #000 80%, transparent 98%);
+  }
+
+  .pager {
+    flex: none;
+    gap: 0;
+    align-self: stretch;
+  }
+
+  .pagerPrevious,
+  .pagerLabel,
+  .pagerTitle {
+    display: none;
+  }
+
+  .pagerNext,
+  .pagerCase {
+    justify-content: center;
+    min-width: 4rem;
+    height: 100%;
+    padding-inline: var(--space-4);
+    border-inline-start: 1px solid var(--color-line);
+  }
+
+  .pagerCaseTitle {
+    font-size: 1.25rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .visualFrame,
-  .word {
+  .word,
+  .focus {
     animation: none;
   }
-  .controlGlyph,
+  .world img,
+  .world::before,
+  .world::after,
   .stageNav[data-indicator="ready"] .stageIndicator {
     transition: none;
   }
@@ -845,13 +1207,12 @@ video.visualMedia[data-fit="cover"] {
   animation-delay: var(--motion-case-title-at);
 }
 
-.railLabel,
-.projectDescription,
+.back,
+.coverLead,
 .fact,
-.liveLink,
-.mobileHeader > p,
-.infoDisclosure,
+.coverAction,
 .stageNav button,
+.pager,
 .caption,
 .zoomLink {
   animation-name: var(--motion-keyframes-copy);
@@ -860,12 +1221,11 @@ video.visualMedia[data-fit="cover"] {
   animation-fill-mode: backwards;
 }
 
-.railLabel {
+.back {
   animation-delay: var(--motion-case-label-at);
 }
 
-.projectDescription,
-.mobileHeader > p {
+.coverLead {
   animation-delay: var(--motion-case-body-at);
 }
 
@@ -875,8 +1235,8 @@ video.visualMedia[data-fit="cover"] {
   );
 }
 
-.liveLink,
-.infoDisclosure {
+.coverAction,
+.pager {
   animation-delay: calc(var(--motion-case-facts-at) + 8 * var(--motion-case-fact-stagger));
 }
 
@@ -918,16 +1278,7 @@ video.visualMedia[data-fit="cover"] {
   overflow: auto;
 }
 .visualFrame[data-board="true"] {
-  padding: 0 2.5rem;
-}
-.visualFrame[data-board="true"] .previousControl,
-.visualFrame[data-board="true"] .nextControl {
-  inset-block: 50% auto;
-  width: 2.5rem;
-  height: 3rem;
-  padding: 0;
-  justify-content: center;
-  translate: 0 -50%;
+  place-items: stretch;
 }
 .palette {
   display: grid;
@@ -1121,15 +1472,6 @@ video.visualMedia[data-fit="cover"] {
   color: #aaaab0;
 }
 @media (max-width: 47.99rem) {
-  .visualFrame[data-board="true"] {
-    padding: 0;
-    padding-bottom: 3.5rem;
-  }
-  .visualFrame[data-board="true"] .previousControl,
-  .visualFrame[data-board="true"] .nextControl {
-    inset-block: auto 0;
-    translate: none;
-  }
   .palette,
   .assetBoard,
   .typeSpecimen,
@@ -1241,7 +1583,11 @@ video.visualMedia[data-fit="cover"] {
   white-space: nowrap;
 }
 
-/* The word the urgency lives in: three risk levels, one beat each, resting on the middle. */
+/*
+ * The word the urgency lives in: three risk levels, one beat each. PP Frama has
+ * no weight above Semibold, so the beats are light rather than weight, and the
+ * word rests in moonlight.
+ */
 .story[data-signature="approach"] h2 .word[data-emphasis] {
   animation:
     approach-in 640ms var(--motion-ease-reveal) calc(var(--line, 0) * 70ms) both,
@@ -1298,19 +1644,19 @@ video.visualMedia[data-fit="cover"] {
 
 @keyframes approach-urgency {
   0% {
-    font-weight: 560;
+    color: var(--color-text-primary);
   }
 
   33% {
-    font-weight: 640;
+    color: color-mix(in srgb, var(--color-text-moonlit) 45%, var(--color-text-primary));
   }
 
   66% {
-    font-weight: 720;
+    color: color-mix(in srgb, var(--color-text-moonlit) 80%, var(--color-text-primary));
   }
 
   100% {
-    font-weight: 620;
+    color: var(--color-text-moonlit);
   }
 }
 
@@ -1333,7 +1679,7 @@ video.visualMedia[data-fit="cover"] {
   }
 
   .story[data-signature="approach"] h2 .word[data-emphasis] {
-    font-weight: 620;
+    color: var(--color-text-moonlit);
   }
 }
 

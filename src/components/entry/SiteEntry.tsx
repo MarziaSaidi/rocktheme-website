@@ -59,6 +59,8 @@ export function SiteEntry({ children }: Readonly<{ children: React.ReactNode }>)
   const pathname = usePathname();
   if (pathname === "/preview/hiring" || pathname?.startsWith("/preview/hiring/"))
     return <>{children}</>;
+  // A link to a case study (from a CV or an email) opens on the work, not the entrance.
+  if (pathname?.startsWith("/work/")) return <>{children}</>;
   return <CinematicEntry>{children}</CinematicEntry>;
 }
 function CinematicEntry({ children }: Readonly<{ children: React.ReactNode }>) {

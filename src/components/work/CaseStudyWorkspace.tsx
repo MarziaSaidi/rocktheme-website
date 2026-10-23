@@ -1,14 +1,25 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { ActionContent } from "@/components/primitives/ActionContent";
 import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { WeightLabel } from "@/components/primitives/WeightLabel";
-import { DecodeText } from "@/motion/DecodeText";
+import { sectionAnchors } from "@/config/sections";
+import { siteContent } from "@/content/site/siteContent";
 import { ScrollProgress } from "@/motion/ScrollProgress";
-import type { CaseStudyInfo, CaseStudyStage, Project, StoryVisual } from "@/content/projects";
+import type {
+  CaseStudyInfo,
+  CaseStudyStage,
+  CaseStudyStory,
+  FocusRegion,
+  ImageMedia,
+  Project,
+  StoryVisual,
+} from "@/content/projects";
 
 import styles from "./CaseStudyWorkspace.module.css";
 import { prepareStoryTitle, readingSeconds } from "./storySignature";
@@ -16,6 +27,8 @@ import { prepareStoryTitle, readingSeconds } from "./storySignature";
 type CaseStudyWorkspaceProps = Readonly<{
   project: Project;
   stages: readonly CaseStudyStage[];
+  /** The next case study, offered at the end of the rail. */
+  next?: Readonly<{ title: string; href: string }>;
 }>;
 
 /** Seconds a story stays up when its content does not say otherwise. */
@@ -28,16 +41,33 @@ type MediaCallbacks = Readonly<{
   onDuration?: (seconds: number) => void;
 }>;
 
+type VideoVisual = Extract<StoryVisual, { type: "video" }>;
+
+const clock = (seconds: number) => {
+  const whole = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+};
+
+/**
+ * The work, playing on a lit screen. No browser controls over it: a label, a
+ * timecode and a hairline above it say what it is and where it is, and the
+ * screen itself (or the button) plays and pauses. On the cover it loops
+ * silently; in a story it waits for the reader.
+ */
 function StoryVideo({
   visual,
+  loop = false,
   onPlayingChange,
   onDuration,
-}: { visual: Extract<StoryVisual, { type: "video" }> } & MediaCallbacks) {
+}: { visual: VideoVisual; loop?: boolean } & MediaCallbacks) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const silentLoop = visual.playback === "silent-loop";
+  const silent = loop || visual.playback === "silent-loop";
+  const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    if (!silentLoop) return;
+    if (!silent) return;
     const video = videoRef.current;
     if (!video) return;
     const motion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -48,28 +78,173 @@ function StoryVideo({
     syncPlayback();
     motion.addEventListener("change", syncPlayback);
     return () => motion.removeEventListener("change", syncPlayback);
-  }, [silentLoop]);
+  }, [silent]);
+
+  // Metadata can arrive before hydration attaches the handlers; read it once mounted.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && video.readyState >= 1) setDuration(video.duration);
+  }, []);
+
+  const toggle = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) void video.play().catch(() => {});
+    else video.pause();
+  };
+
+  // Trim letterboxing or a recorded device's backdrop; the screen shows only the work.
+  const { width, height } = visual.media.poster;
+  const crop = visual.crop ?? { top: 0, right: 0, bottom: 0, left: 0 };
+  const shownWidth = width - crop.left - crop.right;
+  const shownHeight = height - crop.top - crop.bottom;
+  const screen = {
+    aspectRatio: `${shownWidth} / ${shownHeight}`,
+    "--video-width": `${(width / shownWidth) * 100}%`,
+    "--video-left": `${(-crop.left / shownWidth) * 100}%`,
+    "--video-top": `${(-crop.top / shownWidth) * 100}%`,
+    ...(visual.corner
+      ? { "--corner-x": `${visual.corner[0]}%`, "--corner-y": `${visual.corner[1]}%` }
+      : {}),
+  } as React.CSSProperties;
 
   return (
-    <video
-      ref={videoRef}
-      className={styles.visualMedia}
-      data-fit={visual.fit ?? "contain"}
-      controls={!silentLoop}
-      muted={silentLoop}
-      loop={silentLoop}
-      playsInline
-      preload={silentLoop ? "auto" : "metadata"}
-      poster={visual.media.poster.src}
-      title={visual.media.title}
-      src={visual.media.src}
-      onPlay={silentLoop ? undefined : () => onPlayingChange?.(true)}
-      onPause={silentLoop ? undefined : () => onPlayingChange?.(false)}
-      onEnded={silentLoop ? undefined : () => onPlayingChange?.(false)}
-      onLoadedMetadata={
-        silentLoop ? (event) => onDuration?.(event.currentTarget.duration) : undefined
-      }
-    />
+    <figure className={styles.player} data-portrait={height > width ? "" : undefined}>
+      <figcaption className={styles.playerBar}>
+        <span>{visual.label ?? "Video"}</span>
+        <button
+          type="button"
+          className={styles.playerToggle}
+          onClick={toggle}
+          aria-label={playing ? `Pause ${visual.media.title}` : `Play ${visual.media.title}`}
+        >
+          <span className={styles.playerGlyph} data-playing={playing ? "" : undefined} />
+          <span>
+            {clock(time)} / {clock(duration)}
+          </span>
+        </button>
+      </figcaption>
+      <span
+        className={styles.playerTrack}
+        style={{ "--played": duration ? time / duration : 0 } as React.CSSProperties}
+        aria-hidden="true"
+      />
+      <div className={styles.screen} style={screen} data-device={visual.corner ? "" : undefined}>
+        <video
+          ref={videoRef}
+          className={styles.screenVideo}
+          muted={silent}
+          loop={silent}
+          playsInline
+          preload={silent ? "auto" : "metadata"}
+          poster={visual.media.poster.src}
+          title={visual.media.title}
+          src={visual.media.src}
+          onClick={toggle}
+          onPlay={() => {
+            setPlaying(true);
+            if (!silent) onPlayingChange?.(true);
+          }}
+          onPause={() => {
+            setPlaying(false);
+            if (!silent) onPlayingChange?.(false);
+          }}
+          onEnded={() => {
+            setPlaying(false);
+            if (!silent) onPlayingChange?.(false);
+          }}
+          onTimeUpdate={(event) => setTime(event.currentTarget.currentTime)}
+          onDurationChange={(event) => setDuration(event.currentTarget.duration)}
+          onLoadedMetadata={(event) => {
+            setDuration(event.currentTarget.duration);
+            if (silent) onDuration?.(event.currentTarget.duration);
+          }}
+        />
+      </div>
+    </figure>
+  );
+}
+
+function pieceOf(region: FocusRegion, media: ImageMedia): FocusRegion {
+  const tall = region.height * media.height;
+  const aspect = (region.width * media.width) / tall;
+  const target = Math.min(5, Math.max(1.5, aspect));
+  const width = Math.min(100 - region.x, (target * tall) / media.width);
+  return { ...region, width };
+}
+
+/**
+ * A screenshot as a lit plane floating over the range. The parts the copy
+ * names stay lit while the rest dims; on a phone, where the whole image is too
+ * small to read, those parts also come forward as larger pieces.
+ */
+function EvidenceImage({
+  media,
+  focus,
+  sizes,
+}: {
+  media: ImageMedia;
+  focus?: readonly FocusRegion[];
+  sizes: string;
+}) {
+  const plane = {
+    "--ar": `${media.width} / ${media.height}`,
+    "--ar-n": media.width / media.height,
+  } as React.CSSProperties;
+  return (
+    <span className={styles.evidence}>
+      <span className={styles.plane} style={plane}>
+        <Image
+          className={styles.planeImage}
+          src={media.src}
+          alt={media.alt}
+          width={media.width}
+          height={media.height}
+          sizes={sizes}
+          priority
+        />
+        {focus?.length ? (
+          <svg
+            className={styles.focus}
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d={`M0 0H100V100H0Z ${focus
+                .map((r) => `M${r.x} ${r.y}h${r.width}v${r.height}h${-r.width}Z`)
+                .join(" ")}`}
+            />
+            {focus.map((r) => (
+              <rect key={`${r.x}-${r.y}`} x={r.x} y={r.y} width={r.width} height={r.height} />
+            ))}
+          </svg>
+        ) : null}
+      </span>
+      {focus?.length ? (
+        <span className={styles.pieces} aria-hidden="true">
+          {focus.map((region) => {
+            // A piece reads at a glance: between 1.5:1 and 5:1, widened or trimmed from the left edge.
+            const r = pieceOf(region, media);
+            return (
+              <span
+                key={`${region.x}-${region.y}`}
+                className={styles.piece}
+                style={{
+                  aspectRatio: `${r.width * media.width} / ${r.height * media.height}`,
+                  backgroundImage: `url(${media.src})`,
+                  backgroundSize: `${(100 / r.width) * 100}% auto`,
+                  backgroundPosition: `${r.width >= 100 ? 0 : (r.x / (100 - r.width)) * 100}% ${
+                    r.height >= 100 ? 0 : (r.y / (100 - r.height)) * 100
+                  }%`,
+                }}
+              />
+            );
+          })}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -252,15 +427,10 @@ function StoryVisualView({ visual, ...media }: { visual?: StoryVisual } & MediaC
   }
 
   return (
-    <Image
-      className={styles.visualMedia}
-      data-fit={visual.fit ?? "contain"}
-      src={visual.media.src}
-      alt={visual.media.alt}
-      width={visual.media.width}
-      height={visual.media.height}
-      sizes="(max-width: 767px) 90vw, (max-width: 1199px) 60vw, 48vw"
-      priority
+    <EvidenceImage
+      media={visual.media}
+      focus={visual.focus}
+      sizes="(max-width: 767px) 92vw, (max-width: 1199px) 60vw, 58vw"
     />
   );
 }
@@ -289,16 +459,13 @@ function Lines({ text }: { text: string }) {
   );
 }
 
-function ProjectFacts({ project, info }: { project: Project; info?: CaseStudyInfo }) {
+/** The few facts a reader needs first; the rest of the story tells the rest. */
+function CoverFacts({ project, info }: { project: Project; info?: CaseStudyInfo }) {
   const facts = [
     ["Role", project.role.join(" + ")],
     [info?.timelineLabel ?? "Timeline", info?.timeline ?? String(project.year)],
-    ["Company", info?.company],
-    ["Team", info?.team],
-    ["Contribution", info?.responsibilities?.join(", ")],
-    ["Tools", info?.tools?.join(", ")],
     ["Platform", info?.platform],
-    ["Project type", info?.projectType ?? project.category],
+    ["Tools", info?.tools?.join(", ")],
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
   return (
@@ -313,9 +480,44 @@ function ProjectFacts({ project, info }: { project: Project; info?: CaseStudyInf
   );
 }
 
+/** The cover's media: the work playing large, with any screens that stand behind it. */
+function CoverMedia({
+  visual,
+  flanks,
+  ...media
+}: { visual?: StoryVisual; flanks?: readonly ImageMedia[] } & MediaCallbacks) {
+  return (
+    <div className={styles.coverMedia} data-flanked={flanks?.length ? "" : undefined}>
+      {flanks?.slice(0, 2).map((flank, index) => (
+        <span key={flank.src} className={styles.flank} data-side={index === 0 ? "start" : "end"}>
+          <Image
+            src={flank.src}
+            alt={flank.alt}
+            width={flank.width}
+            height={flank.height}
+            sizes="18vw"
+          />
+        </span>
+      ))}
+      {visual?.type === "video" ? (
+        <StoryVideo visual={visual} loop {...media} />
+      ) : visual?.type === "image" ? (
+        <EvidenceImage media={visual.media} sizes="(max-width: 767px) 92vw, 50vw" />
+      ) : null}
+    </div>
+  );
+}
+
+/** Eases a framing of the world still from one chapter's to another's. */
+const mix = (
+  from: readonly [number, number, number],
+  to: readonly [number, number, number],
+  t: number,
+) => from.map((value, index) => value + (to[index]! - value) * t) as [number, number, number];
+
 type HistoryMode = "push" | "replace" | "none";
 
-export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps) {
+export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStudyWorkspaceProps) {
   const initialId = stages[0]?.id ?? "";
   const [stageId, setStageId] = useState(initialId);
   const [storyIndex, setStoryIndex] = useState(0);
@@ -333,8 +535,8 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [mediaSeconds, setMediaSeconds] = useState<{ key: string; seconds: number } | null>(null);
   const articleRef = useRef<HTMLElement>(null);
-  const navRef = useRef<HTMLElement>(null);
-  const progressRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLSpanElement>(null);
   const viewerRef = useRef<HTMLElement>(null);
   const storyRef = useRef<HTMLElement>(null);
   const touchStart = useRef<number | null>(null);
@@ -344,9 +546,24 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
     stages.findIndex((item) => item.id === stageId),
   );
   const stage = stages[stageIndex];
-  const story = stage?.stories[storyIndex] ?? stage?.stories[0];
-  const storyCount = stage?.stories.length ?? 0;
-  const storyKey = `${stage?.id}-${story?.id}`;
+  /*
+   * The first stage opens on a cover: the title, what I did, a few facts and
+   * the work playing large. It is that stage's first beat (null), ahead of its
+   * stories, so the arrows, keys and rail treat it like any other story.
+   */
+  const storiesOf = useCallback(
+    (index: number): readonly (CaseStudyStory | null)[] => {
+      const target = stages[index];
+      if (!target) return [];
+      return index === 0 ? [null, ...target.stories] : target.stories;
+    },
+    [stages],
+  );
+  const stories = storiesOf(stageIndex);
+  const story = storyIndex < stories.length ? stories[storyIndex] : stories[0];
+  const isCover = story === null;
+  const storyCount = stories.length;
+  const storyKey = `${stage?.id}-${story?.id ?? "cover"}`;
   const titleSignature = project.caseStudy.titleSignature;
   const emphasis = story?.emphasis;
   const atStart = stageIndex === 0 && storyIndex === 0;
@@ -369,7 +586,7 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
         story.metric?.label,
         story.quote?.text,
       ])
-    : DEFAULT_STORY_SECONDS;
+    : readingSeconds([project.shortDescription]);
   const durationMs =
     Math.max(
       readingFloor,
@@ -404,9 +621,9 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
       }
       const target = stages[stageIndex + direction];
       if (!target) return;
-      show(target.id, direction > 0 ? 0 : target.stories.length - 1, mode);
+      show(target.id, direction > 0 ? 0 : storiesOf(stageIndex + direction).length - 1, mode);
     },
-    [show, stageIndex, stages, storyCount, storyIndex],
+    [show, stageIndex, stages, storiesOf, storyCount, storyIndex],
   );
   const previous = useCallback(() => step(-1, "push"), [step]);
   const next = useCallback(() => step(1, "push"), [step]);
@@ -559,48 +776,173 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
 
   const releaseHold = () => setHolding(false);
 
-  if (!stage || !story) return null;
+  if (!stage || story === undefined) return null;
   const info = project.caseStudy.info;
+  const backdrop = project.caseStudy.backdrop;
+  // The camera stands a little further along the shore with each chapter.
+  const framing = backdrop
+    ? isCover
+      ? backdrop.cover
+      : mix(
+          backdrop.story,
+          backdrop.end ?? backdrop.story,
+          stages.length > 1 ? stageIndex / (stages.length - 1) : 0,
+        )
+    : null;
+  const upcoming =
+    storyIndex + 1 < storyCount
+      ? stories[storyIndex + 1]?.title
+      : storiesOf(stageIndex + 1)[0]?.title;
+  const mediaCallbacks: MediaCallbacks = {
+    onPlayingChange: setVideoPlaying,
+    onDuration: (seconds) => {
+      if (Number.isFinite(seconds) && seconds > 0) setMediaSeconds({ key: storyKey, seconds });
+    },
+  };
 
   return (
     <article
       ref={articleRef}
       className={styles.workspace}
+      data-mode={isCover ? "cover" : "story"}
       aria-label={`${project.title} case study`}
       onFocusCapture={(event) => {
         if ((event.target as Element).matches(":focus-visible")) setKeyboardFocus(true);
       }}
       onBlurCapture={() => setKeyboardFocus(false)}
     >
-      <header className={`${styles.rail} ${styles.mobileHeader}`}>
-        <h1>
+      {backdrop && framing ? (
+        <div
+          className={styles.world}
+          aria-hidden="true"
+          style={
+            {
+              "--world-x": `${framing[0]}%`,
+              "--world-y": `${framing[1]}%`,
+              "--world-scale": framing[2],
+            } as React.CSSProperties
+          }
+        >
+          <picture>
+            <source media="(max-width: 47.99rem)" srcSet={(backdrop.phone ?? backdrop.image).src} />
+            {/* An art-directed backdrop, swapped per screen by <picture> and sized by CSS. */}
+            <img src={backdrop.image.src} alt="" decoding="async" />
+          </picture>
+        </div>
+      ) : null}
+
+      <header className={styles.head}>
+        <Link className={styles.back} href={`/#${sectionAnchors["selected-work"]}`}>
+          <SwapGlyph direction="left" className={styles.backGlyph}>
+            <ArrowGlyph direction="left" />
+          </SwapGlyph>
+          <WeightLabel text={siteContent.work.displayHeading} />
+        </Link>
+        <h1 className={styles.title}>
           <span className={styles.titleMask}>
             <span className={styles.titleInner}>{project.title}</span>
           </span>
         </h1>
-        <details className={styles.infoDisclosure} open={!mobile}>
-          <summary>Project info</summary>
-          <p className={styles.projectDescription}>{project.shortDescription}</p>
-          <ProjectFacts project={project} info={info} />
-          {info?.externalUrl ? (
-            <a className={styles.liveLink} href={info.externalUrl} data-cursor="action">
-              {/* An important action: it decodes on hover or focus, never on arrival. */}
-              <DecodeText
-                text={info.externalLabel ?? "View live project"}
-                entrance={false}
-                replay
-              />
-              <SwapGlyph direction="up-right">↗</SwapGlyph>
+      </header>
+
+      {isCover ? (
+        <>
+          <p className={styles.coverLead}>{project.shortDescription}</p>
+          <div className={styles.coverDetails}>
+            <CoverFacts project={project} info={info} />
+            {info?.externalUrl ? (
+              <a
+                className={styles.coverAction}
+                href={info.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-action-button=""
+                data-cursor="action"
+              >
+                <ActionContent text={info.externalLabel ?? "View live project"} arrow="↗" />
+              </a>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <section
+          ref={storyRef}
+          className={styles.story}
+          aria-live="polite"
+          key={`copy-${storyKey}`}
+          onMouseEnter={() => setReading(true)}
+          onMouseLeave={() => setReading(false)}
+        >
+          <p className={styles.eyebrow}>
+            <Lines text={story.eyebrow ?? stage.label} />
+          </p>
+          <h2>
+            <Lines text={story.title} />
+          </h2>
+          <p className={styles.storyDescription}>
+            <Lines text={story.description} />
+          </p>
+          {story.supportingPoints?.length ? (
+            <ul className={styles.points}>
+              {story.supportingPoints.slice(0, 4).map((point) => (
+                <li key={point}>
+                  <Lines text={point} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {(
+            [
+              ["Decision", story.decision],
+              ["Constraint", story.constraint],
+              ["Outcome", story.outcome],
+            ] as const
+          ).map(([label, text]) =>
+            text ? (
+              <p key={label} className={styles.detail}>
+                <strong>
+                  <Lines text={label} />
+                </strong>
+                <Lines text={text} />
+              </p>
+            ) : null,
+          )}
+          {story.metric ? (
+            <p className={styles.metric}>
+              <strong>
+                <Lines text={story.metric.value} />
+              </strong>
+              <Lines text={story.metric.label} />
+            </p>
+          ) : null}
+          {story.quote ? (
+            <blockquote>
+              <Lines text={story.quote.text} />
+              {story.quote.attribution ? (
+                <cite>
+                  <Lines text={story.quote.attribution} />
+                </cite>
+              ) : null}
+            </blockquote>
+          ) : null}
+          {story.supportingVideo ? (
+            <a
+              className={styles.supportingVideo}
+              href={story.supportingVideo.media.src}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
             </a>
           ) : null}
-        </details>
-        <ScrollProgress variant="panel" />
-      </header>
+          <ScrollProgress variant="panel" />
+        </section>
+      )}
 
       <section
         ref={viewerRef}
         className={styles.viewer}
-        aria-label={`${stage.label}: ${story.title}`}
+        aria-label={isCover ? project.title : `${stage.label}: ${story.title}`}
         onTouchStart={(event) => {
           touchStart.current = event.touches[0]?.clientX ?? null;
         }}
@@ -616,80 +958,46 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
           touchStart.current = null;
         }}
       >
-        <div
-          key={stage.id}
-          ref={progressRef}
-          className={styles.storyProgress}
-          data-autoplay={autoplay ? "on" : "off"}
-          style={{ gridTemplateColumns: `repeat(${storyCount}, minmax(0, 1fr))` }}
-          aria-label={`Story ${storyIndex + 1} of ${storyCount}`}
-        >
-          {stage.stories.map((item, index) => (
-            <span
-              key={item.id}
-              data-state={index < storyIndex ? "past" : index === storyIndex ? "current" : "future"}
-            >
-              <span />
-            </span>
-          ))}
-        </div>
-        <div
-          className={styles.visualFrame}
-          data-board={
-            story.visual &&
-            ["palette", "typography", "assets", "spacing"].includes(story.visual.type)
-              ? "true"
-              : undefined
-          }
-          data-controlled-video={
-            story.visual?.type === "video" && story.visual.playback === "controls"
-              ? "true"
-              : undefined
-          }
-          key={storyKey}
-          onPointerDown={(event) => {
-            if (!(event.target as Element).closest("button, a, video")) setHolding(true);
-          }}
-          onPointerUp={releaseHold}
-          onPointerCancel={releaseHold}
-          onPointerLeave={releaseHold}
-        >
-          <StoryVisualView
-            visual={story.visual}
-            onPlayingChange={setVideoPlaying}
-            onDuration={(seconds) => {
-              if (Number.isFinite(seconds) && seconds > 0) {
-                setMediaSeconds({ key: storyKey, seconds });
-              }
-            }}
+        {isCover ? (
+          <CoverMedia
+            visual={stages[0]?.stories[0]?.visual}
+            flanks={project.caseStudy.coverFlanks}
+            {...mediaCallbacks}
           />
-          <button
-            className={styles.previousControl}
-            onClick={previous}
-            hidden={atStart}
-            aria-label="Previous story"
+        ) : (
+          <div
+            className={styles.visualFrame}
+            data-board={
+              story.visual &&
+              ["palette", "typography", "assets", "spacing"].includes(story.visual.type)
+                ? "true"
+                : undefined
+            }
+            data-ar={story.visual?.type === "image" ? "" : undefined}
+            style={
+              story.visual?.type === "image"
+                ? ({
+                    "--frame-ar": story.visual.media.width / story.visual.media.height,
+                  } as React.CSSProperties)
+                : undefined
+            }
+            key={storyKey}
+            onPointerDown={(event) => {
+              if (!(event.target as Element).closest("button, a, video")) setHolding(true);
+            }}
+            onPointerUp={releaseHold}
+            onPointerCancel={releaseHold}
+            onPointerLeave={releaseHold}
           >
-            <SwapGlyph direction="left" className={styles.controlGlyph}>
-              <ArrowGlyph direction="left" />
-            </SwapGlyph>
-          </button>
-          <button
-            className={styles.nextControl}
-            onClick={next}
-            hidden={atEnd}
-            aria-label="Next story"
-          >
-            <SwapGlyph direction="right" className={styles.controlGlyph}>
-              <ArrowGlyph direction="right" />
-            </SwapGlyph>
-          </button>
-        </div>
-        {story.caption ? (
+            <StoryVisualView visual={story.visual} {...mediaCallbacks} />
+          </div>
+        )}
+        {!isCover && story.caption ? (
           <p key={`caption-${storyKey}`} className={styles.caption}>
             {story.caption}
           </p>
         ) : null}
-        {story.visual?.type === "image" && story.visual.zoomable ? (
+        {!isCover && story.visual?.type === "image" && story.visual.zoomable ? (
           <a
             key={`zoom-${storyKey}`}
             className={styles.zoomLink}
@@ -697,111 +1005,86 @@ export function CaseStudyWorkspace({ project, stages }: CaseStudyWorkspaceProps)
             target="_blank"
             rel="noopener noreferrer"
           >
-            <WeightLabel text="Open artifact full size" />{" "}
-            <SwapGlyph direction="up-right">↗</SwapGlyph>
+            <WeightLabel text="Open full size" /> <SwapGlyph direction="up-right">↗</SwapGlyph>
           </a>
         ) : null}
       </section>
 
-      <section
-        ref={storyRef}
-        className={styles.story}
-        aria-live="polite"
-        key={`copy-${storyKey}`}
-        onMouseEnter={() => setReading(true)}
-        onMouseLeave={() => setReading(false)}
-      >
-        <p className={styles.eyebrow}>
-          <Lines text={story.eyebrow ?? stage.label} />
-        </p>
-        <h2>
-          <Lines text={story.title} />
-        </h2>
-        <p className={styles.storyDescription}>
-          <Lines text={story.description} />
-        </p>
-        {story.supportingPoints?.length ? (
-          <ul className={styles.points}>
-            {story.supportingPoints.slice(0, 4).map((point) => (
-              <li key={point}>
-                <Lines text={point} />
-              </li>
+      <nav className={styles.rail} aria-label="Case study stages">
+        <div ref={navRef} className={styles.stageNav}>
+          <span
+            ref={progressRef}
+            className={styles.stageIndicator}
+            data-autoplay={autoplay ? "on" : "off"}
+            aria-label={`Story ${storyIndex + 1} of ${storyCount}`}
+          >
+            {stories.map((item, index) => (
+              <span
+                key={item?.id ?? "cover"}
+                data-state={
+                  index < storyIndex ? "past" : index === storyIndex ? "current" : "future"
+                }
+              />
             ))}
-          </ul>
-        ) : null}
-        {(
-          [
-            ["Decision", story.decision],
-            ["Constraint", story.constraint],
-            ["Outcome", story.outcome],
-          ] as const
-        ).map(([label, text]) =>
-          text ? (
-            <p key={label} className={styles.detail}>
-              <strong>
-                <Lines text={label} />
-              </strong>
-              <Lines text={text} />
-            </p>
-          ) : null,
-        )}
-        {story.metric ? (
-          <p className={styles.metric}>
-            <strong>
-              <Lines text={story.metric.value} />
-            </strong>
-            <Lines text={story.metric.label} />
-          </p>
-        ) : null}
-        {story.quote ? (
-          <blockquote>
-            <Lines text={story.quote.text} />
-            {story.quote.attribution ? (
-              <cite>
-                <Lines text={story.quote.attribution} />
-              </cite>
-            ) : null}
-          </blockquote>
-        ) : null}
-        {story.supportingVideo ? (
-          <a
-            className={styles.supportingVideo}
-            href={story.supportingVideo.media.src}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Lines text={story.supportingVideo.label} /> <span aria-hidden="true">↗</span>
-          </a>
-        ) : null}
-        <ScrollProgress variant="panel" />
-      </section>
-
-      <nav ref={navRef} className={styles.stageNav} aria-label="Case study stages">
-        <span className={styles.stageIndicator} aria-hidden="true" />
-        {stages.map((item, index) => (
+          </span>
+          {stages.map((item, index) => (
+            <button
+              key={item.id}
+              data-stage-id={item.id}
+              style={{ "--i": index } as React.CSSProperties}
+              aria-current={item.id === stage.id ? "step" : undefined}
+              onClick={() => {
+                if (item.id !== stage.id) show(item.id, 0, "push");
+                // On a phone the reader may be deep in the copy; bring the new
+                // stage's visual back into view.
+                const viewer = viewerRef.current;
+                if (mobile && viewer && viewer.getBoundingClientRect().top < 0) {
+                  viewer.scrollIntoView({
+                    block: "start",
+                    behavior: reducedMotion ? "auto" : "smooth",
+                  });
+                }
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className={styles.pager}>
           <button
-            key={item.id}
-            data-stage-id={item.id}
-            style={{ "--i": index } as React.CSSProperties}
-            aria-current={item.id === stage.id ? "step" : undefined}
-            onClick={() => {
-              if (item.id !== stage.id) show(item.id, 0, "push");
-              // On a phone the reader may be deep in the copy; bring the new
-              // stage's visual back into view under the sticky stage list.
-              const viewer = viewerRef.current;
-              const below = navRef.current?.getBoundingClientRect().bottom ?? 0;
-              if (mobile && viewer && viewer.getBoundingClientRect().top < below) {
-                viewer.scrollIntoView({
-                  block: "start",
-                  behavior: reducedMotion ? "auto" : "smooth",
-                });
-              }
-            }}
+            type="button"
+            className={styles.pagerPrevious}
+            onClick={previous}
+            disabled={atStart}
+            aria-label="Previous story"
           >
-            {/* Manrope: the current stage is marked by colour and the gold line, not weight. */}
-            {item.label}
+            <SwapGlyph direction="left" className={styles.pagerGlyph}>
+              <ArrowGlyph direction="left" />
+            </SwapGlyph>
           </button>
-        ))}
+          {!atEnd ? (
+            <button
+              type="button"
+              className={styles.pagerNext}
+              onClick={next}
+              aria-label={upcoming ? `Next story: ${upcoming}` : "Next story"}
+            >
+              <span className={styles.pagerLabel}>Next</span>
+              <span className={styles.pagerTitle}>{upcoming}</span>
+              <SwapGlyph direction="right" className={styles.pagerGlyph}>
+                <ArrowGlyph direction="right" />
+              </SwapGlyph>
+            </button>
+          ) : nextStudy ? (
+            <Link className={styles.pagerCase} href={nextStudy.href}>
+              <span className={styles.pagerLabel}>Next case study</span>
+              <span className={styles.pagerCaseTitle}>{nextStudy.title}</span>
+              <SwapGlyph direction="right" className={styles.pagerGlyph}>
+                <ArrowGlyph direction="right" />
+              </SwapGlyph>
+            </Link>
+          ) : null}
+        </div>
       </nav>
     </article>
   );

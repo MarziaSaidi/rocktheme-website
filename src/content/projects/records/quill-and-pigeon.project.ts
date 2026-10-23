@@ -94,6 +94,25 @@ export const quillAndPigeonProject = {
   caseStudy: {
     storyPlayback: "manual",
     titleSignature: "ink",
+    backdrop: {
+      image: {
+        kind: "image",
+        src: "/images/projects/quill-and-pigeon/case-world.webp",
+        alt: "Night over the mountains at the project's Selected Work station.",
+        width: 2400,
+        height: 1500,
+      },
+      phone: {
+        kind: "image",
+        src: "/images/projects/quill-and-pigeon/case-world-phone.webp",
+        alt: "Night over the mountains at the project's Selected Work station.",
+        width: 830,
+        height: 1800,
+      },
+      cover: [-0.7, -3.9, 1.2],
+      story: [-12.8, 4.1, 1.3],
+      end: [-17.9, 8.2, 1.45],
+    },
     info: {
       timeline: "January-August 2025",
       timelineLabel: "Internship",
@@ -131,6 +150,8 @@ export const quillAndPigeonProject = {
               media: contextVideo,
               fit: "contain",
               playback: "controls",
+              label: "The import, start to finish",
+              crop: { top: 22, right: 0, bottom: 22, left: 0 },
             },
           },
         ],
@@ -211,7 +232,16 @@ export const quillAndPigeonProject = {
               "Put the explanation next to the value that needs correction, rather than relying on a general upload error.",
             outcome:
               "The review preserves the surrounding contact data and shows where to focus next.",
-            visual: { type: "image", media: media.errors, fit: "contain", zoomable: true },
+            visual: {
+              type: "image",
+              media: media.errors,
+              fit: "contain",
+              zoomable: true,
+              focus: [
+                { x: 1.81, y: 17.56, width: 96.43, height: 9.66 },
+                { x: 5.63, y: 51.93, width: 13.91, height: 31.76 },
+              ],
+            },
           },
           {
             id: "frontend-boundary",

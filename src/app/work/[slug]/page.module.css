@@ -1,63 +1,9 @@
+/* The case study happens in the world; CaseStudyWorkspace draws it behind the page. */
 .page {
   position: relative;
   z-index: var(--layer-content);
   min-height: 100dvh;
-  padding-block: calc(var(--header-height) + 1rem) var(--space-12);
-  background: #000;
-}
-
-.back {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4) var(--space-8);
-  align-items: center;
-  justify-content: space-between;
-  width: min(calc(100vw - var(--layout-gutter) * 2), 104rem);
-  margin: var(--space-6) auto 0;
-}
-
-.nextLabel {
-  color: var(--color-text-secondary);
-}
-
-.backLink {
-  composes: micro from "../../../styles/type.module.css";
-  display: inline-flex;
-  gap: var(--space-3);
-  align-items: center;
-  min-height: 2.75rem;
-  font-weight: var(--weight-signal);
-  text-decoration: none;
-  transition:
-    color var(--duration-interface) var(--ease-interface),
-    scale var(--motion-press-out) var(--motion-ease-interface);
-}
-
-/* Colour here; the weight comes from its WeightLabel. */
-@media (hover: hover) and (pointer: fine) {
-  .backLink:hover {
-    color: var(--color-text-primary);
-  }
-}
-
-.backLink:focus-visible {
-  color: var(--color-text-primary);
-}
-
-.backLink:active {
-  scale: var(--motion-press-scale);
-  transition-duration: var(--duration-interface), var(--motion-press-in);
-}
-
-.backArrow {
-  width: 1.5rem;
-  height: auto;
-}
-
-.backArrow svg {
-  display: block;
-  width: 100%;
-  height: auto;
+  padding-block: calc(var(--header-height) + var(--space-2)) var(--space-4);
 }
 
 @media (max-width: 47.99rem) {
@@ -65,13 +11,4 @@
   .page {
     padding-block-start: var(--header-height-phone);
   }
-}
-
-/* Closes the case-study opening. Timing lives in src/motion/motion.css. */
-.back {
-  animation-name: var(--motion-keyframes-copy);
-  animation-duration: var(--motion-small-duration);
-  animation-timing-function: var(--motion-ease-interface);
-  animation-fill-mode: backwards;
-  animation-delay: var(--motion-case-back-at);
 }
