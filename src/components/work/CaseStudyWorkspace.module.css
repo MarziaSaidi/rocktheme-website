@@ -1,37 +1,361 @@
+/*
+ * The case study on black, read by scrolling. The cover,
+ * then each stage as a chapter: a numbered opener in the display face and
+ * its stories, each composed for its evidence (wide, tall, or a pair).
+ *
+ * One spacing scale throughout: 8 · 16 · 24 · 32 · 48 · 64 · 96 · 160 px,
+ * tight inside a group and generous between them, on a 12-column grid.
+ */
 .workspace {
-  --rail-width: clamp(12rem, 16vw, 16.5rem);
+  --plane-rim: 0 0 0 1px var(--color-plane-rim);
+  --plane-drop: 0 2.5rem 5rem -1.25rem rgb(0 0 0 / 0.9);
+  --rule: 1px solid var(--color-line);
+  /*
+   * Long reading on black: a soft white a step above secondary, never pure
+   * white, so letters stay crisp instead of glowing (about 16:1 on #000).
+   */
+  --color-reading: color-mix(in srgb, var(--color-text-secondary) 50%, var(--color-text-primary));
+  --grid-gap: var(--space-6);
+  --gap-story: var(--space-24);
+  --gap-chapter: calc(var(--space-20) * 2);
+
   position: relative;
-  display: grid;
-  grid-template-columns: var(--rail-width) minmax(0, 1fr) minmax(15rem, 22vw);
-  grid-template-rows: minmax(0, 1fr) auto;
-  width: min(calc(100vw - var(--layout-gutter) * 2), 104rem);
-  height: calc(100dvh - var(--header-height) - 2.5rem);
-  min-height: 38rem;
-  max-height: 64rem;
+  width: min(calc(100vw - var(--layout-gutter) * 2), 96rem);
   margin-inline: auto;
   color: var(--color-text-primary);
-  background: #000;
   isolation: isolate;
 }
 
-.rail {
-  /* Same as .story: keeps hidden decode labels inside the scrolling rail. */
-  --rail-padding: clamp(1.25rem, 2.2vw, 2rem);
-  --scroll-progress-inset: calc(var(--rail-padding) / 2);
-
-  position: relative;
-  grid-row: 1 / 3;
-  min-width: 0;
-  padding: var(--rail-padding);
-  overflow: auto;
-  /* The rail stays put while everything right of it changes. */
-  border-inline-end: var(--border-hairline);
+/* The copy scrolls away under the site header, not through its links. */
+.workspace::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: var(--layer-navigation);
+  height: calc(var(--header-height) + var(--space-6));
+  background: linear-gradient(180deg, #000 72%, transparent);
+  pointer-events: none;
 }
 
-.railLabel,
+.cover {
+  display: grid;
+  grid-template-columns: minmax(0, 32rem) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "head viewer"
+    "lead viewer"
+    "details viewer";
+  column-gap: clamp(2.5rem, 5.3vw, 5.5rem);
+  row-gap: var(--space-8);
+  height: calc(100dvh - var(--header-height) - var(--space-16));
+  min-height: 34rem;
+}
+
+.chapterNumber b {
+  color: var(--color-highlight);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  font-weight: 400;
+  letter-spacing: var(--tracking-micro);
+}
+
+/* ------------------------------------------------------------- chapters */
+
+.chapter {
+  padding-block-start: var(--gap-chapter);
+  scroll-margin-top: var(--header-height);
+}
+
+.opener,
+.end,
+.beat[data-layout="wide"] .copy,
+.beat[data-layout="tall"],
+.chapterStories[data-layout="pair"] {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--grid-gap);
+}
+
+/* A chapter opens in the cover's own display face: the number on a gold rule, the name large. */
+.opener {
+  align-items: end;
+  padding-block-end: var(--space-16);
+}
+
+.chapterNumber {
+  grid-column: 1 / span 2;
+  align-self: start;
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-block-start: var(--space-6);
+  color: var(--color-text-muted);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  border-block-start: 1px solid var(--color-highlight);
+}
+
+.chapterTitle,
+.endTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(4rem, 9vw, 8.5rem);
+  font-weight: var(--weight-display);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.chapterTitle {
+  grid-column: 3 / -1;
+}
+
+/* ------------------------------------------------------------- stories */
+
+.beat {
+  min-width: 0;
+  scroll-margin-top: calc(var(--header-height) + var(--space-6));
+}
+
+.chapterStories > .beat + .beat {
+  margin-block-start: var(--gap-story);
+}
+
+.claim {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+
+.why {
+  display: grid;
+  gap: var(--space-6);
+  align-content: start;
+  min-width: 0;
+}
+
+/* Wide: the claim and its reasoning read across, then the evidence spans the page. */
+.beat[data-layout="wide"] .copy {
+  row-gap: var(--space-6);
+  align-items: start;
+}
+
+.beat[data-layout="wide"] .claim {
+  grid-column: 1 / span 5;
+}
+
+.beat[data-layout="wide"] .why {
+  grid-column: 7 / -1;
+  padding-block-start: var(--space-8);
+}
+
+.beat[data-layout="wide"] .fig {
+  margin-block-start: var(--space-12);
+}
+
+/* Tall: phone screens run on the right while the copy holds still on the left. */
+.beat[data-layout="tall"] {
+  align-items: start;
+}
+
+.beat[data-layout="tall"] .copy {
+  grid-column: 1 / span 4;
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-12));
+  display: grid;
+  gap: var(--space-6);
+}
+
+.beat[data-layout="tall"] .fig {
+  grid-column: 6 / -1;
+}
+
+.beat[data-layout="tall"] .notes,
+.beat[data-layout="pair"] .notes {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+}
+
+/* Pair: two states of one step, staggered so they read in order. */
+.chapterStories[data-layout="pair"] {
+  align-items: start;
+}
+
+.chapterStories[data-layout="pair"] > .beat:first-child {
+  grid-column: 1 / span 6;
+}
+
+.chapterStories[data-layout="pair"] > .beat:last-child {
+  grid-column: 7 / -1;
+  margin-block-start: var(--gap-chapter);
+}
+
+.beat[data-layout="pair"] .copy {
+  display: grid;
+  gap: var(--space-6);
+  margin-block-start: var(--space-8);
+}
+
+.beat[data-layout="pair"] .storyTitle {
+  font-size: clamp(1.625rem, 2.2vw, 2.125rem);
+}
+
+/* ------------------------------------------------------------- next case study */
+
+.end {
+  align-items: end;
+  margin-block-start: var(--gap-chapter);
+  padding-block: var(--space-24);
+  color: inherit;
+  text-decoration: none;
+  border-block-start: var(--rule);
+}
+
+.endLabel {
+  grid-column: 1 / span 3;
+  padding-block-end: var(--space-4);
+  color: var(--color-text-muted);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+}
+
+.endTitle {
+  grid-column: 4 / span 8;
+}
+
+.endGlyph {
+  grid-column: 12;
+  justify-self: end;
+  width: 3.5rem;
+  margin-block-end: var(--space-6);
+}
+
+.endGlyph svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.end:focus-visible {
+  outline: 1px solid var(--color-line-strong);
+  outline-offset: var(--space-2);
+}
+
+/* ------------------------------------------------------------- head */
+
+.head {
+  grid-area: head;
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+}
+
+.back {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-self: start;
+  min-height: 2.75rem;
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    color var(--duration-interface) var(--ease-interface),
+    scale var(--motion-press-out) var(--motion-ease-interface);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .back:hover {
+    color: var(--color-text-primary);
+  }
+}
+
+.back:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.back:active {
+  scale: var(--motion-press-scale);
+  transition-duration: var(--duration-interface), var(--motion-press-in);
+}
+
+.backGlyph {
+  width: 1.5rem;
+  height: auto;
+}
+
+.backGlyph svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 2.4vw, 2.25rem);
+  font-weight: var(--weight-display);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.cover .title {
+  max-width: 5.6em;
+  margin-block-start: var(--space-4);
+  font-size: clamp(3.5rem, 7.6vw, 7rem);
+}
+
+/* ------------------------------------------------------------- cover */
+
+.coverLead {
+  grid-area: lead;
+  max-width: 30ch;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-lead);
+  line-height: 1.48;
+  letter-spacing: 0;
+  text-wrap: pretty;
+}
+
+.coverDetails {
+  grid-area: details;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-8);
+}
+
+/* Facts as a ledger: one rule above, aligned columns. */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-12);
+  width: 100%;
+  margin: 0;
+  padding-block-start: var(--space-6);
+  border-block-start: var(--rule);
+}
+
+.fact {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.fact dt,
 .eyebrow,
-.facts dt,
-.caption {
+.playerBar {
   margin: 0;
   color: var(--color-text-muted);
   font-family: var(--font-technical);
@@ -41,125 +365,222 @@
   text-transform: uppercase;
 }
 
-.rail h1,
-.mobileHeader h1 {
-  margin: var(--space-4) 0 0;
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 3vw, 3.4rem);
-  font-weight: var(--weight-display);
-  line-height: 0.95;
-  letter-spacing: var(--tracking-display);
-  text-transform: uppercase;
-}
-
-.projectDescription {
-  margin: var(--space-4) 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--text-small);
-  line-height: 1.65;
-  letter-spacing: var(--tracking-body);
-}
-
-.facts {
-  display: grid;
-  gap: var(--space-5);
-  margin: var(--space-8) 0 0;
-  padding-block-start: var(--space-6);
-  border-block-start: var(--border-hairline);
-}
-
 .fact dd {
-  margin: var(--space-2) 0 0;
-  color: var(--color-text-secondary);
-  font-size: var(--text-small);
-  line-height: 1.45;
+  max-width: 22ch;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.4;
 }
 
-.liveLink {
+.coverAction {
+  text-decoration: none;
+}
+
+.coverMedia {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Screens behind the main one, as on the Selected Work card. */
+.coverMedia[data-flanked] {
+  padding-inline: 14%;
+}
+
+.flank {
+  position: absolute;
+  z-index: -1;
+  aspect-ratio: 430 / 932;
+  height: 68%;
+  padding: 0.6%;
+  overflow: hidden;
+  background: linear-gradient(160deg, #3a3940 0%, #17161b 38%, #121115 70%, #2a2930 100%);
+  border-radius: 13% / 6%;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-lavender) 26%, transparent),
+    var(--plane-drop);
+  filter: brightness(0.6) blur(0.4px);
+}
+
+.flank[data-side="start"] {
+  inset-inline-start: 4%;
+  top: 22%;
+}
+
+.flank[data-side="end"] {
+  inset-inline-end: 2%;
+  top: 14%;
+  height: 62%;
+  filter: brightness(0.55) blur(0.6px);
+}
+
+.flank img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 11% / 5.1%;
+}
+
+/* ------------------------------------------------------------- player */
+
+.player {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0;
+}
+
+.player[data-portrait] {
+  width: auto;
+}
+
+.playerBar {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-secondary);
+}
+
+.playerToggle {
   display: inline-flex;
   gap: var(--space-3);
   align-items: center;
   min-height: 2.75rem;
-  margin-block-start: var(--space-8);
+  padding: 0;
   color: var(--color-text-primary);
-  font-family: var(--font-technical);
-  font-size: var(--text-micro-lg);
-  letter-spacing: var(--tracking-micro-tight);
-  text-decoration: none;
-  transition: scale var(--motion-press-out) var(--motion-ease-interface);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
 }
 
-.liveLink:active {
-  scale: var(--motion-press-scale);
-  transition-duration: var(--motion-press-in);
+.playerGlyph {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
 }
+
+.playerGlyph[data-playing] {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-inline: 2px solid currentColor;
+}
+
+.playerTrack {
+  position: relative;
+  height: 1px;
+  margin-block-end: var(--space-3);
+  background: color-mix(in srgb, var(--brand-lavender) 30%, transparent);
+}
+
+.playerTrack::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--played, 0) * 100%);
+  background: var(--color-text-primary);
+}
+
+.screen {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  border-radius: var(--radius-screen);
+  box-shadow: var(--plane-rim), var(--plane-drop);
+}
+
+/* A recorded device keeps its own corners; no rim around it. */
+.screen[data-device] {
+  background: transparent;
+  border-radius: var(--corner-x) / var(--corner-y);
+  box-shadow: var(--plane-drop);
+}
+
+.player[data-portrait] .screen {
+  height: clamp(20rem, 58dvh, 35rem);
+}
+
+.screenVideo {
+  display: block;
+  width: var(--video-width, 100%);
+  max-width: none;
+  height: auto;
+  margin-block-start: var(--video-top, 0);
+  margin-inline-start: var(--video-left, 0);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------- viewer */
 
 .viewer {
+  grid-area: viewer;
   position: relative;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   min-width: 0;
   min-height: 0;
-  padding: clamp(1rem, 2vw, 1.75rem);
-  background: transparent;
 }
 
-.storyProgress {
-  z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(var(--segments, 1), minmax(0, 1fr));
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: var(--space-2);
-  margin-block-end: var(--space-4);
-}
-
-.storyProgress > span {
-  height: 2px;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--brand-lavender) 25%, transparent);
-}
-
-.storyProgress > span > span {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: var(--color-text-primary);
-  transform-origin: left;
-}
-
-.storyProgress > span[data-state="future"] > span {
-  scale: 0 1;
-}
-.storyProgress > span[data-state="past"] > span {
-  scale: 1 1;
-}
-/* Painted every frame by the autoplay clock through --story-progress. */
-.storyProgress > span[data-state="current"] > span {
-  scale: var(--story-progress, 0) 1;
-}
-
-/* With no clock running, the current segment simply reads as the current one. */
-.storyProgress[data-autoplay="off"] > span[data-state="current"] > span {
-  scale: 1 1;
+.fig {
+  min-width: 0;
+  margin: 0;
 }
 
 .visualFrame {
   position: relative;
-  display: grid;
-  flex: 1;
-  place-items: center;
   min-width: 0;
-  min-height: 18rem;
-  overflow: hidden;
-  background: transparent;
   animation: visual-in 520ms var(--ease-interface) both;
+}
+
+/* Evidence never outgrows the screen: a wide shot fills the grid, a deep one narrows to fit. */
+.visualFrame[data-kind="image"],
+.visualFrame[data-kind="video"] {
+  max-width: min(100%, calc((100dvh - var(--header-height) - 12.5rem) * var(--ar, 1.6)));
+}
+
+.beat[data-layout="tall"] .visualFrame[data-kind="image"],
+.beat[data-layout="tall"] .visualFrame[data-kind="video"] {
+  margin-inline: auto;
+}
+
+/* Caption and full-size link share one ruled line beneath the evidence. */
+.figCaption {
+  display: flex;
+  gap: var(--space-8);
+  align-items: baseline;
+  justify-content: space-between;
+  margin-block-start: var(--space-4);
+  padding-block-start: var(--space-2);
+  border-block-start: var(--rule);
+}
+
+.figCaption .caption {
+  margin: 0;
+}
+
+.figCaption .zoomLink {
+  flex: none;
+  margin: 0 0 0 auto;
 }
 
 @keyframes visual-in {
   from {
-    opacity: 0.2;
-    scale: 0.985;
+    opacity: 0;
+    translate: 0 0.75rem;
   }
 }
 
@@ -170,20 +591,61 @@
   }
 }
 
-.visualMedia {
+/* ------------------------------------------------------------- evidence */
+
+.evidence {
+  display: block;
+  width: 100%;
+}
+
+/* As large as the zone allows at the image's own proportions, so the light lines up. */
+.plane {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--ar);
+  width: 100%;
+  border-radius: var(--radius-screen);
+  box-shadow: var(--plane-rim), var(--plane-drop);
+}
+
+.planeImage {
   display: block;
   width: 100%;
   height: 100%;
-  max-height: calc(100dvh - var(--header-height) - 12rem);
+  object-fit: contain;
+  border-radius: inherit;
 }
 
-img.visualMedia[data-fit="contain"],
-video.visualMedia[data-fit="contain"] {
-  object-fit: contain;
+/* Emphasis arrives as light: the rest dims, the named parts stay lit. */
+.focus {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: focus-in 400ms var(--ease-interface) 700ms both;
 }
-img.visualMedia[data-fit="cover"],
-video.visualMedia[data-fit="cover"] {
-  object-fit: cover;
+
+.focus path {
+  fill: rgb(0 0 0 / 0.38);
+}
+
+.focus rect {
+  fill: none;
+  stroke: rgb(183 147 210 / 0.75);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+@keyframes focus-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.pieces {
+  display: none;
 }
 
 .visualGroup {
@@ -193,49 +655,46 @@ video.visualMedia[data-fit="cover"] {
   gap: var(--space-3);
   width: 100%;
   height: 100%;
-  padding: var(--space-4);
 }
 
 .visualGroup[data-count="3"] > :first-child {
   grid-row: span 2;
 }
-.visualGroup .visualMedia {
+
+.visualMedia {
+  display: block;
+  width: 100%;
+  height: 100%;
   min-height: 0;
+  object-fit: contain;
 }
 
+/* Phone screens stand together over the range, each in its device. */
 .sequence {
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: clamp(1rem, 2vw, 1.75rem);
   color: var(--color-text-primary);
-  background: #101015;
-}
-
-.sequence[data-tone="paper"] {
-  color: #171920;
-  background: #eeeff2;
 }
 
 .sequenceHeading {
   flex: 0 0 auto;
-  margin: 0 0 var(--space-4);
-  padding-block-end: var(--space-3);
+  margin: 0 0 var(--space-5);
+  color: var(--color-text-muted);
   font-family: var(--font-technical);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-micro);
   text-transform: uppercase;
-  opacity: 0.7;
 }
 
 .sequenceItems {
   display: grid;
   flex: 1;
   grid-template-columns: repeat(var(--sequence-count), minmax(0, 1fr));
-  gap: clamp(0.5rem, 1.25vw, 1.25rem);
-  align-items: center;
+  gap: clamp(1rem, 3vw, 3rem);
+  align-items: start;
   justify-content: center;
   min-width: 0;
   min-height: 0;
@@ -244,11 +703,13 @@ video.visualMedia[data-fit="cover"] {
 .sequence[data-layout="board"] .sequenceItems {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) clamp(1rem, 2.5vw, 2.5rem);
 }
 
 .sequence[data-layout="mosaic"] .sequenceItems {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-6);
 }
 
 .sequenceItem {
@@ -263,32 +724,34 @@ video.visualMedia[data-fit="cover"] {
 
 .sequenceScreen {
   display: flex;
+  width: 100%;
+  /* A screen is never taller than about two thirds of the window. */
+  max-width: calc(min(68dvh, 38rem) * 430 / 932);
   min-width: 0;
   min-height: 0;
   max-height: 100%;
   aspect-ratio: 430 / 932;
-  padding: 3px;
+  padding: 2.4%;
   overflow: hidden;
-  background: #07070a;
-  border-radius: clamp(0.45rem, 1vw, 1rem);
-  box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 22%);
+  background: linear-gradient(160deg, #3a3940 0%, #17161b 38%, #121115 70%, #2a2930 100%);
+  border-radius: 13% / 6%;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-lavender) 26%, transparent),
+    var(--plane-drop);
   text-decoration: none;
-}
-
-.sequence[data-tone="paper"] .sequenceScreen {
-  background: #fff;
-  box-shadow: 0 0.5rem 1.5rem rgb(30 36 50 / 12%);
 }
 
 .sequenceScreen img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 11% / 5.1%;
 }
 
 .sequenceItem figcaption {
   margin-block-start: var(--space-3);
+  color: var(--color-text-secondary);
   font-family: var(--font-technical);
   font-size: var(--text-micro);
   letter-spacing: var(--tracking-micro);
@@ -297,10 +760,45 @@ video.visualMedia[data-fit="cover"] {
   text-transform: uppercase;
 }
 
+.comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1.5rem, 4vw, 4rem);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.comparisonItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  margin: 0;
+}
+
+.comparisonItem img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: min(68dvh, 38rem);
+  object-fit: contain;
+  border-radius: 11% / 5.1%;
+  box-shadow: var(--plane-rim), var(--plane-drop);
+}
+
+.comparisonItem figcaption {
+  margin-block-start: var(--space-3);
+  color: var(--color-text-secondary);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+}
+
 .codeArtifact {
-  width: min(92%, 58rem);
-  max-height: 78%;
-  margin: auto;
+  width: 100%;
+  margin: 0;
   overflow: auto;
   background: rgb(8 6 12 / 82%);
   box-shadow: var(--shadow-panel);
@@ -324,131 +822,40 @@ video.visualMedia[data-fit="cover"] {
   white-space: pre;
 }
 
-.comparison {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-  width: 100%;
-  padding: var(--space-4);
-}
-
-.comparisonItem {
-  margin: 0;
-}
-.comparisonItem img {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-.comparisonItem figcaption {
-  margin-block-start: var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--text-small);
-}
-
 .textOnly {
   max-width: 28ch;
-  margin: 0;
+  margin: auto;
   color: var(--color-text-secondary);
   font-size: var(--text-lead);
   text-align: center;
   text-wrap: balance;
 }
 
-.previousControl,
-.nextControl {
-  position: absolute;
-  inset-block: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  width: 18%;
-  padding: 0 var(--space-5);
-  color: #fff;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  /* White over dark screens, dark over the paper boards: no card needed. */
-  mix-blend-mode: difference;
-}
-
-.previousControl:active .controlGlyph,
-.nextControl:active .controlGlyph {
-  scale: var(--motion-press-scale);
-  transition-duration: var(--duration-interface), var(--motion-press-in);
-}
-.previousControl {
-  inset-inline-start: 0;
-  justify-content: flex-start;
-}
-.nextControl {
-  inset-inline-end: 0;
-  justify-content: flex-end;
-}
-/* Keep native video controls clear of the story navigation hit areas. */
-.visualFrame[data-controlled-video="true"] .previousControl,
-.visualFrame[data-controlled-video="true"] .nextControl {
-  inset-block: 50% auto;
-  width: 3.5rem;
-  height: 3.5rem;
-  padding: 0;
-  justify-content: center;
-  translate: 0 -50%;
-}
-
-.previousControl[hidden],
-.nextControl[hidden] {
-  display: none;
-}
-
-.controlGlyph {
-  width: 1.75rem;
-  height: auto;
-  opacity: 0.55;
-  transition:
-    opacity var(--duration-interface) var(--ease-interface),
-    scale var(--motion-press-out) var(--motion-ease-interface);
-}
-
-.controlGlyph svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-.previousControl:hover .controlGlyph,
-.nextControl:hover .controlGlyph,
-.previousControl:focus-visible .controlGlyph,
-.nextControl:focus-visible .controlGlyph {
-  opacity: 1;
-}
-.previousControl:focus-visible,
-.nextControl:focus-visible {
-  outline: none;
-}
-.previousControl:focus-visible .controlGlyph,
-.nextControl:focus-visible .controlGlyph {
-  outline: 1px solid currentColor;
-  outline-offset: 0.5rem;
-}
-
+/* Captions are sentences: set to be read, in sentence case, not as labels. */
 .caption {
-  margin-block-start: var(--space-3);
+  max-width: 34em;
+  margin: var(--space-4) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  letter-spacing: 0;
+  text-wrap: pretty;
 }
 
 .zoomLink {
   display: inline-flex;
   gap: var(--space-2);
   align-items: center;
+  align-self: flex-start;
   min-height: 2.75rem;
   margin-block-start: var(--space-2);
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
   font-family: var(--font-technical);
   font-size: var(--text-micro);
   font-weight: var(--weight-signal);
   letter-spacing: var(--tracking-micro);
   text-decoration: none;
   text-transform: uppercase;
-  /* The weight comes from its WeightLabel. */
   transition: scale var(--motion-press-out) var(--motion-ease-interface);
 }
 
@@ -457,33 +864,7 @@ video.visualMedia[data-fit="cover"] {
   transition-duration: var(--motion-press-in);
 }
 
-.supportingVideo {
-  display: inline-flex;
-  gap: var(--space-2);
-  align-items: center;
-  min-height: 2.75rem;
-  margin-block-start: var(--space-6);
-  color: var(--color-text-primary);
-  font-family: var(--font-technical);
-  font-size: var(--text-micro);
-  letter-spacing: var(--tracking-micro);
-  text-decoration: none;
-  text-transform: uppercase;
-}
-
-.story {
-  /*
-   * Positioned so the absolute .srOnly labels scroll and clip with the copy.
-   * Without it they escape to the workspace and stretch the page below it.
-   */
-  --story-padding: clamp(1.5rem, 2.5vw, 2.5rem);
-  --scroll-progress-inset: calc(var(--story-padding) / 2);
-
-  position: relative;
-  min-width: 0;
-  padding: var(--story-padding);
-  overflow: auto;
-}
+/* ------------------------------------------------------------- reading */
 
 /* Each wrapped line rises in turn; --line is counted after the copy wraps. */
 .word {
@@ -501,38 +882,47 @@ video.visualMedia[data-fit="cover"] {
   white-space: nowrap;
 }
 
-.story h2 {
-  max-width: 13ch;
-  margin: var(--space-5) 0 0;
-  font-size: clamp(1.5rem, 2vw, 2.35rem);
-  font-weight: var(--weight-body-strong);
-  line-height: 1.08;
-  letter-spacing: -0.025em;
+.storyTitle {
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: var(--weight-title);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
   text-wrap: balance;
 }
 
+/*
+ * The reading measure: about 66 characters a line, a touch of extra leading
+ * and untightened letters, since light text on black already reads heavier.
+ */
 .storyDescription {
-  margin: var(--space-5) 0 0;
-  color: var(--color-text-secondary);
-  line-height: var(--leading-body);
-  letter-spacing: var(--tracking-body);
+  max-width: 31em;
+  margin: 0;
+  color: var(--color-reading);
+  font-size: 1.125rem;
+  line-height: 1.65;
+  letter-spacing: 0;
+  text-wrap: pretty;
 }
 
 .points {
   display: grid;
   gap: var(--space-3);
-  margin: var(--space-8) 0 0;
-  padding: var(--space-6) 0 0;
-  border-block-start: var(--border-hairline);
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 
 .points li {
   position: relative;
+  max-width: 36em;
   padding-inline-start: 1rem;
-  color: var(--color-text-secondary);
-  font-size: var(--text-small);
+  color: var(--color-reading);
+  font-size: 1rem;
+  line-height: 1.55;
+  letter-spacing: 0;
 }
+
 .points li::before {
   position: absolute;
   inset-inline-start: 0;
@@ -540,29 +930,66 @@ video.visualMedia[data-fit="cover"] {
   color: var(--color-accent);
 }
 
-.detail,
 .metric,
-.story blockquote {
-  margin: var(--space-6) 0 0;
-  padding-block-start: var(--space-5);
-  border-block-start: var(--border-hairline);
-  color: var(--color-text-secondary);
+.why blockquote {
+  margin: 0;
+  color: var(--color-reading);
+  line-height: 1.55;
 }
-.detail strong,
+
+/* Decision, constraint and outcome as annotations: one rule, side by side. */
+.notes {
+  display: grid;
+  grid-template-columns: repeat(var(--notes, 2), minmax(0, 1fr));
+  gap: var(--space-8);
+  margin: 0;
+  padding-block-start: var(--space-6);
+  border-block-start: var(--rule);
+}
+
+.notes div {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.notes dt {
+  color: var(--brand-lavender);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  line-height: var(--leading-micro);
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+}
+
+/* The same light as the paragraphs, so the reading leads and the notes follow. */
+.notes dd {
+  max-width: 34em;
+  margin: 0;
+  color: var(--color-reading);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
 .metric strong {
   display: block;
   margin-block-end: var(--space-2);
   color: var(--color-text-primary);
+  font-weight: var(--weight-title);
 }
+
 .metric strong {
   font-family: var(--font-display);
   font-size: var(--text-display-s);
   font-weight: var(--weight-display);
 }
-.story blockquote {
+
+.why blockquote {
   font-size: var(--text-lead);
 }
-.story cite {
+
+.why cite {
   display: block;
   margin-block-start: var(--space-3);
   color: var(--color-text-muted);
@@ -570,250 +997,212 @@ video.visualMedia[data-fit="cover"] {
   font-style: normal;
 }
 
-.stageNav {
-  position: relative;
-  grid-column: 2 / 4;
-  display: flex;
-  gap: clamp(0.5rem, 2vw, 2rem);
-  align-items: stretch;
-  justify-content: space-around;
-  min-width: 0;
-  padding-inline: clamp(1rem, 2vw, 1.75rem);
-  overflow-x: auto;
-  scrollbar-width: none;
-  /* The track the indicator runs along. */
-  box-shadow: inset 0 1px 0 var(--color-line);
-}
-
-/* The same gold lit line as the header's (SiteHeader.module.css, .litLine). */
-.stageIndicator {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  width: var(--indicator-width, 0);
-  height: 1px;
-  background: var(--color-highlight);
-  translate: var(--indicator-x, 0) 0;
-}
-.stageNav[data-indicator="ready"] .stageIndicator {
-  transition:
-    translate 480ms var(--ease-interface),
-    width 480ms var(--ease-interface);
-}
-
-.stageNav button {
-  position: relative;
-  flex: 0 0 auto;
-  min-height: 4rem;
-  padding: 0 var(--space-3);
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: var(--text-small);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  transition: color var(--duration-interface) var(--ease-interface);
-}
-
-.stageNav button:hover {
-  color: var(--color-text-secondary);
-}
-
-/* Colour and the gold line mark the current stage, so no label changes width. */
-.stageNav button[aria-current="step"] {
-  color: var(--color-text-primary);
-}
-
-.stageNav button:focus-visible {
-  outline: 1px solid var(--color-line-strong);
-  outline-offset: -0.75rem;
-}
-
-.infoDisclosure summary {
+.supportingVideo {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-self: start;
   min-height: 2.75rem;
-  cursor: pointer;
+  color: var(--color-text-primary);
+  font-family: var(--font-technical);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-micro);
+  text-decoration: none;
+  text-transform: uppercase;
 }
 
-@media (min-width: 75rem) {
-  .infoDisclosure summary {
-    display: none;
-  }
-}
+/* ------------------------------------------------------------- tablets */
 
 @media (max-width: 74.99rem) {
-  .workspace {
-    grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 1fr);
-    width: min(calc(100vw - var(--layout-gutter) * 2), 74rem);
-    height: auto;
-    min-height: auto;
-    max-height: none;
+  .cover {
+    grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);
   }
-  .rail {
-    grid-row: auto;
-    border-inline-end: 0;
-    border-block-end: var(--border-hairline);
-  }
-  .mobileHeader {
-    display: grid;
-    grid-column: 1 / 3;
-    grid-template-columns: 1fr auto;
-    align-items: end;
-    gap: var(--space-2) var(--space-6);
-    padding: var(--space-6);
-  }
-  .mobileHeader h1 {
-    margin: 0;
-  }
-  .mobileHeader > p {
-    margin: 0;
-    color: var(--color-text-secondary);
-    font-size: var(--text-small);
-  }
-  .infoDisclosure {
-    grid-column: 1 / 3;
-    margin-block-start: var(--space-3);
-  }
-  .infoDisclosure summary {
-    min-height: 2.75rem;
-    color: var(--color-text-primary);
-    cursor: pointer;
-    font-size: var(--text-small);
-  }
-  .infoDisclosure > p {
-    max-width: 50ch;
-    color: var(--color-text-secondary);
-  }
-  .infoDisclosure .facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .stageNav {
-    grid-column: 1 / 3;
+  .beat[data-layout="tall"] .copy {
+    grid-column: 1 / span 5;
   }
 }
+
+/* ------------------------------------------------------------- phones */
 
 @media (max-width: 47.99rem) {
   .workspace {
+    --gap-story: var(--space-16);
+    --gap-chapter: var(--space-24);
+
+    width: 100%;
+    padding: var(--space-4) var(--layout-gutter) 0;
+  }
+
+  .workspace::before {
+    height: calc(var(--header-height-phone) + var(--space-3));
+  }
+
+  .cover,
+  .opener,
+  .end,
+  .beat[data-layout="wide"] .copy,
+  .beat[data-layout="tall"],
+  .chapterStories[data-layout="pair"] {
     display: flex;
     flex-direction: column;
-    width: 100%;
+    align-items: stretch;
+    gap: var(--space-6);
   }
-  .mobileHeader {
-    display: block;
-    padding: var(--space-4) var(--layout-gutter) var(--space-5);
+
+  .cover {
+    height: auto;
+    min-height: 0;
   }
-  .mobileHeader h1 {
-    font-size: 2.5rem;
+
+  .head {
+    order: 1;
   }
-  .mobileHeader > p {
-    margin-block-start: var(--space-2);
-  }
-  .infoDisclosure {
-    margin-block-start: var(--space-4);
-  }
-  .infoDisclosure .facts {
-    grid-template-columns: 1fr;
+  .coverLead {
+    order: 2;
   }
   .viewer {
-    order: 2;
-    padding: var(--space-4) var(--layout-gutter) 0;
-    /* Lands clear of the fixed header and the sticky stage list. */
-    scroll-margin-top: calc(var(--header-height-phone) + 3rem);
-  }
-  .storyProgress {
-    margin-block-end: var(--space-3);
-  }
-  /* The frame is as tall as what it shows: no fixed box, no empty band. */
-  .visualFrame {
-    min-height: 0;
-  }
-  .visualMedia {
-    height: auto;
-    max-height: 64svh;
-  }
-  .story {
     order: 3;
-    padding: var(--space-6) var(--layout-gutter) var(--space-8);
-    overflow: visible;
   }
-  .story h2 {
-    max-width: 17ch;
+  .coverDetails {
+    order: 4;
   }
-  /*
-   * On a phone the stage list sits under the project title and stays pinned
-   * below the header, so every stage is one tap away from anywhere in the
-   * copy. It scrolls sideways; the faded edges say there is more.
-   */
-  .stageNav {
-    position: sticky;
-    inset-block-start: var(--header-height-phone);
-    z-index: 3;
-    order: 1;
-    gap: 0;
-    justify-content: flex-start;
-    padding-inline: var(--layout-gutter);
-    background: #000;
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 var(--layout-gutter),
-      #000 calc(100% - var(--layout-gutter)),
-      transparent
-    );
+
+  .cover .title {
+    font-size: clamp(3.25rem, 17vw, 4.25rem);
   }
-  .stageNav button {
-    min-height: 2.75rem;
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .previousControl,
-  .nextControl {
-    inset-block: 50% auto;
-    width: 3.5rem;
-    height: 3.5rem;
+
+  .opener {
+    gap: var(--space-4);
+    padding-block-end: var(--space-12);
+  }
+
+  .chapterNumber {
+    align-self: stretch;
+  }
+
+  .chapterTitle,
+  .endTitle {
+    font-size: clamp(3rem, 15vw, 4rem);
+  }
+
+  .beat[data-layout="wide"] .why {
     padding: 0;
-    justify-content: center;
-    translate: 0 -50%;
   }
-  .controlGlyph {
-    opacity: 0.85;
+
+  .beat[data-layout="wide"] .fig {
+    margin-block-start: var(--space-8);
   }
-  .comparison {
-    grid-template-columns: 1fr;
+
+  .beat[data-layout="tall"] .copy {
+    position: static;
   }
-  .visualGroup {
-    grid-template-columns: 1fr;
-    overflow-y: auto;
+
+  .chapterStories[data-layout="pair"] {
+    gap: var(--gap-story);
   }
-  .sequence {
-    height: auto;
-    padding: var(--space-4) var(--space-3);
+
+  .chapterStories[data-layout="pair"] > .beat:last-child {
+    margin: 0;
   }
-  .sequenceItems {
-    min-height: 0;
-    grid-template-rows: auto;
+
+  .notes {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
   }
-  /*
-   * Boards keep their desktop grid. Each screen still opens full size on
-   * tap, and the whole flow stays readable in one view instead of a column
-   * of phones taller than the screen.
-   */
+
+  .storyDescription {
+    font-size: 1.0625rem;
+  }
+
+  .figCaption {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .figCaption .zoomLink {
+    margin: 0;
+  }
+
+  .endGlyph {
+    justify-self: start;
+  }
+
+  .plane {
+    width: 100%;
+  }
+
+  /* The screenshot is too small to read here, so the lit parts come forward. */
+  .pieces {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-block-start: -1.75rem;
+  }
+
+  .piece {
+    display: block;
+    width: 82%;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    border-radius: var(--radius-screen);
+    box-shadow:
+      var(--plane-rim),
+      0 1.5rem 3rem -1rem rgb(0 0 0 / 0.9);
+  }
+
+  .piece:first-child {
+    margin-inline-start: 3%;
+    rotate: -1.2deg;
+  }
+
+  .piece:nth-child(2) {
+    align-self: flex-end;
+    width: 70%;
+    rotate: 1.4deg;
+  }
+
+  .player[data-portrait] .screen {
+    height: min(70svh, 32rem);
+  }
+
+  .coverMedia[data-flanked] {
+    padding-inline: 18%;
+  }
+
+  .sequenceItems,
   .sequence[data-layout="board"] .sequenceItems,
   .sequence[data-layout="mosaic"] .sequenceItems {
     grid-template-rows: auto;
-    row-gap: var(--space-4);
+    row-gap: var(--space-5);
   }
+
+  .sequence[data-layout="mosaic"] .sequenceItems {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .sequenceItem figcaption {
     margin-block-start: var(--space-2);
     font-size: 0.625rem;
+  }
+
+  .comparisonItem img {
+    max-height: 60svh;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .visualFrame,
-  .word {
+  .word,
+  .focus {
     animation: none;
-  }
-  .controlGlyph,
-  .stageNav[data-indicator="ready"] .stageIndicator {
-    transition: none;
   }
 }
 
@@ -821,8 +1210,7 @@ video.visualMedia[data-fit="cover"] {
 
 /*
  * The case study opens in reading order: the title rises out of its mask like
- * every display line on the site, the rail follows top to bottom, and the
- * stage list arrives alongside so the structure is visible early. Behind the
+ * every display line on the site, and the facts follow top to bottom. Behind the
  * entry doorway the page is inert and these wait (SiteEntry pauses them).
  * Timing lives in src/motion/motion.css; reduced motion turns each into a
  * short fade there.
@@ -845,13 +1233,10 @@ video.visualMedia[data-fit="cover"] {
   animation-delay: var(--motion-case-title-at);
 }
 
-.railLabel,
-.projectDescription,
+.back,
+.coverLead,
 .fact,
-.liveLink,
-.mobileHeader > p,
-.infoDisclosure,
-.stageNav button,
+.coverAction,
 .caption,
 .zoomLink {
   animation-name: var(--motion-keyframes-copy);
@@ -860,12 +1245,11 @@ video.visualMedia[data-fit="cover"] {
   animation-fill-mode: backwards;
 }
 
-.railLabel {
+.back {
   animation-delay: var(--motion-case-label-at);
 }
 
-.projectDescription,
-.mobileHeader > p {
+.coverLead {
   animation-delay: var(--motion-case-body-at);
 }
 
@@ -875,25 +1259,8 @@ video.visualMedia[data-fit="cover"] {
   );
 }
 
-.liveLink,
-.infoDisclosure {
+.coverAction {
   animation-delay: calc(var(--motion-case-facts-at) + 8 * var(--motion-case-fact-stagger));
-}
-
-.stageNav button {
-  animation-delay: calc(var(--motion-case-nav-at) + var(--i, 0) * var(--motion-case-nav-stagger));
-}
-
-/* The indicator is placed with `translate`, so it only fades. */
-.stageIndicator {
-  animation: indicator-in var(--motion-small-duration) var(--motion-ease-interface) backwards;
-  animation-delay: var(--motion-case-nav-at);
-}
-
-@keyframes indicator-in {
-  from {
-    opacity: 0;
-  }
 }
 
 /* Captions belong to the story; they arrive with each one, after its visual. */
@@ -909,25 +1276,13 @@ video.visualMedia[data-fit="cover"] {
 .spacingScale {
   width: 100%;
   min-width: 0;
-  min-height: 0;
-  max-height: 100%;
   padding: clamp(1.5rem, 3vw, 2.75rem);
   background: #111113;
   border: 1px solid rgb(255 255 255 / 7%);
   border-radius: 1.25rem;
-  overflow: auto;
 }
 .visualFrame[data-board="true"] {
-  padding: 0 2.5rem;
-}
-.visualFrame[data-board="true"] .previousControl,
-.visualFrame[data-board="true"] .nextControl {
-  inset-block: 50% auto;
-  width: 2.5rem;
-  height: 3rem;
-  padding: 0;
-  justify-content: center;
-  translate: 0 -50%;
+  place-items: stretch;
 }
 .palette {
   display: grid;
@@ -1121,15 +1476,6 @@ video.visualMedia[data-fit="cover"] {
   color: #aaaab0;
 }
 @media (max-width: 47.99rem) {
-  .visualFrame[data-board="true"] {
-    padding: 0;
-    padding-bottom: 3.5rem;
-  }
-  .visualFrame[data-board="true"] .previousControl,
-  .visualFrame[data-board="true"] .nextControl {
-    inset-block: auto 0;
-    translate: none;
-  }
   .palette,
   .assetBoard,
   .typeSpecimen,
@@ -1179,32 +1525,32 @@ video.visualMedia[data-fit="cover"] {
  * before when it has none; the body only fades in, after the title, and never
  * travels. Nothing here outlasts 0.9 s, so it never takes time from reading.
  */
-.story .word {
+.beat .word {
   animation: copy-in 320ms var(--motion-ease-interface) 280ms both;
 }
 
-.story .eyebrow {
+.beat .eyebrow {
   clip-path: inset(0 -1em);
 }
 
-.story .eyebrow .word {
+.beat .eyebrow .word {
   /* Backwards only: once in, the words carry no leftover translate. */
   animation: eyebrow-in 160ms var(--motion-ease-interface) backwards;
 }
 
-.story h2 .word {
+.beat .storyTitle .word {
   animation: line-in 480ms var(--ease-interface) both;
   animation-delay: calc(var(--line, 0) * var(--line-step, 60ms));
 }
 
 /* A signature title below the fold waits, unseen, until it comes on screen. */
-.story[data-signature]:not([data-ready]) h2 .word {
+.beat[data-signature]:not([data-ready]) .storyTitle .word {
   opacity: 0;
   animation: none;
 }
 
 /* Ink: each line is written in left to right by a feathered wipe; glyphs never move. */
-.story[data-signature="ink"] h2 .word {
+.beat[data-signature="ink"] .storyTitle .word {
   -webkit-mask-image: linear-gradient(90deg, #000 0 42%, transparent 58% 100%);
   mask-image: linear-gradient(90deg, #000 0 42%, transparent 58% 100%);
   -webkit-mask-size: 260% 100%;
@@ -1215,7 +1561,7 @@ video.visualMedia[data-fit="cover"] {
 }
 
 /* The correction, ruled in botanical once the title is written: the page's one green moment. */
-.story[data-signature="ink"] h2 .word[data-emphasis] {
+.beat[data-signature="ink"] .storyTitle .word[data-emphasis] {
   background-image: linear-gradient(var(--color-accent), var(--color-accent));
   background-repeat: no-repeat;
   background-position: 0 92%;
@@ -1230,19 +1576,23 @@ video.visualMedia[data-fit="cover"] {
  * tracking. Each word holds its resting width meanwhile, so no line reflows;
  * settled, the words are plain inline boxes again.
  */
-.story[data-signature="approach"] h2 .word {
+.beat[data-signature="approach"] .storyTitle .word {
   animation: approach-in 640ms var(--motion-ease-reveal) calc(var(--line, 0) * 70ms) both;
 }
 
-.story[data-signature="approach"]:not([data-settled]) h2 .word {
+.beat[data-signature="approach"]:not([data-settled]) .storyTitle .word {
   display: inline-flex;
   justify-content: center;
   width: var(--word-w, auto);
   white-space: nowrap;
 }
 
-/* The word the urgency lives in: three risk levels, one beat each, resting on the middle. */
-.story[data-signature="approach"] h2 .word[data-emphasis] {
+/*
+ * The word the urgency lives in: three risk levels, one beat each. PP Frama has
+ * no weight above Semibold, so the beats are light rather than weight, and the
+ * word rests in moonlight.
+ */
+.beat[data-signature="approach"] .storyTitle .word[data-emphasis] {
   animation:
     approach-in 640ms var(--motion-ease-reveal) calc(var(--line, 0) * 70ms) both,
     approach-urgency 900ms steps(1, end) 760ms forwards;
@@ -1298,42 +1648,42 @@ video.visualMedia[data-fit="cover"] {
 
 @keyframes approach-urgency {
   0% {
-    font-weight: 560;
+    color: var(--color-text-primary);
   }
 
   33% {
-    font-weight: 640;
+    color: color-mix(in srgb, var(--color-text-moonlit) 45%, var(--color-text-primary));
   }
 
   66% {
-    font-weight: 720;
+    color: color-mix(in srgb, var(--color-text-moonlit) 80%, var(--color-text-primary));
   }
 
   100% {
-    font-weight: 620;
+    color: var(--color-text-moonlit);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .story .word,
-  .story .eyebrow .word,
-  .story h2 .word,
-  .story[data-signature] h2 .word,
-  .story[data-signature] h2 .word[data-emphasis] {
+  .beat .word,
+  .beat .eyebrow .word,
+  .beat .storyTitle .word,
+  .beat[data-signature] .storyTitle .word,
+  .beat[data-signature] .storyTitle .word[data-emphasis] {
     animation: none;
   }
 
-  .story[data-signature="ink"] h2 .word {
+  .beat[data-signature="ink"] .storyTitle .word {
     -webkit-mask-image: none;
     mask-image: none;
   }
 
-  .story[data-signature="ink"] h2 .word[data-emphasis] {
+  .beat[data-signature="ink"] .storyTitle .word[data-emphasis] {
     background-size: 100% 1px;
   }
 
-  .story[data-signature="approach"] h2 .word[data-emphasis] {
-    font-weight: 620;
+  .beat[data-signature="approach"] .storyTitle .word[data-emphasis] {
+    color: var(--color-text-moonlit);
   }
 }
 
@@ -1383,5 +1733,55 @@ video.visualMedia[data-fit="cover"] {
 @media (prefers-reduced-motion: reduce) {
   .titleMask {
     animation: none;
+  }
+}
+
+/* ===================================================== arriving by scroll */
+
+/*
+ * A story's evidence and copy hold their first frame until the story scrolls
+ * into view (the workspace marks it seen), then arrive as they always have.
+ * Signature titles wait for their own cue (storySignature.ts).
+ */
+.beat:not([data-seen]) :is(.visualFrame, .focus, .caption, .zoomLink, .word),
+:is(.opener, .end):not([data-seen]) :is(.titleMask, .titleInner, .chapterNumber, .endLabel) {
+  animation-play-state: paused !important;
+}
+
+/* A chapter's name rises as the cover's title did, the moment the chapter arrives. */
+.opener .titleInner,
+.end .titleInner {
+  animation-delay: 0ms;
+}
+
+.opener .titleMask,
+.end .titleMask {
+  animation-delay: var(--motion-display-duration);
+}
+
+.chapterNumber,
+.endLabel {
+  animation: var(--motion-keyframes-copy) var(--motion-small-duration) var(--motion-ease-interface)
+    120ms backwards;
+}
+
+/* ===================================================== more contrast */
+
+/* Readers who ask the system for more contrast get full-strength text throughout. */
+@media (prefers-contrast: more) {
+  .workspace {
+    --color-reading: var(--color-text-primary);
+  }
+
+  .coverLead,
+  .caption,
+  .fact dt,
+  .eyebrow,
+  .playerBar,
+  .chapterNumber,
+  .endLabel,
+  .sequenceItem figcaption,
+  .comparisonItem figcaption {
+    color: var(--color-text-primary);
   }
 }

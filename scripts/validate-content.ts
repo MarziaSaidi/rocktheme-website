@@ -249,6 +249,12 @@ function validateStages(stages: readonly CaseStudyStage[], location: string): vo
     validateRequiredString(stage.label, `${stageLocation}.label`);
     if (stageIds.has(stage.id)) addError(`${stageLocation}.id`, `duplicate stage id: ${stage.id}`);
     stageIds.add(stage.id);
+    if (stage.layout !== undefined && stage.layout !== "pair") {
+      addError(`${stageLocation}.layout`, `unknown stage layout: ${String(stage.layout)}`);
+    }
+    if (stage.layout === "pair" && stage.stories?.length !== 2) {
+      addError(`${stageLocation}.layout`, "a pair stage must contain exactly two stories");
+    }
     if (!Array.isArray(stage.stories) || stage.stories.length === 0) {
       addError(`${stageLocation}.stories`, "must contain at least one story");
       return;

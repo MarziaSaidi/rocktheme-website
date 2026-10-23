@@ -131,6 +131,8 @@ export const quillAndPigeonProject = {
               media: contextVideo,
               fit: "contain",
               playback: "controls",
+              label: "The import, start to finish",
+              crop: { top: 22, right: 0, bottom: 22, left: 0 },
             },
           },
         ],
@@ -156,6 +158,7 @@ export const quillAndPigeonProject = {
       {
         id: "import-states",
         label: "File setup",
+        layout: "pair",
         stories: [
           {
             id: "select",
@@ -211,7 +214,16 @@ export const quillAndPigeonProject = {
               "Put the explanation next to the value that needs correction, rather than relying on a general upload error.",
             outcome:
               "The review preserves the surrounding contact data and shows where to focus next.",
-            visual: { type: "image", media: media.errors, fit: "contain", zoomable: true },
+            visual: {
+              type: "image",
+              media: media.errors,
+              fit: "contain",
+              zoomable: true,
+              focus: [
+                { x: 1.81, y: 17.56, width: 96.43, height: 9.66 },
+                { x: 5.63, y: 51.93, width: 13.91, height: 31.76 },
+              ],
+            },
           },
           {
             id: "frontend-boundary",

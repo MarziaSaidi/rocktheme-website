@@ -25,6 +25,7 @@ export type {
   CaseStudyInfo,
   CaseStudyStage,
   CaseStudyStory,
+  FocusRegion,
   ImageMedia,
   Project,
   ProjectBlockType,

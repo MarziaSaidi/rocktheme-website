@@ -147,6 +147,7 @@ export const survueProject = {
   caseStudy: {
     storyPlayback: "manual",
     titleSignature: "approach",
+    coverFlanks: [media.home, media.gallery],
     info: {
       timeline: "September-December 2024",
       responsibilities: [
@@ -177,7 +178,15 @@ export const survueProject = {
               "During the ride → monitor vehicle position and warnings",
               "After the ride → review recordings in Gallery",
             ],
-            visual: { type: "video", media: prototype, fit: "contain", playback: "controls" },
+            visual: {
+              type: "video",
+              media: prototype,
+              fit: "contain",
+              playback: "controls",
+              label: "Prototype",
+              crop: { top: 4, right: 12, bottom: 3, left: 13 },
+              corner: [14, 6.5],
+            },
           },
         ],
       },
