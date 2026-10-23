@@ -57,8 +57,8 @@ Use three to seven stages. Each stage needs at least one story. A single-story s
 - `image`: one image, with `contain` as the default fit.
 - `video`: a native video player with a poster and accessible title.
 - `group`: several related images displayed together.
-- `comparison`: labeled before and after images.
-- `sequence`: a labeled set of real project screens in a row, overview board, or product mosaic; each screen opens its source at full size.
+- `comparison`: two labeled screens side by side, at the shared phone size.
+- `sequence`: a labeled set of real project screens in one row at the shared phone size; a row longer than its space becomes a filmstrip. Each screen opens its source at full size. The `layout` value (`row`, `board`, `mosaic`) is kept in content but no longer changes the presentation.
 - `palette`: labelled hex color swatches.
 - `typography`: a Helvetica Neue specimen using named examples.
 - `assets`: original exported icons or components with descriptive labels and full-size links.
@@ -76,11 +76,15 @@ Each stage is a chapter. It opens with its number (for example `03 / 06`) on a g
 
 A story is composed from the shape of its evidence; content never chooses the layout except for pairs:
 
-- **Wide** (landscape images and videos, code, and the palette, type, asset and spacing boards): the eyebrow and title on the left, the description and notes on the right, then the evidence across the page. Evidence never grows taller than the window.
-- **Tall** (portrait images and videos, comparisons, and phone-screen sequences): the copy holds still on the left while the evidence runs on the right.
+- **Wide** (landscape images and videos, code, and sequences of more than three screens): the eyebrow and title on the left, the description and notes on the right, then the evidence across the page. Evidence never grows taller than the window, and a long sequence runs to the window's edge.
+- **Tall** (portrait images and videos, comparisons, sequences of up to three screens, and the palette, type, asset and spacing sheets): the copy holds still on the left while the evidence sits on the right.
 - **Pair**: set `layout: "pair"` on a stage with exactly two stories to show them side by side, staggered, as two states of one step. The validator rejects a pair stage without exactly two stories.
 
 Decision, constraint and outcome are set as notes under one rule. A caption and the full-size link share a ruled line beneath the evidence. The first story's evidence is not repeated when the cover already shows it. The page ends with the next case study, set large.
+
+Every phone screen on the page stands at one height (`--device-h`), whatever the layout and however many screens there are. A row of screens longer than its space becomes a filmstrip: the next screen peeks in at the edge, the strip snaps screen by screen, and it can be swiped, scrolled with a trackpad, dragged with a mouse, moved with its arrow buttons, or moved with the arrow keys once focused. A counter and a progress line show which screens are in view.
+
+Palette, typography, asset and spacing visuals are set as spec sheets: each part near its own size on a dot-grid canvas only as large as its contents. Icons sit at their own size in small tiles, components near their on-phone size, and spacing as a ruler drawn at four times scale.
 
 Spacing follows one scale: 8, 16, 24, 32, 48, 64, 96 and 160 px, on a 12-column grid.
 
@@ -93,8 +97,6 @@ There is no fixed navigation over the page: the chapter openers are the signpost
 `caseStudy.storyPlayback` is no longer read; nothing advances on a timer.
 
 `caseStudy.info.timelineLabel` optionally clarifies what a timeline represents (for example, "Internship"); other projects default to "Timeline".
-
-Stage navigation scrolls horizontally when labels do not fit.
 
 Reduced-motion mode scrolls without smoothing and shows content without transitions.
 

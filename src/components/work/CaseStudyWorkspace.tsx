@@ -230,6 +230,199 @@ function EvidenceImage({
   );
 }
 
+type StripItem = Readonly<{ label: string; media: ImageMedia }>;
+
+/**
+ * Phone screens at one shared size, in one row. When the row is longer than
+ * the space it has, it becomes a filmstrip: it runs off the edge so the next
+ * screen peeks in, scrolls and snaps screen by screen (swipe, trackpad,
+ * keys, or drag with a mouse), and shows where the reader is in it.
+ */
+function Filmstrip({ heading, items }: { heading?: string; items: readonly StripItem[] }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number; moved: boolean; id: number } | null>(null);
+  const [view, setView] = useState({
+    overflow: false,
+    first: 0,
+    last: items.length - 1,
+    from: 0,
+    size: 1,
+    atStart: true,
+    atEnd: true,
+  });
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const box = track.getBoundingClientRect();
+      const shown = [...track.children].map((child) => {
+        const rect = child.getBoundingClientRect();
+        const inside = Math.min(rect.right, box.right) - Math.max(rect.left, box.left);
+        return inside > rect.width * 0.6;
+      });
+      const first = Math.max(0, shown.indexOf(true));
+      const last = Math.max(first, shown.lastIndexOf(true));
+      const max = track.scrollWidth - track.clientWidth;
+      setView({
+        overflow: max > 2,
+        atStart: track.scrollLeft <= 2,
+        atEnd: track.scrollLeft >= max - 2,
+        first,
+        last,
+        from: track.scrollLeft / track.scrollWidth,
+        size: track.clientWidth / track.scrollWidth,
+      });
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    track.addEventListener("scroll", schedule, { passive: true });
+    const observer = new ResizeObserver(schedule);
+    observer.observe(track);
+    return () => {
+      cancelAnimationFrame(frame);
+      track.removeEventListener("scroll", schedule);
+      observer.disconnect();
+    };
+  }, []);
+
+  const page = (direction: 1 | -1) => {
+    const track = trackRef.current;
+    const first = track?.children[0] as HTMLElement | undefined;
+    if (!track || !first) return;
+    const step = first.offsetWidth + parseFloat(getComputedStyle(track).columnGap || "0");
+    track.scrollBy({
+      left: direction * Math.max(step, Math.floor(track.clientWidth / step - 1) * step),
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    });
+  };
+
+  const total = twoDigits(items.length);
+  return (
+    <div className={styles.strip} data-strip="" data-overflow={view.overflow ? "" : undefined}>
+      {heading || view.overflow ? (
+        <div className={styles.stripHead}>
+          <span>{heading}</span>
+          {view.overflow ? <span aria-hidden="true">Scroll or drag sideways</span> : null}
+        </div>
+      ) : null}
+      <div
+        ref={trackRef}
+        className={styles.stripTrack}
+        role="region"
+        aria-label={heading ?? "Screens"}
+        tabIndex={view.overflow ? 0 : undefined}
+        onDragStart={(event) => event.preventDefault()}
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse" || !view.overflow || event.button !== 0) return;
+          drag.current = {
+            x: event.clientX,
+            left: event.currentTarget.scrollLeft,
+            moved: false,
+            id: event.pointerId,
+          };
+        }}
+        onPointerMove={(event) => {
+          const state = drag.current;
+          if (!state) return;
+          const dx = event.clientX - state.x;
+          if (!state.moved && Math.abs(dx) > 4) {
+            state.moved = true;
+            event.currentTarget.setPointerCapture(state.id);
+            event.currentTarget.dataset.dragging = "";
+          }
+          if (state.moved) event.currentTarget.scrollLeft = state.left - dx;
+        }}
+        onPointerUp={(event) => {
+          if (drag.current?.moved) event.currentTarget.releasePointerCapture(drag.current.id);
+          delete event.currentTarget.dataset.dragging;
+          // Keeps a drag from also opening the screen it ended on.
+          if (drag.current?.moved) {
+            const block = (click: MouseEvent) => {
+              click.preventDefault();
+              click.stopPropagation();
+            };
+            event.currentTarget.addEventListener("click", block, { capture: true, once: true });
+            setTimeout(() => event.currentTarget?.removeEventListener("click", block, true), 0);
+          }
+          drag.current = null;
+        }}
+        onPointerCancel={(event) => {
+          delete event.currentTarget.dataset.dragging;
+          drag.current = null;
+        }}
+      >
+        {items.map((item) => (
+          <figure className={styles.stripItem} key={`${item.label}-${item.media.src}`}>
+            <a
+              className={styles.device}
+              href={item.media.src}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${item.label || item.media.alt} full size`}
+              style={{ aspectRatio: `${item.media.width} / ${item.media.height}` }}
+            >
+              <Image
+                src={item.media.src}
+                alt={item.media.alt}
+                width={item.media.width}
+                height={item.media.height}
+                sizes="(max-width: 767px) 50vw, 16rem"
+                draggable={false}
+              />
+            </a>
+            {item.label ? <figcaption>{item.label}</figcaption> : null}
+          </figure>
+        ))}
+      </div>
+      {view.overflow ? (
+        <div className={styles.stripBar}>
+          <span className={styles.stripCount} aria-hidden="true">
+            {twoDigits(view.first + 1)}–{twoDigits(view.last + 1)} <span>/ {total}</span>
+          </span>
+          <span
+            className={styles.stripProgress}
+            style={{ "--from": view.from, "--size": view.size } as React.CSSProperties}
+            aria-hidden="true"
+          />
+          <span className={styles.stripArrows}>
+            <button
+              type="button"
+              onClick={() => page(-1)}
+              disabled={view.atStart}
+              aria-label="Previous screens"
+            >
+              <ArrowGlyph direction="left" />
+            </button>
+            <button
+              type="button"
+              onClick={() => page(1)}
+              disabled={view.atEnd}
+              aria-label="Next screens"
+            >
+              <ArrowGlyph direction="right" />
+            </button>
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** A design-system sheet: what it holds, at its own size, on a quiet canvas. */
+function SpecSheet({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className={styles.spec}>
+      <p className={styles.specLabel}>{label}</p>
+      {children}
+    </div>
+  );
+}
+
 function StoryVisualView({ visual }: { visual?: StoryVisual }) {
   if (!visual) {
     return (
@@ -243,20 +436,12 @@ function StoryVisualView({ visual }: { visual?: StoryVisual }) {
 
   if (visual.type === "comparison") {
     return (
-      <div className={styles.comparison}>
-        {[
-          [visual.before, visual.beforeLabel ?? "Before"],
-          [visual.after, visual.afterLabel ?? "After"],
-        ].map(([media, label]) => {
-          const image = media as typeof visual.before;
-          return (
-            <figure key={String(label)} className={styles.comparisonItem}>
-              <Image src={image.src} alt={image.alt} width={image.width} height={image.height} />
-              <figcaption>{String(label)}</figcaption>
-            </figure>
-          );
-        })}
-      </div>
+      <Filmstrip
+        items={[
+          { label: visual.beforeLabel ?? "Before", media: visual.before },
+          { label: visual.afterLabel ?? "After", media: visual.after },
+        ]}
+      />
     );
   }
 
@@ -280,120 +465,95 @@ function StoryVisualView({ visual }: { visual?: StoryVisual }) {
   }
 
   if (visual.type === "sequence") {
+    return <Filmstrip heading={visual.heading} items={visual.items} />;
+  }
+
+  if (visual.type === "palette") {
     return (
-      <div
-        className={styles.sequence}
-        data-layout={visual.layout ?? "row"}
-        data-tone={visual.tone ?? "dark"}
-        style={{ "--sequence-count": visual.items.length } as React.CSSProperties}
-      >
-        {visual.heading ? <p className={styles.sequenceHeading}>{visual.heading}</p> : null}
-        <div className={styles.sequenceItems}>
+      <SpecSheet label="Palette">
+        <div
+          className={styles.chips}
+          style={{ "--count": visual.colors.length } as React.CSSProperties}
+        >
+          {visual.colors.map((color) => (
+            <figure key={color.label} className={styles.chip}>
+              <span style={{ backgroundColor: color.value }} aria-hidden="true" />
+              <figcaption>
+                {color.label}
+                <small>{color.value}</small>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </SpecSheet>
+    );
+  }
+
+  if (visual.type === "typography") {
+    return (
+      <SpecSheet label={visual.family}>
+        <div className={styles.typeSheet}>
+          <p className={styles.typeAa} aria-hidden="true">
+            Aa
+          </p>
+          <dl>
+            {visual.examples.map((example) => (
+              <div key={example.label}>
+                <dt>{example.label}</dt>
+                <dd>{example.text}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </SpecSheet>
+    );
+  }
+
+  if (visual.type === "assets") {
+    return (
+      <SpecSheet label={visual.layout === "icons" ? "Icons" : "Components"}>
+        <div className={styles.assets} data-layout={visual.layout}>
           {visual.items.map((item) => (
-            <figure className={styles.sequenceItem} key={`${item.label}-${item.media.src}`}>
+            <figure className={styles.asset} key={item.media.src}>
               <a
-                className={styles.sequenceScreen}
                 href={item.media.src}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Open ${item.label} screen full size`}
+                aria-label={`Open ${item.label} full size`}
               >
                 <Image
                   src={item.media.src}
                   alt={item.media.alt}
                   width={item.media.width}
                   height={item.media.height}
-                  sizes="(max-width: 767px) 38vw, (max-width: 1199px) 20vw, 14vw"
+                  style={{ "--w": item.media.width } as React.CSSProperties}
+                  unoptimized
                 />
               </a>
               <figcaption>{item.label}</figcaption>
             </figure>
           ))}
         </div>
-      </div>
-    );
-  }
-
-  if (visual.type === "palette") {
-    return (
-      <div className={styles.palette}>
-        {visual.colors.map((color) => (
-          <figure key={color.label} className={styles.colorSample}>
-            <span
-              className={styles.swatch}
-              style={{ backgroundColor: color.value }}
-              aria-hidden="true"
-            />
-            <figcaption>
-              <strong>{color.label}</strong>
-              <span>{color.value}</span>
-            </figcaption>
-          </figure>
-        ))}
-      </div>
-    );
-  }
-
-  if (visual.type === "typography") {
-    return (
-      <div className={styles.typeSpecimen}>
-        <p className={styles.specimenLabel}>{visual.family}</p>
-        <p className={styles.typeAlphabet}>
-          Aa<span>0123456789</span>
-        </p>
-        {visual.examples.map((example) => (
-          <div className={styles.typeExample} key={example.label}>
-            <span className={styles.specimenLabel}>{example.label}</span>
-            <p>{example.text}</p>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (visual.type === "assets") {
-    return (
-      <div className={styles.assetBoard} data-layout={visual.layout}>
-        {visual.items.map((item) => (
-          <figure className={styles.assetSample} key={item.media.src}>
-            <a
-              href={item.media.src}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Open ${item.label} asset full size`}
-            >
-              <Image
-                src={item.media.src}
-                alt={item.media.alt}
-                width={item.media.width}
-                height={item.media.height}
-                unoptimized
-              />
-            </a>
-            <figcaption>{item.label}</figcaption>
-          </figure>
-        ))}
-      </div>
+      </SpecSheet>
     );
   }
 
   if (visual.type === "spacing") {
     return (
-      <div className={styles.spacingScale}>
-        {visual.steps.map((step) => (
-          <div className={styles.spacingStep} key={step.value}>
-            <strong>
-              {step.value}
-              <span> px</span>
-            </strong>
-            <span className={styles.spacingMark} style={{ gap: step.value }} aria-hidden="true">
-              <span />
-              <span />
-            </span>
-            <span>{step.label}</span>
-          </div>
-        ))}
-      </div>
+      <SpecSheet label="Scale · drawn at 4×">
+        <div className={styles.ruler}>
+          {visual.steps.map((step) => (
+            <div key={step.value}>
+              <strong>
+                {step.value}
+                <small>px</small>
+              </strong>
+              <i style={{ "--v": step.value } as React.CSSProperties} aria-hidden="true" />
+              <span>{step.label}</span>
+            </div>
+          ))}
+        </div>
+      </SpecSheet>
     );
   }
 
@@ -406,6 +566,10 @@ function StoryVisualView({ visual }: { visual?: StoryVisual }) {
         </pre>
       </figure>
     );
+  }
+
+  if (visual.media.height > visual.media.width && !visual.focus?.length) {
+    return <Filmstrip items={[{ label: "", media: visual.media }]} />;
   }
 
   return (
@@ -496,7 +660,10 @@ type BeatLayout = "wide" | "tall" | "pair";
 
 const layoutOf = (visual: StoryVisual | undefined): BeatLayout => {
   if (!visual) return "wide";
-  if (visual.type === "sequence" || visual.type === "comparison") return "tall";
+  // A long run of screens needs the page's width; three or fewer sit beside the copy.
+  if (visual.type === "sequence") return visual.items.length > 3 ? "wide" : "tall";
+  if (visual.type === "comparison") return "tall";
+  if (["palette", "typography", "assets", "spacing"].includes(visual.type)) return "tall";
   if (visual.type === "image") return visual.media.height > visual.media.width ? "tall" : "wide";
   if (visual.type === "video") {
     return visual.media.poster.height > visual.media.poster.width ? "tall" : "wide";
@@ -600,6 +767,7 @@ function Evidence({ story }: { story: CaseStudyStory }) {
             : undefined
         }
         data-kind={visual?.type}
+        data-portrait={ratio !== undefined && ratio < 1 ? "" : undefined}
         style={ratio ? ({ "--ar": ratio } as React.CSSProperties) : undefined}
       >
         <StoryVisualView visual={visual} />
@@ -857,7 +1025,8 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         target instanceof HTMLVideoElement ||
-        (target instanceof HTMLElement && target.isContentEditable)
+        (target instanceof HTMLElement && target.isContentEditable) ||
+        (target instanceof Element && target.closest("[data-strip]"))
       )
         return;
       if (event.key === "ArrowLeft") previous();
