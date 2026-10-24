@@ -137,6 +137,20 @@ export function SceneCanvas({ onStats, workCount }: SceneCanvasProps) {
      */
     let view: JourneyView | null = null;
     let descentEnd = 0;
+    /*
+     * The About page opens on the hero. Its runway plays the hero shot exactly
+     * as the old home page did, scroll for scroll, until the copy has gone; at
+     * `heroCut` the camera cuts, under a dip to dark, to the water after the
+     * descent, and the rest of the page carries on from there.
+     */
+    let heroCut = -1;
+    let cutShift = 0;
+    const measureHeroCut = (viewport: number) => {
+      const hero = document.getElementById(sectionAnchors.hero);
+      if (!hero) return -1;
+      const bottom = hero.getBoundingClientRect().bottom + window.scrollY;
+      return Math.max(bottom - viewport, bottom * 0.6);
+    };
     const measureStops = (): JourneyStops => {
       // The small viewport: steady while a phone's browser bars come and go.
       const viewport = stableViewportHeight();
@@ -146,19 +160,22 @@ export function SceneCanvas({ onStats, workCount }: SceneCanvasProps) {
       // The descent after the last project (DESCENT_SCREENS in sceneConfig.ts).
       // Kept inline so this module stays free of the scene code.
       descentEnd = workEnd + (window.innerWidth >= 1024 ? 1 : 0.65) * viewport;
+      heroCut = measureHeroCut(viewport);
+      // After the cut, page scroll maps onto the journey from the water on.
+      cutShift = descentEnd - Math.max(0, heroCut);
       const about = document.getElementById(sectionAnchors.about);
       const end = Math.max(0, document.documentElement.scrollHeight - viewport);
       // The mountain stays beside the full bio story. Measure its flow box,
       // never its sticky text, so resize and return visits share the same stops.
-      const aboutRest = about ? descentEnd + bioRestScroll(about, viewport) : descentEnd + viewport;
-      const contact = Math.max(aboutRest, descentEnd + end);
+      const aboutRest = about ? cutShift + bioRestScroll(about, viewport) : descentEnd + viewport;
+      const contact = Math.max(aboutRest, cutShift + end);
       return {
         workStart,
         workEnd,
         descentEnd,
         about: aboutRest,
         aboutLeave: about
-          ? Math.min(contact, descentEnd + bioLeaveScroll(about, viewport))
+          ? Math.min(contact, cutShift + bioLeaveScroll(about, viewport))
           : aboutRest,
         contact,
       };
@@ -171,16 +188,42 @@ export function SceneCanvas({ onStats, workCount }: SceneCanvasProps) {
         const stretches = workStretchesFor(sceneViewportForWidth(window.innerWidth));
         return (WORK_START_SCREENS + detailsPoint(view.station, stretches)) * viewport;
       }
-      return descentEnd + window.scrollY;
+      const y = window.scrollY;
+      if (heroCut >= 0 && y < heroCut) return y;
+      return heroCut >= 0 ? cutShift + y : descentEnd + y;
+    };
+
+    /** Which side of the hero's cut the page was on, so crossing it cuts the camera. */
+    let pastCut: boolean | null = null;
+    const followPage = () => {
+      const offset = journeyOffset();
+      if (heroCut < 0) {
+        environment?.setScroll(offset);
+        root.style.removeProperty("--journey-dip");
+        return;
+      }
+      const y = window.scrollY;
+      const past = y >= heroCut;
+      if (pastCut !== null && past !== pastCut) environment?.cutTo(offset);
+      else environment?.setScroll(offset);
+      pastCut = past;
+      // Fully dark for a moment either side of the cut, clearing over half a screen.
+      const away = Math.abs(y - heroCut) / (stableViewportHeight() / 2);
+      const dip = Math.min(1, Math.max(0, (1 - away) * 1.6));
+      root.style.setProperty("--journey-dip", dip.toFixed(3));
     };
 
     const syncJourney = () => {
       environment?.setJourneyStops(measureStops());
-      environment?.setScroll(journeyOffset());
+      if (view?.kind === "work") {
+        pastCut = null;
+        root.style.removeProperty("--journey-dip");
+        environment?.setScroll(journeyOffset());
+      } else followPage();
     };
 
     const handleScroll = () => {
-      if (view?.kind !== "work") environment?.setScroll(journeyOffset());
+      if (view?.kind !== "work") followPage();
       scheduleObstacleSync();
     };
 
@@ -396,6 +439,7 @@ export function SceneCanvas({ onStats, workCount }: SceneCanvasProps) {
       delete root.dataset.cameraSettled;
       root.style.removeProperty("--scene-beacon-glow");
       root.style.removeProperty("--arrival");
+      root.style.removeProperty("--journey-dip");
     };
   }, [onStats, workCount]);
 

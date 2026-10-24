@@ -49,15 +49,6 @@ export const siteContent = {
     nextLabel: "Next project",
     previousLabel: "Previous project",
   },
-  about: {
-    label: "About",
-    heading: "I design interfaces and ship the production code behind them.",
-    paragraphs: [
-      "I studied computer science, but I’ve always been drawn to the space where design meets engineering.",
-      "I have a habit of turning questions into things.",
-    ],
-    scrollLabel: "Scroll down",
-  },
   inShort: {
     label: "In short",
     rows: [

@@ -157,6 +157,8 @@ export type Environment = Readonly<{
   beginEntryArrival: () => void;
   /** The page's scroll offset; the camera journey follows it. */
   setScroll: (scrollY: number) => void;
+  /** Places the camera at `scrollY` at once, with no flight: a cut, made under a dip to dark. */
+  cutTo: (scrollY: number) => void;
   /** Where each chapter's scroll range begins and ends, measured from the DOM. */
   setJourneyStops: (stops: JourneyStops) => void;
   stats: () => EnvironmentStats;
@@ -1259,6 +1261,13 @@ export function createEnvironment(options: EnvironmentOptions): Environment | nu
     setScroll: (scrollY) => {
       targetScroll = scrollY;
       // Reduced motion draws single frames, so a new composition needs one.
+      if (options.reducedMotion && !contextLost) renderOnce(0);
+    },
+
+    cutTo: (scrollY) => {
+      targetScroll = scrollY;
+      shownScroll = scrollY;
+      scrollVelocity = 0;
       if (options.reducedMotion && !contextLost) renderOnce(0);
     },
 
