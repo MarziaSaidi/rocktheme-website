@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { sceneViewportForWidth } from "@/config/responsive";
 import { isSectionId, sectionAnchors, type SectionId } from "@/config/sections";
 import { stableViewportHeight } from "@/config/viewport";
 import { createPointerSource } from "@/motion/pointerSource";
@@ -9,7 +10,9 @@ import { createPointerSource } from "@/motion/pointerSource";
 import styles from "./SceneCanvas.module.css";
 import { bioLeaveScroll, bioRestScroll } from "./riftChannel";
 import { afterDoorway, subscribeEntryArrival } from "./entryChannel";
+import { subscribeJourneyView, type JourneyView } from "./journeyChannel";
 import { subscribeSceneFocus } from "./sceneFocus";
+import { detailsPoint, workScreens, workStretchesFor } from "./workJourney";
 import type { JourneyStops } from "./core/cameraJourney";
 import type { Environment, EnvironmentStats } from "./core/environment";
 import type { AnchorRects, ObstacleRect } from "./modules/particleField";
@@ -34,12 +37,20 @@ const ANCHOR_SELECTOR = "[data-scene-anchor]";
 /** A page canvas above the content, for particles that pass in front of it. */
 const FRONT_LAYER_SELECTOR = "canvas[data-scene-front-layer]";
 
+/*
+ * Where the Selected Work stretch begins in the journey, in screens. Nothing
+ * reaches the arrival before it any more, so only its being positive matters.
+ */
+const WORK_START_SCREENS = 2.3;
+
 type SceneCanvasProps = Readonly<{
   /** Exposes stats for the development overlay. */
   onStats?: (stats: EnvironmentStats) => void;
+  /** How many projects stand in Selected Work, which sets the length of its stretch. */
+  workCount: number;
 }>;
 
-export function SceneCanvas({ onStats }: SceneCanvasProps) {
+export function SceneCanvas({ onStats, workCount }: SceneCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [active, setActive] = useState(false);
 
@@ -59,6 +70,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     let pageObserver: ResizeObserver | null = null;
     let unsubscribeFocus: (() => void) | null = null;
     let unsubscribeEntry: (() => void) | null = null;
+    let unsubscribeView: (() => void) | null = null;
     let statsTimer = 0;
     let recoveryTimer = 0;
     let obstacleFrame = 0;
@@ -116,46 +128,102 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
     };
 
     /*
-     * The camera journey's scroll ranges, read from the sections themselves so
-     * a change of copy, layout or breakpoint moves the rests with it.
+     * The camera journey's offsets. Selected Work is laid out in the journey
+     * at exactly the length its stretches give it (workJourney.ts), so every
+     * hold, travel and the descent after it play as authored. The About page's
+     * own scroll starts where the descent ends, at the water: its sections are
+     * measured from the page, so a change of copy or breakpoint moves the bio's
+     * rests with it.
      */
-    const measureStops = (): JourneyStops | null => {
-      const byAnchor = (id: SectionId) => document.getElementById(sectionAnchors[id]);
-      const work = byAnchor("selected-work");
-      const about = byAnchor("about");
-      if (!work || !about) return null;
-
+    let view: JourneyView | null = null;
+    let descentEnd = 0;
+    /*
+     * The About page opens on the hero. Its runway plays the hero shot exactly
+     * as the old home page did, scroll for scroll, until the copy has gone; at
+     * `heroCut` the camera cuts, under a dip to dark, to the water after the
+     * descent, and the rest of the page carries on from there.
+     */
+    let heroCut = -1;
+    let cutShift = 0;
+    const measureHeroCut = (viewport: number) => {
+      const hero = document.getElementById(sectionAnchors.hero);
+      if (!hero) return -1;
+      const bottom = hero.getBoundingClientRect().bottom + window.scrollY;
+      return Math.max(bottom - viewport, bottom * 0.6);
+    };
+    const measureStops = (): JourneyStops => {
       // The small viewport: steady while a phone's browser bars come and go.
       const viewport = stableViewportHeight();
-      const top = (node: HTMLElement) => node.getBoundingClientRect().top + window.scrollY;
+      const stretches = workStretchesFor(sceneViewportForWidth(window.innerWidth));
+      const workStart = WORK_START_SCREENS * viewport;
+      const workEnd = workStart + workScreens(workCount, stretches) * viewport;
+      // The descent after the last project (DESCENT_SCREENS in sceneConfig.ts).
+      // Kept inline so this module stays free of the scene code.
+      descentEnd = workEnd + (window.innerWidth >= 1024 ? 1 : 0.65) * viewport;
+      heroCut = measureHeroCut(viewport);
+      // After the cut, page scroll maps onto the journey from the water on.
+      cutShift = descentEnd - Math.max(0, heroCut);
+      const about = document.getElementById(sectionAnchors.about);
       const end = Math.max(0, document.documentElement.scrollHeight - viewport);
-      const workStart = top(work);
-      const workEnd = Math.max(workStart, workStart + work.offsetHeight - viewport);
       // The mountain stays beside the full bio story. Measure its flow box,
       // never its sticky text, so resize and return visits share the same stops.
-      const aboutRest = Math.min(end, Math.max(workEnd, bioRestScroll(about, viewport)));
-      const contact = Math.max(aboutRest, end);
-      // The descent after the last project; Statement.module.css adds its screen.
-      // Kept inline (DESCENT_SCREENS in sceneConfig.ts) so this module stays free of the scene code.
-      const descentScreens = window.innerWidth >= 1024 ? 1 : 0.65;
+      const aboutRest = about ? cutShift + bioRestScroll(about, viewport) : descentEnd + viewport;
+      const contact = Math.max(aboutRest, cutShift + end);
       return {
         workStart,
         workEnd,
-        descentEnd: Math.min(aboutRest, workEnd + descentScreens * viewport),
+        descentEnd,
         about: aboutRest,
-        aboutLeave: Math.min(contact, bioLeaveScroll(about, viewport)),
+        aboutLeave: about
+          ? Math.min(contact, cutShift + bioLeaveScroll(about, viewport))
+          : aboutRest,
         contact,
       };
     };
 
+    /** The offset the camera should stand at: the shown project's hold, or the page's scroll. */
+    const journeyOffset = () => {
+      if (view?.kind === "work") {
+        const viewport = stableViewportHeight();
+        const stretches = workStretchesFor(sceneViewportForWidth(window.innerWidth));
+        return (WORK_START_SCREENS + detailsPoint(view.station, stretches)) * viewport;
+      }
+      const y = window.scrollY;
+      if (heroCut >= 0 && y < heroCut) return y;
+      return heroCut >= 0 ? cutShift + y : descentEnd + y;
+    };
+
+    /** Which side of the hero's cut the page was on, so crossing it cuts the camera. */
+    let pastCut: boolean | null = null;
+    const followPage = () => {
+      const offset = journeyOffset();
+      if (heroCut < 0) {
+        environment?.setScroll(offset);
+        root.style.removeProperty("--journey-dip");
+        return;
+      }
+      const y = window.scrollY;
+      const past = y >= heroCut;
+      if (pastCut !== null && past !== pastCut) environment?.cutTo(offset);
+      else environment?.setScroll(offset);
+      pastCut = past;
+      // Fully dark for a moment either side of the cut, clearing over half a screen.
+      const away = Math.abs(y - heroCut) / (stableViewportHeight() / 2);
+      const dip = Math.min(1, Math.max(0, (1 - away) * 1.6));
+      root.style.setProperty("--journey-dip", dip.toFixed(3));
+    };
+
     const syncJourney = () => {
-      const stops = measureStops();
-      if (stops) environment?.setJourneyStops(stops);
-      environment?.setScroll(window.scrollY);
+      environment?.setJourneyStops(measureStops());
+      if (view?.kind === "work") {
+        pastCut = null;
+        root.style.removeProperty("--journey-dip");
+        environment?.setScroll(journeyOffset());
+      } else followPage();
     };
 
     const handleScroll = () => {
-      environment?.setScroll(window.scrollY);
+      if (view?.kind !== "work") followPage();
       scheduleObstacleSync();
     };
 
@@ -299,6 +367,11 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
         environment?.setFocus(rect);
       });
 
+      unsubscribeView = subscribeJourneyView((next) => {
+        view = next;
+        syncJourney();
+      });
+
       unsubscribeEntry = subscribeEntryArrival(() => {
         environment?.beginEntryArrival();
       });
@@ -352,6 +425,7 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       pageObserver?.disconnect();
       unsubscribeFocus?.();
       unsubscribeEntry?.();
+      unsubscribeView?.();
       unsubscribePointer?.();
       pointerSource?.destroy();
       environment?.destroy();
@@ -365,8 +439,9 @@ export function SceneCanvas({ onStats }: SceneCanvasProps) {
       delete root.dataset.cameraSettled;
       root.style.removeProperty("--scene-beacon-glow");
       root.style.removeProperty("--arrival");
+      root.style.removeProperty("--journey-dip");
     };
-  }, [onStats]);
+  }, [onStats, workCount]);
 
   return (
     <canvas

@@ -33,11 +33,11 @@ export function subscribeWorkStation(listener: (station: WorkStation | null) => 
  */
 let focusRequested = false;
 
-/** Whether `link` points at Selected Work on the home page. */
+/** Whether `link` points at the Work index, the home page. */
 export function isWorkLink(link: Element): link is HTMLAnchorElement {
   if (!(link instanceof HTMLAnchorElement)) return false;
   const url = new URL(link.href, location.href);
-  return url.origin === location.origin && url.pathname === "/" && url.hash === "#selected-work";
+  return url.origin === location.origin && url.pathname === "/";
 }
 
 /** Watches for keyboard-activated links to Selected Work. Returns the cleanup. */

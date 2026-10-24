@@ -1,0 +1,8 @@
+.dip {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--layer-webgl) + 1);
+  background: var(--color-background);
+  opacity: var(--journey-dip, 0);
+  pointer-events: none;
+}
