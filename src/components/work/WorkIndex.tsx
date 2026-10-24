@@ -35,7 +35,8 @@ const pad = (value: number) => String(value).padStart(2, "0");
  * Nothing scrolls. The page names the project on show and the camera stands at
  * that project's hold in the landscape; the wheel, the arrow keys, a swipe or
  * the index itself move to the next one, and the camera flies there while the
- * wordmark comes apart and the next one gathers.
+ * wordmark comes apart and the next one gathers. The index loops: past the
+ * last project comes the first again, and before the first, the last.
  */
 export function WorkIndex({ projects }: Readonly<{ projects: readonly IndexProject[] }>) {
   const [current, setCurrent] = useState(0);
@@ -90,6 +91,12 @@ export function WorkIndex({ projects }: Readonly<{ projects: readonly IndexProje
     [count],
   );
 
+  /** One project on, or back, round the loop. */
+  const step = useCallback(
+    (direction: number) => go((currentRef.current + direction + count) % count),
+    [go, count],
+  );
+
   // The page itself never scrolls: wheel, keys and swipes step through the index.
   useEffect(() => {
     let wheelSum = 0;
@@ -101,9 +108,9 @@ export function WorkIndex({ projects }: Readonly<{ projects: readonly IndexProje
       wheelAt = now;
       wheelSum += event.deltaY;
       if (Math.abs(wheelSum) < 40) return;
-      const step = Math.sign(wheelSum);
+      const direction = Math.sign(wheelSum);
       wheelSum = 0;
-      go(currentRef.current + step);
+      step(direction);
     };
     const keys: Record<string, number> = {
       ArrowDown: 1,
@@ -117,10 +124,10 @@ export function WorkIndex({ projects }: Readonly<{ projects: readonly IndexProje
       if (event.altKey || event.metaKey || event.ctrlKey) return;
       const target = event.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, [contenteditable]")) return;
-      const step = keys[event.key];
-      if (!step) return;
+      const direction = keys[event.key];
+      if (!direction) return;
       event.preventDefault();
-      go(currentRef.current + step);
+      step(direction);
     };
     let touchY: number | null = null;
     const onTouchStart = (event: TouchEvent) => {
@@ -135,7 +142,7 @@ export function WorkIndex({ projects }: Readonly<{ projects: readonly IndexProje
       const distance = touchY - end;
       touchY = null;
       if (Math.abs(distance) < 40) return;
-      go(currentRef.current + Math.sign(distance));
+      step(Math.sign(distance));
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("keydown", onKey);
@@ -149,7 +156,7 @@ export function WorkIndex({ projects }: Readonly<{ projects: readonly IndexProje
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [go]);
+  }, [step]);
 
   const project = projects[current];
   if (!project) return null;
