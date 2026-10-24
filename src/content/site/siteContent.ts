@@ -30,9 +30,8 @@ export const siteContent = {
     href: "https://github.com/MarziaSaidi",
   },
   navigation: [
-    { key: "hero", label: "Index", href: sectionHref("hero") },
-    { key: "selected-work", label: "Work", href: sectionHref("selected-work") },
-    { key: "about", label: "About", href: sectionHref("about") },
+    { key: "selected-work", label: "Work", href: "/" },
+    { key: "about", label: "About", href: "/about" },
   ] satisfies readonly NavigationItem[],
   skipLinkLabel: "Skip to main content",
   hero: {
@@ -49,6 +48,41 @@ export const siteContent = {
     enterLabel: "Enter selected work",
     nextLabel: "Next project",
     previousLabel: "Previous project",
+  },
+  about: {
+    label: "About",
+    heading: "I design interfaces and ship the production code behind them.",
+    paragraphs: [
+      "I studied computer science, but I’ve always been drawn to the space where design meets engineering.",
+      "I have a habit of turning questions into things.",
+    ],
+    scrollLabel: "Scroll down",
+  },
+  inShort: {
+    label: "In short",
+    rows: [
+      {
+        label: "What I do",
+        items: [
+          { text: "Product design" },
+          { text: "Interface design" },
+          { text: "Front-end engineering" },
+          { text: "3D for the web" },
+        ],
+      },
+      {
+        label: "Selected work",
+        items: [
+          { text: "Quill & Pigeon", note: "Design + Development Intern", year: "2025" },
+          { text: "Survue", note: "Founding Product Designer", year: "2024" },
+        ],
+      },
+      { label: "Background", items: [{ text: "Computer science" }] },
+      {
+        label: "This site",
+        items: [{ text: "Next.js, Three.js, GSAP" }, { note: "Set in Ivar Headline and PP Frama" }],
+      },
+    ],
   },
   statement: {
     /** Three connected thoughts; line breaks belong to the editorial composition. */
@@ -90,4 +124,4 @@ export const siteContent = {
     backToTopLabel: "Back to top",
   },
 } as const;
-import { sectionHref, type SectionId } from "@/config/sections";
+import type { SectionId } from "@/config/sections";

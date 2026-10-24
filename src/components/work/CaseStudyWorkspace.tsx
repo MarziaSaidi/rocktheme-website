@@ -16,7 +16,7 @@ import { ActionContent } from "@/components/primitives/ActionContent";
 import { ArrowGlyph } from "@/components/primitives/ArrowGlyph";
 import { SwapGlyph } from "@/components/primitives/SwapGlyph";
 import { WeightLabel } from "@/components/primitives/WeightLabel";
-import { sectionAnchors } from "@/config/sections";
+import { sectionHref } from "@/config/sections";
 import { siteContent } from "@/content/site/siteContent";
 import type {
   CaseStudyInfo,
@@ -1048,7 +1048,7 @@ export function CaseStudyWorkspace({ project, stages, next: nextStudy }: CaseStu
     >
       <section className={styles.cover} data-cover="" aria-label={project.title}>
         <header className={styles.head}>
-          <Link className={styles.back} href={`/#${sectionAnchors["selected-work"]}`}>
+          <Link className={styles.back} href={sectionHref("selected-work")}>
             <SwapGlyph direction="left" className={styles.backGlyph}>
               <ArrowGlyph direction="left" />
             </SwapGlyph>

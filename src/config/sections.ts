@@ -21,8 +21,13 @@ export const pageLandmarkIds = {
   main: "main",
 } as const;
 
-export function sectionHref(sectionId: SectionId): `/#${string}` {
-  return `/#${sectionAnchors[sectionId]}`;
+/**
+ * A link to a section. The Work index is the home page; the bio and the
+ * contact are on the About page, and a link to them lands on them there.
+ */
+export function sectionHref(sectionId: SectionId): string {
+  if (sectionId === "hero" || sectionId === "selected-work") return "/";
+  return `/about#${sectionAnchors[sectionId]}`;
 }
 
 export function isSectionId(value: string | undefined): value is SectionId {
